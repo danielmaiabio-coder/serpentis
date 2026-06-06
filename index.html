@@ -396,7 +396,9 @@ function buildNav(){
     {id:'resultado',label:'Resultado'},{id:'historico',label:'Historico'},{id:'notas',label:'Notas'},{id:'dashboard',label:'Dashboard'},{id:'feedback',label:'Feedbacks'},
     {sep:true,label:'GERAL'},
     {id:'acido',label:'Acido'},{id:'feed',label:'Feed da Cobranca'},
-    {id:'copys',label:'Banco de Copys'},{id:'links',label:'Links de Reneg.'},{id:'escala',label:'Escala de Roteamento'},{id:'calc',label:'Calculo de Reneg.'},
+    {id:'copys',label:'Banco de Copys'},{id:'links',label:'Links de Reneg.'},{id:'escala',label:'Escala de Roteamento'},
+    {id:'calcquit',label:'Calculo Quitacao'},{id:'calcreneg',label:'Calculo Renegociacao'},
+    {id:'planilha',label:'Automacoes Planilha'},
     {sep:true,label:'CONTA'},
     {id:'basilisco',label:'Basilisco'},
     {id:'perfil',label:'Meu Perfil'},
@@ -405,7 +407,9 @@ function buildNav(){
     {id:'resultado',label:'Meu Resultado'},{id:'historico',label:'Historico'},{id:'notas',label:'Notas'},{id:'dashboard',label:'Dashboard'},{id:'feedback',label:'Feedbacks'},
     {sep:true,label:'GERAL'},
     {id:'acido',label:'Acido'},{id:'feed',label:'Feed da Cobranca'},
-    {id:'copys',label:'Banco de Copys'},{id:'links',label:'Links de Reneg.'},{id:'escala',label:'Escala de Roteamento'},{id:'calc',label:'Calculo de Reneg.'},
+    {id:'copys',label:'Banco de Copys'},{id:'links',label:'Links de Reneg.'},{id:'escala',label:'Escala de Roteamento'},
+    {id:'calcquit',label:'Calculo Quitacao'},{id:'calcreneg',label:'Calculo Renegociacao'},
+    {id:'planilha',label:'Automacoes Planilha'},
     {sep:true,label:'CONTA'},
     {id:'basilisco',label:'Basilisco'},
     {id:'perfil',label:'Meu Perfil'},
@@ -432,6 +436,9 @@ window.navigate=async function(page){
   if(page==='links'){await renderLinks(mc);return;}
   if(page==='escala'){await renderEscala(mc);return;}
   if(page==='calc'){renderCalc(mc);return;}
+  if(page==='calcquit'){renderCalcQuit(mc);return;}
+  if(page==='calcreneg'){renderCalcReneg(mc);return;}
+  if(page==='planilha'){renderPlanilha(mc);return;}
   if(page==='perfil'){await renderPerfil(mc);return;}
   if(page==='basilisco'){await renderBasilisco(mc);return;}
   if(page==='acido'){await renderAcido(mc);return;}
@@ -708,18 +715,84 @@ const CURSOS=[
   {nome:'Assinatura Vitalicia',parcelas:24,valorParcela:199},{nome:'Assinatura Vitalicia',parcelas:18,valorParcela:199},
   {nome:'Curso Avancado',parcelas:12,valorParcela:299},{nome:'Curso Basico',parcelas:6,valorParcela:149},{nome:'Mentoria Premium',parcelas:12,valorParcela:399},
 ];
-function renderCalc(mc){
-  mc.innerHTML=snakeHtml()+'<div class="page-eyebrow">* Calculo de Renegociacao</div><div class="page-title">Calculadora</div><div class="page-sub">Calcule o valor a vista</div>'+
-    '<div class="calc-wrap"><div class="calc-box"><div class="calc-title">Calculadora de renegociacao</div>'+
-    '<div style="margin-bottom:12px;"><label class="inp-label">Valor total do curso (R$)</label><input type="number" class="inp" id="calc-total" placeholder="2997" oninput="calcular()"/></div>'+
-    '<div style="margin-bottom:12px;"><label class="inp-label">Parcelas totais</label><input type="number" class="inp" id="calc-parc-total" placeholder="12" oninput="calcular()"/></div>'+
-    '<div style="margin-bottom:12px;"><label class="inp-label">Parcelas pagas</label><input type="number" class="inp" id="calc-parc-pagas" placeholder="2" oninput="calcular()"/></div>'+
-    '<div class="calc-result"><div class="calc-result-label">Valor a vista para renegociacao</div><div class="calc-result-val" id="calc-resultado">R$ 0,00</div><div style="font-size:11px;opacity:0.75;margin-top:4px;" id="calc-detalhe">Preencha os campos acima</div></div></div>'+
-    '<div class="calc-box"><div class="calc-title">Tabela de cursos</div>'+
-    '<div class="search-box"><svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="number" id="busca-parcela" placeholder="Digite o valor da parcela (ex: 199)" oninput="buscarCurso()"/></div>'+
-    '<div id="lista-cursos">'+CURSOS.map(c=>'<div class="curso-row" data-parc="'+c.valorParcela+'"><div class="curso-nome">'+c.parcelas+'x de R$ '+c.valorParcela.toLocaleString('pt-BR',{minimumFractionDigits:2})+' &#8212; '+c.nome+'</div><div class="curso-val">R$ '+(c.parcelas*c.valorParcela).toLocaleString('pt-BR',{minimumFractionDigits:2})+'</div></div>').join('')+'</div>'+
-    '<p style="font-size:11px;color:var(--text-3);margin-top:12px;">* Envie sua planilha para atualizar esta tabela</p></div></div>';
+function renderCalcQuit(mc){
+  mc.innerHTML=snakeHtml()+
+    '<div class="page-eyebrow">* Calculo Quitacao</div>'+
+    '<div class="page-title">Calculo de Quitacao</div>'+
+    '<div class="page-sub">Calcule o valor a vista e opcoes de parcelamento</div>'+
+    '<div class="calc-wrap">'+
+      '<div class="calc-box">'+
+        '<div class="calc-title">Dados do curso</div>'+
+        '<div style="margin-bottom:12px;"><label class="inp-label">Valor total do curso (R$)</label><input type="number" class="inp" id="quit-total" placeholder="2997" oninput="calcularQuit()"/></div>'+
+        '<div style="margin-bottom:12px;"><label class="inp-label">Parcelas totais</label><input type="number" class="inp" id="quit-parc-total" placeholder="12" oninput="calcularQuit()"/></div>'+
+        '<div style="margin-bottom:12px;"><label class="inp-label">Parcelas pagas</label><input type="number" class="inp" id="quit-parc-pagas" placeholder="2" oninput="calcularQuit()"/></div>'+
+        '<div class="calc-result">'+
+          '<div class="calc-result-label">Valor a vista (quitacao)</div>'+
+          '<div class="calc-result-val" id="quit-resultado">R$ 0,00</div>'+
+          '<div style="font-size:11px;opacity:0.75;margin-top:4px;" id="quit-detalhe">Preencha os campos acima</div>'+
+        '</div>'+
+      '</div>'+
+      '<div class="calc-box">'+
+        '<div class="calc-title">Opcoes de parcelamento</div>'+
+        '<div id="quit-parcelas" style="display:flex;flex-direction:column;gap:8px;">'+
+          '<div style="text-align:center;color:var(--text-3);font-size:13px;padding:2rem;">Preencha os campos ao lado</div>'+
+        '</div>'+
+      '</div>'+
+    '</div>';
 }
+
+window.calcularQuit=function(){
+  const total=parseFloat(document.getElementById('quit-total').value)||0;
+  const parcTotal=parseInt(document.getElementById('quit-parc-total').value)||0;
+  const parcPagas=parseInt(document.getElementById('quit-parc-pagas').value)||0;
+  const resEl=document.getElementById('quit-resultado');
+  const detEl=document.getElementById('quit-detalhe');
+  const parcsEl=document.getElementById('quit-parcelas');
+  if(!total||!parcTotal||parcPagas>=parcTotal){
+    resEl.textContent='R$ 0,00';detEl.textContent='Verifique os valores';
+    parcsEl.innerHTML='<div style="text-align:center;color:var(--text-3);font-size:13px;padding:2rem;">Preencha os campos ao lado</div>';
+    return;
+  }
+  const valorParc=total/parcTotal;
+  const restantes=parcTotal-parcPagas;
+  const vista=valorParc*restantes;
+  resEl.textContent=vista.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+  detEl.textContent=restantes+' parcelas restantes x R$ '+valorParc.toFixed(2).replace('.',',');
+  // Gera opcoes de parcelamento do total restante
+  let html='';
+  for(let p=restantes;p>=1;p--){
+    const valParc=vista/p;
+    html+='<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--bg);border-radius:var(--radius);border:1px solid var(--border);">'+
+      '<div style="font-size:14px;font-weight:500;color:var(--text);">'+p+'x</div>'+
+      '<div style="font-size:14px;color:var(--primary);font-weight:500;">R$ '+valParc.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})+'</div>'+
+      '<div style="font-size:11px;color:var(--text-3);">Total: '+vista.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})+'</div>'+
+    '</div>';
+  }
+  parcsEl.innerHTML=html;
+};
+
+function renderCalcReneg(mc){
+  mc.innerHTML=snakeHtml()+
+    '<div class="page-eyebrow">* Calculo Renegociacao</div>'+
+    '<div class="page-title">Calculo de Renegociacao</div>'+
+    '<div class="page-sub">Calcule o valor a vista para renegociacao</div>'+
+    '<div class="calc-wrap">'+
+      '<div class="calc-box">'+
+        '<div class="calc-title">Calculadora de renegociacao</div>'+
+        '<div style="margin-bottom:12px;"><label class="inp-label">Valor total do curso (R$)</label><input type="number" class="inp" id="calc-total" placeholder="2997" oninput="calcular()"/></div>'+
+        '<div style="margin-bottom:12px;"><label class="inp-label">Parcelas totais</label><input type="number" class="inp" id="calc-parc-total" placeholder="12" oninput="calcular()"/></div>'+
+        '<div style="margin-bottom:12px;"><label class="inp-label">Parcelas pagas</label><input type="number" class="inp" id="calc-parc-pagas" placeholder="2" oninput="calcular()"/></div>'+
+        '<div class="calc-result"><div class="calc-result-label">Valor a vista para renegociacao</div><div class="calc-result-val" id="calc-resultado">R$ 0,00</div><div style="font-size:11px;opacity:0.75;margin-top:4px;" id="calc-detalhe">Preencha os campos acima</div></div>'+
+      '</div>'+
+      '<div class="calc-box">'+
+        '<div class="calc-title">Tabela de cursos</div>'+
+        '<div class="search-box"><svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="number" id="busca-parcela" placeholder="Digite o valor da parcela (ex: 199)" oninput="buscarCurso()"/></div>'+
+        '<div id="lista-cursos">'+CURSOS.map(c=>'<div class="curso-row" data-parc="'+c.valorParcela+'"><div class="curso-nome">'+c.parcelas+'x de R$ '+c.valorParcela.toLocaleString('pt-BR',{minimumFractionDigits:2})+' - '+c.nome+'</div><div class="curso-val">R$ '+(c.parcelas*c.valorParcela).toLocaleString('pt-BR',{minimumFractionDigits:2})+'</div></div>').join('')+'</div>'+
+        '<p style="font-size:11px;color:var(--text-3);margin-top:12px;">* Envie sua planilha para atualizar esta tabela</p>'+
+      '</div>'+
+    '</div>';
+}
+
 window.calcular=function(){
   const total=parseFloat(document.getElementById('calc-total').value)||0;
   const parcTotal=parseInt(document.getElementById('calc-parc-total').value)||0;
@@ -730,6 +803,67 @@ window.calcular=function(){
   document.getElementById('calc-detalhe').textContent=restantes+' parcelas restantes x R$ '+valorParc.toFixed(2).replace('.',',');
 };
 window.buscarCurso=function(){const val=parseFloat(document.getElementById('busca-parcela').value)||0;document.querySelectorAll('.curso-row').forEach(el=>{el.classList.toggle('highlight',val>0&&parseFloat(el.dataset.parc)===val);});};
+
+const SCRIPT_URL='https://script.google.com/macros/s/AKfycbw7CfLpq-AnDFXMSKwpMizpYLrwG0PCn7CE7rMvi1sShgfCuAtHi1spCYd4mMThLUI8WQ/exec';
+const SHEET_URL='https://docs.google.com/spreadsheets/d/1ieSfNlnql1Yg8xl_25ed_2eWj-bCg1xnJq8wcl2DDNk/edit?gid=1011935790#gid=1011935790';
+
+function renderPlanilha(mc){
+  mc.innerHTML=snakeHtml()+
+    '<div class="page-eyebrow">* Automacoes Planilha</div>'+
+    '<div class="page-title">Automacoes da Planilha</div>'+
+    '<div class="page-sub">Atualize a planilha diretamente pelo painel</div>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:1.25rem;">'+
+      // Resolvido
+      '<div class="panel">'+
+        '<div class="panel-title" style="color:var(--green);">Resolvido</div>'+
+        '<p style="font-size:12px;color:var(--text-2);margin-bottom:12px;">Cola o e-mail do aluno e pressione Enter para marcar como Resolvido na planilha.</p>'+
+        '<div style="display:flex;gap:8px;">'+
+          '<input type="email" class="inp" id="email-resolvido" placeholder="email@exemplo.com" onkeydown="if(event.key===\'Enter\')executarAcao(\'resolvido\')"/>'+
+          '<button class="btn-blue" onclick="executarAcao(\'resolvido\')" style="background:#1D9E75;white-space:nowrap;">Marcar Resolvido</button>'+
+        '</div>'+
+        '<div id="msg-resolvido" style="font-size:12px;margin-top:8px;display:none;"></div>'+
+      '</div>'+
+      // Descartado
+      '<div class="panel">'+
+        '<div class="panel-title" style="color:var(--red);">Descartado</div>'+
+        '<p style="font-size:12px;color:var(--text-2);margin-bottom:12px;">Cola o e-mail do aluno e pressione Enter para marcar como Descartado na planilha.</p>'+
+        '<div style="display:flex;gap:8px;">'+
+          '<input type="email" class="inp" id="email-descartado" placeholder="email@exemplo.com" onkeydown="if(event.key===\'Enter\')executarAcao(\'descartado\')"/>'+
+          '<button class="btn-blue" onclick="executarAcao(\'descartado\')" style="background:var(--red);white-space:nowrap;">Marcar Descartado</button>'+
+        '</div>'+
+        '<div id="msg-descartado" style="font-size:12px;margin-top:8px;display:none;"></div>'+
+      '</div>'+
+    '</div>'+
+    // Planilha embed
+    '<div class="panel" style="padding:0;overflow:hidden;">'+
+      '<div style="padding:12px 16px;border-bottom:1px solid var(--border);font-size:13px;font-weight:500;color:var(--text);">Planilha ao vivo</div>'+
+      '<iframe src="'+SHEET_URL.replace('/edit','/edit')+'&rm=minimal" style="width:100%;height:600px;border:none;" allow="autoplay"></iframe>'+
+    '</div>';
+}
+
+window.executarAcao=async function(acao){
+  const inputId='email-'+acao;
+  const msgId='msg-'+acao;
+  const email=document.getElementById(inputId).value.trim();
+  const msgEl=document.getElementById(msgId);
+  if(!email){msgEl.style.display='block';msgEl.style.color='var(--red)';msgEl.textContent='Digite um e-mail valido.';return;}
+  msgEl.style.display='block';msgEl.style.color='var(--text-3)';msgEl.textContent='Processando...';
+  try{
+    const res=await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({email,acao}),headers:{'Content-Type':'application/json'}});
+    const data=await res.json();
+    if(data.ok){
+      msgEl.style.color='var(--green)';
+      msgEl.textContent='Feito! Linha '+(data.linha)+' atualizada com sucesso.';
+      document.getElementById(inputId).value='';
+    } else {
+      msgEl.style.color='var(--red)';
+      msgEl.textContent='Erro: '+(data.msg||'E-mail nao encontrado na planilha.');
+    }
+  }catch(e){
+    msgEl.style.color='var(--red)';
+    msgEl.textContent='Erro de conexao. Verifique o Apps Script.';
+  }
+};
 
 async function renderPerfil(mc){
   const uid=currentUser.uid;
