@@ -372,6 +372,13 @@ document.addEventListener('click',function(e){
 
 function showLogin(){hide('appShell');show('loginScreen','flex');}
 
+function getPerms(){
+  const isCoord = userProfile.role==='coord';
+  const canManageIA = isCoord || userProfile.subrole==='iamanager';
+  const canLancar = isCoord || userProfile.subrole==='economic';
+  return {isCoord, canManageIA, canLancar};
+}
+
 function setupApp(){
   hide('loginScreen');show('appShell','flex');
   updateSidebarUser();buildNav();
@@ -389,7 +396,7 @@ function updateSidebarUser(){
 }
 
 function buildNav(){
-  const isCoord=userProfile.role==='coord';
+  const {isCoord, canLancar} = getPerms();
   const coordNavs=[
     {id:'equipe',label:'Minha Equipe'},{id:'lancar',label:'Lancar Resultados'},
     {sep:true,label:'OPERADOR'},
@@ -405,6 +412,7 @@ function buildNav(){
   ];
   const opNavs=[
     {id:'resultado',label:'Meu Resultado'},{id:'historico',label:'Historico'},{id:'notas',label:'Notas'},{id:'dashboard',label:'Dashboard'},{id:'feedback',label:'Feedbacks'},
+    ...(canLancar && !isCoord ? [{id:'lancar',label:'Lancar Resultados'}] : []),
     {sep:true,label:'GERAL'},
     {id:'acido',label:'<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780767902/uol_dqoo8g.webp" style="width:16px;height:16px;object-fit:contain;vertical-align:middle;margin-right:4px;"/> Chat da Uol'},{id:'feed',label:'Feed da Cobranca'},
     {id:'copys',label:'Banco de Copys'},{id:'links',label:'Links de Reneg.'},{id:'escala',label:'Escala de Roteamento'},
@@ -432,7 +440,11 @@ window.navigate=async function(page){
   mc.style.backgroundImage='none';
   mc.innerHTML='<div class="snake-corner"><img src="'+SNAKE_IMG+'"/></div><div class="empty">Carregando...</div>';
   if(page==='equipe'){await renderEquipe(mc);return;}
-  if(page==='lancar'){await renderLancar(mc);return;}
+  if(page==='lancar'){
+    const {canLancar} = getPerms();
+    if(canLancar){await renderLancar(mc);return;}
+    else{mc.innerHTML=snakeHtml()+'<div class="empty">Sem permissao para esta area.</div>';return;}
+  }
   if(page==='copys'){await renderCopys(mc);return;}
   if(page==='links'){await renderLinks(mc);return;}
   if(page==='escala'){await renderEscala(mc);return;}
@@ -1213,7 +1225,8 @@ let basiliscoKey='';
 let basiliscoDocs=[];
 
 async function renderBasilisco(mc){
-  const isCoord=userProfile.role==='coord';
+  const {isCoord, canManageIA} = getPerms();
+  const isCoordBA = canManageIA;
   // Load config from Firebase
   const cfgSnap=await getDoc(doc(db,'config','basilisco'));
   if(cfgSnap.exists()){
@@ -1229,7 +1242,7 @@ async function renderBasilisco(mc){
 
     // API Key panel — top right, only for coord or if no key
     '<div style="position:absolute;top:0;right:0;width:300px;background:rgba(0,0,0,0.7);backdrop-filter:blur(12px);border-left:1px solid rgba(255,255,255,0.08);border-bottom:1px solid rgba(255,255,255,0.08);border-bottom-left-radius:var(--radius-lg);padding:1.25rem;z-index:10;">'+
-      (isCoord?
+      (isCoordBA?
         // Coord: full config panel
         '<div style="font-size:11px;font-weight:500;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:10px;">Configuracao</div>'+
         '<input type="password" id="bsk-key" value="'+basiliscoKey+'" placeholder="gsk_..." style="width:100%;padding:8px 12px;border:1px solid rgba(255,255,255,0.1);border-radius:var(--radius);background:rgba(255,255,255,0.05);color:#fff;font-family:var(--font);font-size:12px;margin-bottom:8px;"/>'+
