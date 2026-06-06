@@ -395,7 +395,7 @@ function buildNav(){
     {sep:true,label:'OPERADOR'},
     {id:'resultado',label:'Resultado'},{id:'historico',label:'Historico'},{id:'notas',label:'Notas'},{id:'dashboard',label:'Dashboard'},{id:'feedback',label:'Feedbacks'},
     {sep:true,label:'GERAL'},
-    {id:'acido',label:'Acido'},{id:'feed',label:'Feed da Cobranca'},
+    {id:'acido',label:'<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780767902/uol_dqoo8g.webp" style="width:16px;height:16px;object-fit:contain;vertical-align:middle;margin-right:4px;"/> Chat da Uol'},{id:'feed',label:'Feed da Cobranca'},
     {id:'copys',label:'Banco de Copys'},{id:'links',label:'Links de Reneg.'},{id:'escala',label:'Escala de Roteamento'},
     {id:'calc',label:'🧮 Calculadoras'},
     {id:'planilha',label:'⚡ Automacoes Planilha'},
@@ -406,7 +406,7 @@ function buildNav(){
   const opNavs=[
     {id:'resultado',label:'Meu Resultado'},{id:'historico',label:'Historico'},{id:'notas',label:'Notas'},{id:'dashboard',label:'Dashboard'},{id:'feedback',label:'Feedbacks'},
     {sep:true,label:'GERAL'},
-    {id:'acido',label:'Acido'},{id:'feed',label:'Feed da Cobranca'},
+    {id:'acido',label:'<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780767902/uol_dqoo8g.webp" style="width:16px;height:16px;object-fit:contain;vertical-align:middle;margin-right:4px;"/> Chat da Uol'},{id:'feed',label:'Feed da Cobranca'},
     {id:'copys',label:'Banco de Copys'},{id:'links',label:'Links de Reneg.'},{id:'escala',label:'Escala de Roteamento'},
     {id:'calc',label:'🧮 Calculadoras'},
     {id:'planilha',label:'⚡ Automacoes Planilha'},
@@ -894,8 +894,8 @@ let acidoUnsub = null;
 
 async function renderAcido(mc){
   mc.innerHTML = snakeHtml()+
-    '<div class="page-eyebrow">* Acido</div>'+
-    '<div class="page-title">Chat do Time</div>'+
+    '<div class="page-eyebrow">* Chat da Uol</div>'+
+    '<div class="page-title"><img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780767902/uol_dqoo8g.webp" style="width:28px;height:28px;object-fit:contain;vertical-align:middle;margin-right:8px;"/>Chat da Uol</div>'+
     '<div class="page-sub">Mensagens em tempo real</div>'+
     '<div class="chat-wrap">'+
       '<div class="chat-messages" id="chat-msgs"><div class="empty">Carregando mensagens...</div></div>'+
@@ -1177,24 +1177,33 @@ async function renderBasilisco(mc){
     basiliscoKey=cfgSnap.data().key||'';
     basiliscoDocs=cfgSnap.data().docs||[];
   }
+  const temChave=!!basiliscoKey;
   mc.style.padding='0';
   mc.style.overflow='hidden';
   mc.innerHTML=
     '<div style="position:relative;width:100%;height:100vh;background:url(https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780761816/foto_snake_rswhrg.png) center/cover no-repeat;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;">'+
     snakeHtml()+
 
-    // API Key panel — top right
+    // API Key panel — top right, only for coord or if no key
     '<div style="position:absolute;top:0;right:0;width:300px;background:rgba(0,0,0,0.7);backdrop-filter:blur(12px);border-left:1px solid rgba(255,255,255,0.08);border-bottom:1px solid rgba(255,255,255,0.08);border-bottom-left-radius:var(--radius-lg);padding:1.25rem;z-index:10;">'+
-      '<div style="font-size:11px;font-weight:500;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:10px;">API Key</div>'+
-      '<input type="password" id="bsk-key" value="'+basiliscoKey+'" placeholder="gsk_..." style="width:100%;padding:8px 12px;border:1px solid rgba(255,255,255,0.1);border-radius:var(--radius);background:rgba(255,255,255,0.05);color:#fff;font-family:var(--font);font-size:12px;margin-bottom:8px;"/>'+
       (isCoord?
+        // Coord: full config panel
+        '<div style="font-size:11px;font-weight:500;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:10px;">Configuracao</div>'+
+        '<input type="password" id="bsk-key" value="'+basiliscoKey+'" placeholder="gsk_..." style="width:100%;padding:8px 12px;border:1px solid rgba(255,255,255,0.1);border-radius:var(--radius);background:rgba(255,255,255,0.05);color:#fff;font-family:var(--font);font-size:12px;margin-bottom:8px;"/>'+
         '<div style="margin-bottom:8px;"><div style="font-size:10px;color:rgba(255,255,255,0.3);margin-bottom:6px;">DOCUMENTOS ('+basiliscoDocs.length+')</div>'+
         basiliscoDocs.map((d,i)=>'<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;"><span style="font-size:11px;color:rgba(255,255,255,0.5);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+d.nome+'</span><button onclick="removerDoc('+i+')" style="padding:2px 8px;border:1px solid rgba(255,255,255,0.1);border-radius:4px;background:transparent;color:rgba(255,255,255,0.3);font-size:10px;cursor:pointer;">x</button></div>').join('')+
         '<input type="text" id="bsk-doc-nome" placeholder="Nome do doc" style="width:100%;padding:6px 10px;border:1px solid rgba(255,255,255,0.1);border-radius:var(--radius);background:rgba(255,255,255,0.05);color:#fff;font-family:var(--font);font-size:11px;margin-bottom:4px;"/>'+
         '<textarea id="bsk-doc-texto" rows="2" placeholder="Cole o conteudo..." style="width:100%;padding:6px 10px;border:1px solid rgba(255,255,255,0.1);border-radius:var(--radius);background:rgba(255,255,255,0.05);color:#fff;font-family:var(--font);font-size:11px;resize:none;margin-bottom:6px;"></textarea>'+
-        '<button onclick="adicionarDoc()" style="width:100%;padding:5px;border:1px solid rgba(255,255,255,0.15);border-radius:var(--radius);background:transparent;color:rgba(255,255,255,0.5);font-family:var(--font);font-size:11px;cursor:pointer;margin-bottom:8px;">+ Adicionar documento</button></div>'
-      :'')+
-      '<button onclick="salvarConfigBasilisco()" style="width:100%;padding:8px;background:linear-gradient(135deg,#0d2e14,#1A5C2A);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:12px;font-weight:500;cursor:pointer;">Salvar</button>'+
+        '<button onclick="adicionarDoc()" style="width:100%;padding:5px;border:1px solid rgba(255,255,255,0.15);border-radius:var(--radius);background:transparent;color:rgba(255,255,255,0.5);font-family:var(--font);font-size:11px;cursor:pointer;margin-bottom:8px;">+ Adicionar documento</button></div>'+
+        '<button onclick="salvarConfigBasilisco()" style="width:100%;padding:8px;background:linear-gradient(135deg,#0d2e14,#1A5C2A);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:12px;font-weight:500;cursor:pointer;">Salvar</button>'
+      :
+        // Operator: just show status
+        '<div style="font-size:11px;font-weight:500;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px;">Basilisco</div>'+
+        '<div style="display:flex;align-items:center;gap:8px;">'+
+          '<div style="width:8px;height:8px;border-radius:50%;background:'+(temChave?'#4CAF6A':'#A32D2D')+';box-shadow:0 0 6px '+(temChave?'#4CAF6A':'#A32D2D')+';"></div>'+
+          '<div style="font-size:12px;color:rgba(255,255,255,0.6);">'+(temChave?'Ativo · '+basiliscoDocs.length+' documento(s)':'Aguardando configuracao do coordenador')+'</div>'+
+        '</div>'
+      )+
     '</div>'+
 
     // Center content: search + responses
