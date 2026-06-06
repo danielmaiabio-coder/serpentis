@@ -254,7 +254,7 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
 </div>
 <div id="appShell">
   <div class="sidebar">
-    <div class="sb-brand"><div style="display:flex;align-items:center;justify-content:space-between;"><div><div class="sb-brand-name">Chocalho</div><div class="sb-brand-sub" id="sbSub">—</div></div><img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780780614/chocalho_1_in7jon.png" style="width:36px;height:36px;object-fit:contain;mix-blend-mode:multiply;filter:brightness(1.1);"/></div></div>
+    <div class="sb-brand"><div style="display:flex;align-items:center;justify-content:space-between;"><div><div class="sb-brand-name">Chocalho</div><div class="sb-brand-sub" id="sbSub">—</div></div><img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/e_bgremoval/q_auto/f_auto/v1780780614/chocalho_1_in7jon.png" style="width:36px;height:36px;object-fit:contain;"/></div></div>
     <div id="navItems"></div>
     <div class="sb-bottom">
       <div class="sb-user">
@@ -977,11 +977,16 @@ async function renderPerfil(mc){
     '<div style="text-align:center;"><div style="font-size:16px;font-weight:500;color:var(--text);">'+(perfil.nome||'&#8212;')+'</div><div style="font-size:12px;color:var(--text-3);">'+(userProfile.role==='coord'?'Coordenador':'Painel Brille')+'</div></div>'+
     '<label style="cursor:pointer;"><input type="file" accept="image/*" onchange="uploadFoto(event)" style="display:none;"/><span class="btn-ghost">Alterar foto</span></label></div>'+
     '<div style="margin-bottom:16px;"><label class="inp-label">Meu nome</label><input type="text" class="inp" id="perfil-nome" value="'+(perfil.nome||'')+'" placeholder="Seu nome completo"/></div>'+
-    '<div style="margin-bottom:16px;"><label class="inp-label">Cor de fundo do painel</label>'+
+    '<div style="margin-bottom:16px;">'+
+    '<button onclick="toggleBgPicker()" style="display:flex;align-items:center;gap:10px;padding:10px 16px;border:1px solid var(--border-md);border-radius:var(--radius);background:var(--bg);font-family:var(--font);font-size:13px;color:var(--text);cursor:pointer;width:100%;">'+
+    '<div style="width:24px;height:24px;border-radius:6px;background:'+(bgAtual||'linear-gradient(135deg,#0d2e14,#1A5C2A)')+';flex-shrink:0;"></div>'+
+    '<span>Cor de fundo do painel</span>'+
+    '<svg style="margin-left:auto;" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></button>'+
+    '<div id="bg-picker" style="display:none;">'+
     '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:8px;">'+
     TEMAS.map((t,i)=>'<div onclick="selecionarBg('+i+')" id="bg-opt-'+i+'" style="cursor:pointer;height:44px;border-radius:10px;background:'+t.bg+';border:3px solid '+(bgAtual===t.bg?'#fff':'transparent')+';box-shadow:'+(bgAtual===t.bg?'0 0 0 2px var(--primary)':'0 2px 6px rgba(0,0,0,0.15)')+';transition:all 0.15s;display:flex;align-items:flex-end;padding:4px 6px;" title="'+t.nome+'">'+
-      '<span style="font-size:9px;color:rgba(255,255,255,0.7);font-weight:500;">'+t.nome+'</span></div>').join('')+
-    '</div></div>'+
+    '<span style="font-size:9px;color:rgba(255,255,255,0.7);font-weight:500;">'+t.nome+'</span></div>').join('')+
+    '</div></div></div>'+
     '<button class="btn-blue" onclick="salvarPerfil()">Salvar alteracoes</button>'+
     '<img id="perfil-foto-preview" src="'+(perfil.foto||'')+'" style="display:none;"/>'+
     '</div>';
@@ -990,6 +995,11 @@ async function renderPerfil(mc){
   window._bgTemas = TEMAS;
   window._bgSelecionado = bgAtual;
 }
+window.toggleBgPicker=function(){
+  const el=document.getElementById('bg-picker');
+  el.style.display=el.style.display==='none'?'block':'none';
+};
+
 window.selecionarBg=function(i){
   window._bgSelecionado=window._bgTemas[i].bg;
   document.querySelectorAll('[id^="bg-opt-"]').forEach((el,j)=>{
