@@ -1080,9 +1080,10 @@ async function renderFeed(mc){
   }
 
   mc.innerHTML = snakeHtml()+
+    '<div style="display:inline-block;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:var(--radius-lg);padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);">'+
     '<div class="page-eyebrow">* Feed da Cobranca</div>'+
     '<div class="page-title">Feed da Cobranca</div>'+
-    '<div class="page-sub">Fotos e momentos do time</div>'+
+    '<div class="page-sub" style="margin-bottom:1rem;">Fotos e momentos do time</div>'+
     '<div style="margin-bottom:1.25rem;">'+
       '<div style="position:relative;display:inline-block;">'+
         '<button class="postar-btn" onclick="abrirModalPost()">'+
@@ -1094,6 +1095,7 @@ async function renderFeed(mc){
           '<circle cx="21" cy="5" r="2" fill="#2E8B45"/>'+
         '</svg>'+
       '</div>'+
+    '</div>'+
     '</div>'+
     '<div id="feed-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;align-items:center;justify-content:center;">'+
       '<div style="background:var(--surface);border-radius:var(--radius-lg);padding:1.5rem;width:100%;max-width:480px;box-shadow:0 20px 60px rgba(0,0,0,0.3);">'+
