@@ -1057,6 +1057,80 @@ let basiliscoDocs = JSON.parse(localStorage.getItem('basilisco_docs') || '[]');
 function show(id,display='block'){document.getElementById(id).style.display=display;}
 function hide(id){document.getElementById(id).style.display='none';}
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
+
+// BASILISCO
+let basiliscoMsgs=[];
+let basiliscoKey=localStorage.getItem('basilisco_key')||'';
+let basiliscoDocs=JSON.parse(localStorage.getItem('basilisco_docs')||'[]');
+
+async function renderBasilisco(mc){
+  const isCoord=userProfile.role==='coord';
+  mc.style.padding='0';
+  mc.style.overflow='hidden';
+  mc.innerHTML=
+    '<div style="position:relative;width:100%;height:100vh;background:url(https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780758121/basilisco_gizvje.png) center/cover no-repeat;display:flex;flex-direction:column;align-items:center;justify-content:center;">'+
+    snakeHtml()+
+    '<div style="position:absolute;top:20px;right:20px;z-index:10;">'+
+      '<button onclick="toggleBasiliscoConfig()" style="padding:8px 16px;background:rgba(255,255,255,0.08);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.15);border-radius:20px;color:rgba(255,255,255,0.7);font-family:var(--font);font-size:12px;cursor:pointer;display:flex;align-items:center;gap:6px;">'+
+        '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>API Key</button></div>'+
+    '<div id="basilisco-config" style="display:'+(basiliscoKey?'none':'flex')+';position:absolute;inset:0;background:rgba(0,0,0,0.75);backdrop-filter:blur(6px);z-index:20;align-items:center;justify-content:center;">'+
+      '<div style="background:#0d1a0f;border:1px solid rgba(255,255,255,0.12);border-radius:var(--radius-lg);padding:2rem;width:100%;max-width:480px;box-shadow:0 20px 60px rgba(0,0,0,0.6);">'+
+        '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;">'+
+          '<div style="font-size:16px;font-weight:500;color:#fff;">Configurar Basilisco</div>'+
+          (basiliscoKey?'<button onclick="fecharConfig()" style="background:none;border:none;color:rgba(255,255,255,0.5);font-size:18px;cursor:pointer;">&#x2715;</button>':'')+
+        '</div>'+
+        '<div style="margin-bottom:14px;"><label style="display:block;font-size:11px;font-weight:500;color:rgba(255,255,255,0.45);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:6px;">Chave da API OpenAI</label>'+
+        '<input type="password" id="bsk-key" value="'+basiliscoKey+'" placeholder="sk-proj-..." style="width:100%;padding:10px 12px;border:1px solid rgba(255,255,255,0.12);border-radius:var(--radius);background:rgba(255,255,255,0.06);color:#fff;font-family:var(--font);font-size:13px;"/>'+
+        '<p style="font-size:11px;color:rgba(255,255,255,0.3);margin-top:5px;">Salva apenas no seu navegador.</p></div>'+
+        (isCoord?
+          '<div style="margin-bottom:14px;"><label style="display:block;font-size:11px;font-weight:500;color:rgba(255,255,255,0.45);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:6px;">Documentos ('+basiliscoDocs.length+')</label>'+
+          '<div id="bsk-docs-list" style="margin-bottom:8px;">'+basiliscoDocs.map((d,i)=>'<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;"><span style="font-size:12px;color:rgba(255,255,255,0.6);flex:1;">'+d.nome+'</span><button onclick="removerDoc('+i+')" style="padding:3px 10px;border:1px solid rgba(255,255,255,0.15);border-radius:6px;background:transparent;color:rgba(255,255,255,0.4);font-size:11px;cursor:pointer;">Remover</button></div>').join('')+'</div>'+
+          '<input type="text" id="bsk-doc-nome" placeholder="Nome do documento" style="width:100%;padding:8px 12px;border:1px solid rgba(255,255,255,0.12);border-radius:var(--radius);background:rgba(255,255,255,0.06);color:#fff;font-family:var(--font);font-size:12px;margin-bottom:6px;"/>'+
+          '<textarea id="bsk-doc-texto" rows="3" placeholder="Cole o conteudo do documento..." style="width:100%;padding:8px 12px;border:1px solid rgba(255,255,255,0.12);border-radius:var(--radius);background:rgba(255,255,255,0.06);color:#fff;font-family:var(--font);font-size:12px;resize:vertical;margin-bottom:8px;"></textarea>'+
+          '<button onclick="adicionarDoc()" style="padding:6px 14px;border:1px solid rgba(255,255,255,0.2);border-radius:var(--radius);background:transparent;color:rgba(255,255,255,0.6);font-family:var(--font);font-size:12px;cursor:pointer;margin-bottom:14px;">+ Adicionar documento</button><br/>'
+        :'')+
+        '<button onclick="salvarConfigBasilisco()" style="width:100%;padding:10px;background:linear-gradient(135deg,#0d2e14,#1A5C2A);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:13px;font-weight:500;cursor:pointer;">Ativar Basilisco</button>'+
+      '</div></div>'+
+    '<div id="bsk-msgs" style="width:100%;max-width:680px;max-height:45vh;overflow-y:auto;padding:0 1rem;margin-bottom:1.5rem;display:flex;flex-direction:column;gap:10px;"></div>'+
+    '<div style="width:100%;max-width:680px;padding:0 1rem;">'+
+      '<div style="display:flex;align-items:center;background:rgba(30,30,30,0.75);backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,0.12);border-radius:40px;padding:14px 20px;gap:12px;box-shadow:0 8px 32px rgba(0,0,0,0.4);">'+
+        '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>'+
+        '<input id="bsk-input" type="text" placeholder="Pergunte alguma coisa..." style="flex:1;background:transparent;border:none;outline:none;color:#fff;font-family:var(--font);font-size:15px;" onkeydown="if(event.key===\'Enter\')perguntarBasilisco()"/>'+
+        '<button onclick="perguntarBasilisco()" style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.15);cursor:pointer;display:flex;align-items:center;justify-content:center;">'+
+          '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button></div>'+
+      '<div id="bsk-loading" style="display:none;text-align:center;margin-top:10px;font-size:12px;color:rgba(255,255,255,0.4);">Basilisco esta pensando...</div>'+
+    '</div></div>';
+}
+
+window.fecharConfig=function(){document.getElementById('basilisco-config').style.display='none';};
+window.toggleBasiliscoConfig=function(){const c=document.getElementById('basilisco-config');c.style.display=c.style.display==='none'?'flex':'none';};
+window.salvarConfigBasilisco=function(){const key=document.getElementById('bsk-key').value.trim();if(!key){showToast('Cole a chave da API.');return;}basiliscoKey=key;localStorage.setItem('basilisco_key',key);localStorage.setItem('basilisco_docs',JSON.stringify(basiliscoDocs));showToast('Basilisco ativado!');renderBasilisco(document.getElementById('mainContent'));};
+window.adicionarDoc=function(){const nome=document.getElementById('bsk-doc-nome').value.trim();const texto=document.getElementById('bsk-doc-texto').value.trim();if(!nome||!texto){showToast('Preencha nome e conteudo.');return;}basiliscoDocs.push({nome,texto});localStorage.setItem('basilisco_docs',JSON.stringify(basiliscoDocs));showToast('Documento adicionado!');renderBasilisco(document.getElementById('mainContent'));};
+window.removerDoc=function(i){basiliscoDocs.splice(i,1);localStorage.setItem('basilisco_docs',JSON.stringify(basiliscoDocs));renderBasilisco(document.getElementById('mainContent'));};
+window.perguntarBasilisco=async function(){
+  const input=document.getElementById('bsk-input');
+  const pergunta=input.value.trim();if(!pergunta)return;
+  if(!basiliscoKey){showToast('Configure a API key primeiro.');toggleBasiliscoConfig();return;}
+  const msgsEl=document.getElementById('bsk-msgs');
+  const loading=document.getElementById('bsk-loading');
+  const userDiv=document.createElement('div');
+  userDiv.style.cssText='align-self:flex-end;max-width:75%;background:rgba(255,255,255,0.12);backdrop-filter:blur(8px);color:#fff;padding:10px 16px;border-radius:20px 20px 4px 20px;font-size:13px;line-height:1.5;border:1px solid rgba(255,255,255,0.1);';
+  userDiv.textContent=pergunta;msgsEl.appendChild(userDiv);input.value='';loading.style.display='block';msgsEl.scrollTop=msgsEl.scrollHeight;
+  const contexto=basiliscoDocs.length>0?'DOCUMENTOS INTERNOS:\n\n'+basiliscoDocs.map(d=>'=== '+d.nome+' ===\n'+d.texto).join('\n\n'):'Nenhum documento carregado.';
+  const systemPrompt='Voce e o Basilisco, assistente interno da equipe de Contas a Receber da Brille.\nResponda APENAS com base nos documentos internos fornecidos abaixo.\nSe a informacao nao estiver nos documentos, responda: "Nao encontrei essa informacao nos documentos internos."\nNunca invente informacoes. Nunca use conhecimento externo. Responda em portugues.\n\n'+contexto;
+  try{
+    const res=await fetch('https://api.openai.com/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+basiliscoKey},body:JSON.stringify({model:'gpt-4o-mini',messages:[{role:'system',content:systemPrompt},...basiliscoMsgs,{role:'user',content:pergunta}],max_tokens:1000,temperature:0.2})});
+    const data=await res.json();loading.style.display='none';
+    if(data.error){showToast('Erro: '+data.error.message);return;}
+    const resposta=data.choices[0].message.content;
+    basiliscoMsgs.push({role:'user',content:pergunta});basiliscoMsgs.push({role:'assistant',content:resposta});
+    if(basiliscoMsgs.length>20)basiliscoMsgs=basiliscoMsgs.slice(-20);
+    const botDiv=document.createElement('div');
+    botDiv.style.cssText='align-self:flex-start;max-width:75%;background:rgba(13,46,20,0.7);backdrop-filter:blur(8px);color:#fff;padding:10px 16px;border-radius:20px 20px 20px 4px;font-size:13px;line-height:1.6;white-space:pre-wrap;border:1px solid rgba(46,139,69,0.3);';
+    botDiv.textContent=resposta;msgsEl.appendChild(botDiv);
+  }catch(e){loading.style.display='none';showToast('Erro de conexao.');}
+  msgsEl.scrollTop=msgsEl.scrollHeight;
+};
 </script>
 </body>
 </html>
