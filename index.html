@@ -303,6 +303,7 @@ const SVG={
   calc:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="10" y2="10"/><line x1="14" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="10" y2="14"/><line x1="14" y1="14" x2="16" y2="14"/></svg>',
   links:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>',
   perfil:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
+  basilisco:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 1 0 10 10"/><path d="M12 8v4l3 3"/><circle cx="18" cy="6" r="3" fill="currentColor" opacity="0.3"/><path d="M18 3v3h3"/></svg>',
   acido:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
   feed:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>',
 };
@@ -397,6 +398,7 @@ function buildNav(){
     {id:'acido',label:'Acido'},{id:'feed',label:'Feed da Cobranca'},
     {id:'copys',label:'Banco de Copys'},{id:'links',label:'Links de Reneg.'},{id:'escala',label:'Escala de Roteamento'},{id:'calc',label:'Calculo de Reneg.'},
     {sep:true,label:'CONTA'},
+    {id:'basilisco',label:'Basilisco'},
     {id:'perfil',label:'Meu Perfil'},
   ];
   const opNavs=[
@@ -405,6 +407,7 @@ function buildNav(){
     {id:'acido',label:'Acido'},{id:'feed',label:'Feed da Cobranca'},
     {id:'copys',label:'Banco de Copys'},{id:'links',label:'Links de Reneg.'},{id:'escala',label:'Escala de Roteamento'},{id:'calc',label:'Calculo de Reneg.'},
     {sep:true,label:'CONTA'},
+    {id:'basilisco',label:'Basilisco'},
     {id:'perfil',label:'Meu Perfil'},
   ];
   const navs=isCoord?coordNavs:opNavs;
@@ -427,6 +430,7 @@ window.navigate=async function(page){
   if(page==='escala'){await renderEscala(mc);return;}
   if(page==='calc'){renderCalc(mc);return;}
   if(page==='perfil'){await renderPerfil(mc);return;}
+  if(page==='basilisco'){await renderBasilisco(mc);return;}
   if(page==='acido'){await renderAcido(mc);return;}
   if(page==='feed'){await renderFeed(mc);return;}
   if(!viewingOp&&userProfile.role==='coord'){await renderEquipe(mc);return;}
@@ -1040,6 +1044,152 @@ window.deletarComentario=async function(postId,commId){
     await deleteDoc(doc(db,'feed_posts',postId,'comentarios',commId));
     await renderFeed(document.getElementById('mainContent'));
   }catch(e){showToast('Erro ao excluir.');}
+};
+
+// BASILISCO
+let basiliscoMsgs = [];
+let basiliscoKey = localStorage.getItem('basilisco_key') || '';
+let basiliscoDocs = JSON.parse(localStorage.getItem('basilisco_docs') || '[]');
+
+async function renderBasilisco(mc){
+  const isCoord = userProfile.role === 'coord';
+  mc.innerHTML = snakeHtml()+
+    '<div class="page-eyebrow">* Basilisco</div>'+
+    '<div class="page-title">Basilisco</div>'+
+    '<div class="page-sub">Assistente interno treinado nos documentos da equipe</div>'+
+
+    // Config panel (collapsed by default)
+    '<div id="basilisco-config" style="'+(basiliscoKey?'display:none':'display:block')+'">'+
+      '<div class="panel">'+
+        '<div class="panel-title">Configuracao</div>'+
+        '<div style="margin-bottom:12px;"><label class="inp-label">Chave da API OpenAI</label>'+
+        '<input type="password" class="inp" id="bsk-key" value="'+basiliscoKey+'" placeholder="sk-proj-..."/>'+
+        '<p style="font-size:11px;color:var(--text-3);margin-top:5px;">A chave fica salva so no seu navegador, nunca vai ao servidor.</p></div>'+
+        (isCoord?
+          '<div style="margin-bottom:12px;"><label class="inp-label">Documentos (cole o texto de cada doc)</label>'+
+          '<div id="bsk-docs-list">'+basiliscoDocs.map((d,i)=>`
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+              <span style="font-size:12px;color:var(--text-2);flex:1;">Doc ${i+1}: ${d.nome}</span>
+              <button class="btn-ghost" onclick="removerDoc(${i})">Remover</button>
+            </div>`).join('')+'</div>'+
+          '<div style="margin-bottom:8px;"><input type="text" class="inp" id="bsk-doc-nome" placeholder="Nome do documento" style="margin-bottom:6px;"/>'+
+          '<textarea class="inp" id="bsk-doc-texto" rows="4" placeholder="Cole o conteudo do documento aqui..." style="resize:vertical;margin-top:6px;"></textarea></div>'+
+          '<button class="btn-ghost" onclick="adicionarDoc()" style="margin-bottom:12px;">+ Adicionar documento</button><br/>'
+        :'')+
+        '<button class="btn-blue" onclick="salvarConfigBasilisco()">Salvar e ativar</button>'+
+      '</div>'+
+    '</div>'+
+
+    // Chat area
+    '<div id="basilisco-chat" style="'+(basiliscoKey?'display:flex':'display:none')+';flex-direction:column;height:calc(100vh - 260px);">'+
+      '<div style="display:flex;justify-content:flex-end;margin-bottom:8px;">'+
+        '<button class="btn-ghost" onclick="toggleBasiliscoConfig()">Configuracoes</button>'+
+      '</div>'+
+      '<div id="bsk-msgs" style="flex:1;overflow-y:auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1rem;display:flex;flex-direction:column;gap:10px;margin-bottom:10px;">'+
+        '<div style="text-align:center;padding:2rem;"><div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:6px;">Basilisco ativo</div><div style="font-size:12px;color:var(--text-3);">'+basiliscoDocs.length+' documento(s) carregado(s). Pode perguntar!</div></div>'+
+      '</div>'+
+      '<div style="display:flex;gap:8px;">'+
+        '<textarea id="bsk-input" class="inp" rows="2" placeholder="Pergunte algo ao Basilisco..." style="flex:1;resize:none;" onkeydown="if(event.key===\'Enter\'&&!event.shiftKey){event.preventDefault();perguntarBasilisco();}"></textarea>'+
+        '<button class="btn-blue" onclick="perguntarBasilisco()" style="align-self:flex-end;">Enviar</button>'+
+      '</div>'+
+    '</div>';
+}
+
+window.salvarConfigBasilisco = function(){
+  const key = document.getElementById('bsk-key').value.trim();
+  if(!key){showToast('Cole a chave da API.');return;}
+  basiliscoKey = key;
+  localStorage.setItem('basilisco_key', key);
+  localStorage.setItem('basilisco_docs', JSON.stringify(basiliscoDocs));
+  showToast('Basilisco configurado!');
+  renderBasilisco(document.getElementById('mainContent'));
+};
+
+window.adicionarDoc = function(){
+  const nome = document.getElementById('bsk-doc-nome').value.trim();
+  const texto = document.getElementById('bsk-doc-texto').value.trim();
+  if(!nome||!texto){showToast('Preencha nome e conteudo do documento.');return;}
+  basiliscoDocs.push({nome,texto});
+  localStorage.setItem('basilisco_docs',JSON.stringify(basiliscoDocs));
+  showToast('Documento adicionado!');
+  renderBasilisco(document.getElementById('mainContent'));
+};
+
+window.removerDoc = function(i){
+  basiliscoDocs.splice(i,1);
+  localStorage.setItem('basilisco_docs',JSON.stringify(basiliscoDocs));
+  renderBasilisco(document.getElementById('mainContent'));
+};
+
+window.toggleBasiliscoConfig = function(){
+  const cfg = document.getElementById('basilisco-config');
+  const chat = document.getElementById('basilisco-chat');
+  if(cfg.style.display==='none'){cfg.style.display='block';chat.style.display='none';}
+  else{cfg.style.display='none';chat.style.display='flex';}
+};
+
+window.perguntarBasilisco = async function(){
+  const input = document.getElementById('bsk-input');
+  const pergunta = input.value.trim();
+  if(!pergunta) return;
+  if(!basiliscoKey){showToast('Configure a chave da API primeiro.');return;}
+
+  // Add user message
+  const msgsEl = document.getElementById('bsk-msgs');
+  const userDiv = document.createElement('div');
+  userDiv.style.cssText='align-self:flex-end;max-width:75%;background:var(--primary);color:#fff;padding:10px 14px;border-radius:14px 14px 4px 14px;font-size:13px;line-height:1.5;';
+  userDiv.textContent = pergunta;
+  msgsEl.appendChild(userDiv);
+  input.value='';
+
+  // Loading
+  const loadDiv = document.createElement('div');
+  loadDiv.style.cssText='align-self:flex-start;max-width:75%;background:var(--bg);padding:10px 14px;border-radius:14px 14px 14px 4px;font-size:13px;color:var(--text-3);';
+  loadDiv.textContent='Basilisco esta pensando...';
+  msgsEl.appendChild(loadDiv);
+  msgsEl.scrollTop=msgsEl.scrollHeight;
+
+  // Build context from docs
+  const contexto = basiliscoDocs.length > 0
+    ? 'DOCUMENTOS INTERNOS:\n\n'+basiliscoDocs.map((d,i)=>`=== ${d.nome} ===\n${d.texto}`).join('\n\n')
+    : 'Nenhum documento interno carregado ainda.';
+
+  const systemPrompt = `Voce e o Basilisco, assistente interno da equipe de Contas a Receber da Brille.
+Responda APENAS com base nos documentos internos fornecidos abaixo.
+Se a informacao nao estiver nos documentos, responda exatamente: "Nao encontrei essa informacao nos documentos internos."
+Nunca invente informacoes. Nunca use conhecimento externo.
+Seja direto, claro e objetivo. Responda em portugues.
+
+${contexto}`;
+
+  try{
+    const res = await fetch('https://api.openai.com/v1/chat/completions',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+basiliscoKey},
+      body:JSON.stringify({
+        model:'gpt-4o-mini',
+        messages:[
+          {role:'system',content:systemPrompt},
+          ...basiliscoMsgs,
+          {role:'user',content:pergunta}
+        ],
+        max_tokens:1000,
+        temperature:0.2
+      })
+    });
+    const data = await res.json();
+    if(data.error){showToast('Erro: '+data.error.message);loadDiv.remove();return;}
+    const resposta = data.choices[0].message.content;
+    basiliscoMsgs.push({role:'user',content:pergunta});
+    basiliscoMsgs.push({role:'assistant',content:resposta});
+    if(basiliscoMsgs.length>20) basiliscoMsgs=basiliscoMsgs.slice(-20);
+    loadDiv.style.cssText='align-self:flex-start;max-width:75%;background:var(--bg);padding:10px 14px;border-radius:14px 14px 14px 4px;font-size:13px;color:var(--text);line-height:1.6;white-space:pre-wrap;';
+    loadDiv.textContent=resposta;
+  }catch(e){
+    loadDiv.textContent='Erro ao conectar com a API. Verifique a chave.';
+    showToast('Erro de conexao.');
+  }
+  msgsEl.scrollTop=msgsEl.scrollHeight;
 };
 
 function show(id,display='block'){document.getElementById(id).style.display=display;}
