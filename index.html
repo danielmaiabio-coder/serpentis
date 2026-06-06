@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Painel Brille · Contas a Receber</title>
+<title>Chocalho · Contas a Receber</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
@@ -254,7 +254,7 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
 </div>
 <div id="appShell">
   <div class="sidebar">
-    <div class="sb-brand"><div class="sb-brand-name">Painel Brille</div><div class="sb-brand-sub" id="sbSub">—</div></div>
+    <div class="sb-brand"><div class="sb-brand-name">Chocalho</div><div class="sb-brand-sub" id="sbSub">—</div></div>
     <div id="navItems"></div>
     <div class="sb-bottom">
       <div class="sb-user">
@@ -404,7 +404,7 @@ function setupApp(){
 function updateSidebarUser(){
   const ini=(userProfile.nome||'?').split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
   document.getElementById('sbName').textContent=userProfile.nome||'&#8212;';
-  document.getElementById('sbRole').textContent=userProfile.role==='coord'?'Coordenador':'Operador';
+  document.getElementById('sbRole').textContent=userProfile.role==='coord'?'Coordenador':'Painel Brille';
   document.getElementById('sbSub').textContent=userProfile.role==='coord'?'Visao da equipe':'Meus resultados';
   const av=document.getElementById('sbAvatar');
   if(userProfile.foto){av.innerHTML='<img src="'+userProfile.foto+'" alt="foto"/>';}
