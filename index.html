@@ -1236,8 +1236,15 @@ async function renderBasilisco(mc){
         '<div style="margin-bottom:8px;"><div style="font-size:10px;color:rgba(255,255,255,0.3);margin-bottom:6px;">DOCUMENTOS ('+basiliscoDocs.length+')</div>'+
         basiliscoDocs.map((d,i)=>'<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;"><span style="font-size:11px;color:rgba(255,255,255,0.5);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+d.nome+'</span><button onclick="removerDoc('+i+')" style="padding:2px 8px;border:1px solid rgba(255,255,255,0.1);border-radius:4px;background:transparent;color:rgba(255,255,255,0.3);font-size:10px;cursor:pointer;">x</button></div>').join('')+
         '<input type="text" id="bsk-doc-nome" placeholder="Nome do doc" style="width:100%;padding:6px 10px;border:1px solid rgba(255,255,255,0.1);border-radius:var(--radius);background:rgba(255,255,255,0.05);color:#fff;font-family:var(--font);font-size:11px;margin-bottom:4px;"/>'+
-        '<textarea id="bsk-doc-texto" rows="2" placeholder="Cole o conteudo..." style="width:100%;padding:6px 10px;border:1px solid rgba(255,255,255,0.1);border-radius:var(--radius);background:rgba(255,255,255,0.05);color:#fff;font-family:var(--font);font-size:11px;resize:none;margin-bottom:6px;"></textarea>'+
-        '<button onclick="adicionarDoc()" style="width:100%;padding:5px;border:1px solid rgba(255,255,255,0.15);border-radius:var(--radius);background:transparent;color:rgba(255,255,255,0.5);font-family:var(--font);font-size:11px;cursor:pointer;margin-bottom:8px;">+ Adicionar documento</button></div>'+
+        '<textarea id="bsk-doc-texto" rows="2" placeholder="Cole o conteudo ou faca upload do PDF abaixo..." style="width:100%;padding:6px 10px;border:1px solid rgba(255,255,255,0.1);border-radius:var(--radius);background:rgba(255,255,255,0.05);color:#fff;font-family:var(--font);font-size:11px;resize:none;margin-bottom:6px;"></textarea>'+
+        '<label style="display:flex;align-items:center;gap:6px;padding:5px 8px;border:1px solid rgba(255,255,255,0.15);border-radius:var(--radius);cursor:pointer;margin-bottom:6px;color:rgba(255,255,255,0.5);font-size:11px;">'+
+          '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>'+
+          '<span id="bsk-pdf-label">Upload PDF</span>'+
+          '<input type="file" id="bsk-pdf-input" accept=".pdf" style="display:none;" onchange="carregarPDF(event)"/>'+
+        '</label>'+
+        '<div style="display:flex;gap:6px;">'+
+          '<button onclick="adicionarDoc()" style="flex:1;padding:5px;border:1px solid rgba(255,255,255,0.15);border-radius:var(--radius);background:transparent;color:rgba(255,255,255,0.5);font-family:var(--font);font-size:11px;cursor:pointer;">+ Adicionar</button>'+
+        '</div></div>'+
         '<button onclick="salvarConfigBasilisco()" style="width:100%;padding:8px;background:linear-gradient(135deg,#0d2e14,#1A5C2A);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:12px;font-weight:500;cursor:pointer;">Salvar</button>'
       :
         // Operator: just show status
@@ -1269,7 +1276,39 @@ async function renderBasilisco(mc){
 
 window.fecharConfig=function(){document.getElementById('basilisco-config').style.display='none';};
 window.toggleBasiliscoConfig=function(){const c=document.getElementById('basilisco-config');c.style.display=c.style.display==='none'?'flex':'none';};
-window.salvarConfigBasilisco=async function(){
+window.carregarPDF=async function(e){
+  const file=e.target.files[0];if(!file)return;
+  document.getElementById('bsk-pdf-label').textContent='Carregando PDF...';
+  try{
+    const arrayBuffer=await file.arrayBuffer();
+    // Use PDF.js from CDN
+    if(!window.pdfjsLib){
+      await new Promise((resolve,reject)=>{
+        const s=document.createElement('script');
+        s.src='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+        s.onload=resolve;s.onerror=reject;document.head.appendChild(s);
+      });
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
+    const pdf=await window.pdfjsLib.getDocument({data:arrayBuffer}).promise;
+    let texto='';
+    for(let i=1;i<=pdf.numPages;i++){
+      const page=await pdf.getPage(i);
+      const content=await page.getTextContent();
+      texto+=content.items.map(item=>item.str).join(' ')+'\n';
+    }
+    // Fill nome and texto fields
+    const nomeEl=document.getElementById('bsk-doc-nome');
+    const textoEl=document.getElementById('bsk-doc-texto');
+    if(!nomeEl.value) nomeEl.value=file.name.replace('.pdf','');
+    textoEl.value=texto.trim();
+    document.getElementById('bsk-pdf-label').textContent='PDF carregado: '+file.name;
+    showToast('PDF extraido com sucesso!');
+  }catch(err){
+    document.getElementById('bsk-pdf-label').textContent='Upload PDF';
+    showToast('Erro ao ler PDF. Tente colar o texto.');
+  }
+};
   const key=document.getElementById('bsk-key').value.trim();
   if(!key){showToast('Cole a chave da API.');return;}
   basiliscoKey=key;
