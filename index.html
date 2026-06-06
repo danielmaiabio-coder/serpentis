@@ -168,6 +168,15 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
 @keyframes pulse-dot{0%,100%{opacity:1;}50%{opacity:0.4;}}
 .reuniao-edit-btn{padding:8px 12px;border:1px solid rgba(255,255,255,0.15);border-radius:var(--radius);background:transparent;color:rgba(255,255,255,0.55);font-family:var(--font);font-size:12px;cursor:pointer;transition:all 0.15s;}
 .reuniao-edit-btn:hover{background:rgba(255,255,255,0.08);color:#fff;border-color:rgba(255,255,255,0.25);}
+.escritorio-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;margin-bottom:8px;transition:all 0.12s;}
+.escritorio-card:hover{border-color:var(--primary-mid);background:#f4faf5;}
+.escr-tab{padding:8px 18px;border:1px solid var(--border-md);border-radius:var(--radius);font-family:var(--font);font-size:13px;font-weight:500;cursor:pointer;background:transparent;color:var(--text-2);}
+.escr-tab.active{background:var(--primary);color:#fff;border-color:var(--primary);}
+.escr-nota{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1rem;margin-bottom:10px;}
+.escr-nota-title{font-size:13px;font-weight:500;color:var(--text);margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;}
+.escr-nota-body{font-size:13px;color:var(--text-2);line-height:1.65;white-space:pre-wrap;}
+.escr-arquivo{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg);border-radius:var(--radius);border:1px solid var(--border);margin-bottom:6px;}
+.escr-arquivo-nome{font-size:13px;color:var(--text);flex:1;}
 .empty{text-align:center;padding:3rem 1rem;color:var(--text-3);font-size:13px;}
 .toast{position:fixed;bottom:24px;right:24px;background:#0d2e14;color:#fff;font-size:13px;padding:10px 16px;border-radius:var(--radius);opacity:0;transform:translateY(8px);transition:all 0.2s;pointer-events:none;z-index:999;}
 .toast.show{opacity:1;transform:translateY(0);}
@@ -406,6 +415,7 @@ function buildNav(){
   const {isCoord, canLancar} = getPerms();
   const coordNavs=[
     {id:'equipe',label:'Minha Equipe'},{id:'lancar',label:'Lancar Resultados'},
+    {id:'escritorio',label:'🗂️ Escritorio'},
     {sep:true,label:'OPERADOR'},
     {id:'resultado',label:'Resultado'},{id:'historico',label:'Historico'},{id:'notas',label:'Notas'},{id:'dashboard',label:'Dashboard'},{id:'feedback',label:'Feedbacks'},
     {sep:true,label:'GERAL'},
@@ -447,6 +457,7 @@ window.navigate=async function(page){
   mc.style.backgroundImage='none';
   mc.innerHTML='<div class="snake-corner"><img src="'+SNAKE_IMG+'"/></div><div class="empty">Carregando...</div>';
   if(page==='equipe'){await renderEquipe(mc);return;}
+  if(page==='escritorio'){await renderEscritorio(mc);return;}
   if(page==='lancar'){
     const {canLancar} = getPerms();
     if(canLancar){await renderLancar(mc);return;}
@@ -1222,6 +1233,143 @@ window.deletarComentario=async function(postId,commId){
   try{
     await deleteDoc(doc(db,'feed_posts',postId,'comentarios',commId));
     await renderFeed(document.getElementById('mainContent'));
+  }catch(e){showToast('Erro ao excluir.');}
+};
+
+
+// ESCRITORIO
+let escritorioTab='registros';
+let escritorioOpAtual=null;
+
+async function renderEscritorio(mc){
+  const {isCoord}=getPerms();
+  if(!isCoord){mc.innerHTML=snakeHtml()+'<div class="empty">Acesso restrito ao coordenador.</div>';return;}
+  const snap=await getDocs(collection(db,'usuarios'));
+  const ops=[];
+  snap.forEach(d=>{const data=d.data();if(data.role==='op')ops.push({uid:d.id,...data});});
+  mc.innerHTML=snakeHtml()+
+    '<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;">'+
+    '<div class="page-eyebrow">🗂️ Escritorio</div>'+
+    '<div class="page-title">Escritorio</div>'+
+    '<div class="page-sub">Registros e anotacoes por operador — visivel apenas para coordenadores</div>'+
+    '</div>'+
+    ops.map(op=>{
+      const ini=(op.nome||'?').split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
+      const avHtml=op.foto?'<img src="'+op.foto+'" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/>':ini;
+      return'<div class="escritorio-card" onclick="abrirEscritorio(\''+op.uid+'\')">'+
+        '<div class="op-av" style="background:'+(op.cor||'#1A5C2A')+';color:#fff;">'+avHtml+'</div>'+
+        '<div><div class="op-nm">'+op.nome+'</div><div class="op-mt">'+(op.email||'')+'</div></div>'+
+        '<div style="margin-left:auto;font-size:12px;color:var(--primary);">Abrir →</div>'+
+      '</div>';
+    }).join('');
+}
+
+window.abrirEscritorio=async function(uid){
+  escritorioOpAtual=uid;
+  const opSnap=await getDoc(doc(db,'usuarios',uid));
+  const op=opSnap.exists()?{uid,...opSnap.data()}:{uid,nome:'Operador'};
+  await renderEscritorioOp(document.getElementById('mainContent'),op);
+};
+
+async function renderEscritorioOp(mc,op){
+  const ini=(op.nome||'?').split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
+  let html=snakeHtml()+
+    '<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;">'+
+    '<div style="display:flex;align-items:center;gap:10px;">'+
+    '<button onclick="renderEscritorio(document.getElementById(\'mainContent\'))" style="background:none;border:none;cursor:pointer;color:var(--primary);font-size:13px;padding:0;margin-right:4px;">← Voltar</button>'+
+    '<div class="op-av" style="background:'+(op.cor||'#1A5C2A')+';color:#fff;">'+(op.foto?'<img src="'+op.foto+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/>':ini)+'</div>'+
+    '<div><div class="page-eyebrow">🗂️ Escritorio</div><div class="page-title">'+op.nome+'</div></div></div></div>'+
+    '<div style="display:flex;gap:8px;margin-bottom:1.25rem;">'+
+    '<button class="escr-tab '+(escritorioTab==='registros'?'active':'')+'" onclick="setEscrTab(\'registros\')">Registros</button>'+
+    '<button class="escr-tab '+(escritorioTab==='semanal'?'active':'')+'" onclick="setEscrTab(\'semanal\')">Semanal</button>'+
+    '</div>'+
+    '<div id="escr-content"></div>';
+  mc.innerHTML=html;
+  await carregarEscrConteudo(op);
+}
+
+window.setEscrTab=async function(tab){
+  escritorioTab=tab;
+  document.querySelectorAll('.escr-tab').forEach(el=>el.classList.remove('active'));
+  document.querySelectorAll('.escr-tab').forEach(el=>{if(el.textContent.toLowerCase().includes(tab.substring(0,4)))el.classList.add('active');});
+  const opSnap=await getDoc(doc(db,'usuarios',escritorioOpAtual));
+  const op=opSnap.exists()?{uid:escritorioOpAtual,...opSnap.data()}:{uid:escritorioOpAtual,nome:'Operador'};
+  await carregarEscrConteudo(op);
+};
+
+async function carregarEscrConteudo(op){
+  const cont=document.getElementById('escr-content');
+  if(!cont)return;
+  const snap=await getDocs(collection(db,'escritorio',op.uid,escritorioTab));
+  const notas=[];snap.forEach(d=>notas.push({id:d.id,...d.data()}));
+  notas.sort((a,b)=>(b.ts||0)-(a.ts||0));
+
+  cont.innerHTML=
+    '<div class="panel" style="margin-bottom:1rem;">'+
+    '<div class="panel-title">Nova nota — '+(escritorioTab==='registros'?'Registro':'Semanal')+'</div>'+
+    '<div style="margin-bottom:10px;"><label class="inp-label">Titulo</label><input type="text" class="inp" id="escr-titulo" placeholder="Ex: Aviso verbal - 06/06/2026"/></div>'+
+    '<div style="margin-bottom:10px;"><label class="inp-label">Conteudo</label><textarea class="inp" id="escr-texto" rows="5" style="resize:vertical;" placeholder="Escreva aqui..."></textarea></div>'+
+    '<div style="margin-bottom:12px;"><label class="inp-label">Arquivo (opcional)</label>'+
+    '<label style="display:flex;align-items:center;gap:8px;padding:8px 12px;border:1px solid var(--border-md);border-radius:var(--radius);cursor:pointer;font-size:12px;color:var(--text-2);">'+
+    '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>'+
+    '<span id="escr-file-label">Selecionar arquivo</span>'+
+    '<input type="file" id="escr-file" style="display:none;" onchange="escr_previewFile(event)"/></label></div>'+
+    '<button class="btn-blue" onclick="salvarEscrNota(\''+op.uid+'\')">Salvar nota</button>'+
+    '</div>'+
+    (notas.length===0?'<div class="panel"><div class="empty">Nenhuma nota ainda.</div></div>':
+    notas.map(n=>'<div class="escr-nota">'+
+      '<div class="escr-nota-title"><span>'+n.titulo+'</span>'+
+      '<div style="display:flex;align-items:center;gap:8px;">'+
+      '<span style="font-size:11px;color:var(--text-3);">'+( n.data||'')+'</span>'+
+      '<button class="btn-ghost" onclick="deletarEscrNota(\''+op.uid+'\',\''+n.id+'\')">Excluir</button>'+
+      '</div></div>'+
+      '<div class="escr-nota-body">'+n.texto+'</div>'+
+      (n.arquivoUrl?'<a href="'+n.arquivoUrl+'" target="_blank" class="escr-arquivo" style="margin-top:10px;text-decoration:none;">'+
+        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>'+
+        '<span class="escr-arquivo-nome">'+(n.arquivoNome||'Arquivo')+'</span>'+
+        '<span style="font-size:11px;color:var(--primary);">Abrir</span></a>':'')+'</div>').join(''));
+}
+
+window.escr_previewFile=function(e){
+  const file=e.target.files[0];
+  document.getElementById('escr-file-label').textContent=file?file.name:'Selecionar arquivo';
+};
+
+window.salvarEscrNota=async function(opUid){
+  const titulo=document.getElementById('escr-titulo').value.trim();
+  const texto=document.getElementById('escr-texto').value.trim();
+  const file=document.getElementById('escr-file').files[0];
+  if(!titulo){showToast('Digite um titulo.');return;}
+  let arquivoUrl=null,arquivoNome=null;
+  if(file){
+    showToast('Enviando arquivo...');
+    try{
+      arquivoUrl=await uploadToCloudinary(file);
+      arquivoNome=file.name;
+    }catch(e){showToast('Erro ao enviar arquivo.');}
+  }
+  const data=new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'short',year:'numeric'});
+  try{
+    await addDoc(collection(db,'escritorio',opUid,escritorioTab),{titulo,texto,arquivoUrl,arquivoNome,data,ts:Date.now()});
+    showToast('Nota salva!');
+    document.getElementById('escr-titulo').value='';
+    document.getElementById('escr-texto').value='';
+    document.getElementById('escr-file').value='';
+    document.getElementById('escr-file-label').textContent='Selecionar arquivo';
+    const opSnap=await getDoc(doc(db,'usuarios',opUid));
+    const op=opSnap.exists()?{uid:opUid,...opSnap.data()}:{uid:opUid,nome:'Operador'};
+    await carregarEscrConteudo(op);
+  }catch(e){showToast('Erro ao salvar.');}
+};
+
+window.deletarEscrNota=async function(opUid,nId){
+  if(!confirm('Excluir esta nota?'))return;
+  try{
+    await deleteDoc(doc(db,'escritorio',opUid,escritorioTab,nId));
+    showToast('Nota excluida.');
+    const opSnap=await getDoc(doc(db,'usuarios',opUid));
+    const op=opSnap.exists()?{uid:opUid,...opSnap.data()}:{uid:opUid,nome:'Operador'};
+    await carregarEscrConteudo(op);
   }catch(e){showToast('Erro ao excluir.');}
 };
 
