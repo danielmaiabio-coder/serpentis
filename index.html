@@ -926,30 +926,38 @@ async function renderFeed(mc){
     '<div class="page-eyebrow">* Feed da Cobranca</div>'+
     '<div class="page-title">Feed da Cobranca</div>'+
     '<div class="page-sub">Fotos e momentos do time</div>'+
-    '<div class="feed-new-post">'+
-      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">'+
-        '<div style="font-size:13px;font-weight:500;color:var(--text);">Nova publicacao</div>'+
-        '<div style="position:relative;display:inline-block;">'+
-          '<button class="postar-btn" onclick="publicarPost()">'+
-            '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>'+
-            'Postar'+
-          '</button>'+
-          '<svg class="postar-btn-tail" viewBox="0 0 22 10" fill="none" xmlns="http://www.w3.org/2000/svg">'+
-            '<path d="M0 5 Q6 5 10 2 Q14 -1 18 3 Q20 5 22 5" stroke="#1A5C2A" stroke-width="2" fill="none" stroke-linecap="round"/>'+
-            '<circle cx="21" cy="5" r="2" fill="#2E8B45"/>'+
-          '</svg>'+
+    '<div style="margin-bottom:1.25rem;">'+
+      '<div style="position:relative;display:inline-block;">'+
+        '<button class="postar-btn" onclick="abrirModalPost()">'+
+          '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>'+
+          'Postar'+
+        '</button>'+
+        '<svg class="postar-btn-tail" viewBox="0 0 22 10" fill="none" xmlns="http://www.w3.org/2000/svg">'+
+          '<path d="M0 5 Q6 5 10 2 Q14 -1 18 3 Q20 5 22 5" stroke="#1A5C2A" stroke-width="2" fill="none" stroke-linecap="round"/>'+
+          '<circle cx="21" cy="5" r="2" fill="#2E8B45"/>'+
+        '</svg>'+
+      '</div>'+
+    '</div>'+
+    '<div id="feed-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;align-items:center;justify-content:center;">'+
+      '<div style="background:var(--surface);border-radius:var(--radius-lg);padding:1.5rem;width:100%;max-width:480px;box-shadow:0 20px 60px rgba(0,0,0,0.3);">'+
+        '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;">'+
+          '<div style="font-size:15px;font-weight:500;color:var(--text);">Nova publicacao</div>'+
+          '<button onclick="fecharModalPost()" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:18px;">&#x2715;</button>'+
+        '</div>'+
+        '<label style="cursor:pointer;" onclick="document.getElementById(\'feed-file-input\').click()">'+
+          '<div class="upload-area">'+
+            '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="1.5" style="margin-bottom:8px;"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>'+
+            '<div class="upload-area-text">Clique para selecionar uma foto</div>'+
+          '</div>'+
+        '</label>'+
+        '<input type="file" id="feed-file-input" accept="image/*" style="display:none;" onchange="feedPreview(event)"/>'+
+        '<img id="feed-img-preview" class="upload-preview"/>'+
+        '<div style="margin-bottom:12px;"><label class="inp-label">Legenda</label><textarea class="inp" id="feed-legenda" rows="3" placeholder="Escreva uma legenda..." style="resize:none;"></textarea></div>'+
+        '<div style="display:flex;align-items:center;gap:10px;">'+
+          '<button class="btn-blue" onclick="publicarPost()">Publicar</button>'+
+          '<span id="feed-uploading" style="font-size:12px;color:var(--text-3);display:none;">Enviando...</span>'+
         '</div>'+
       '</div>'+
-      '<label style="cursor:pointer;" onclick="document.getElementById(\'feed-file-input\').click()">'+
-        '<div class="upload-area">'+
-          '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="1.5" style="margin-bottom:8px;"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>'+
-          '<div class="upload-area-text">Clique para selecionar uma foto</div>'+
-        '</div>'+
-      '</label>'+
-      '<input type="file" id="feed-file-input" accept="image/*" style="display:none;" onchange="feedPreview(event)"/>'+
-      '<img id="feed-img-preview" class="upload-preview"/>'+
-      '<div style="margin-bottom:10px;"><label class="inp-label">Legenda</label><textarea class="inp" id="feed-legenda" rows="2" placeholder="Escreva uma legenda..." style="resize:none;"></textarea></div>'+
-      '<span id="feed-uploading" style="font-size:12px;color:var(--text-3);display:none;">Enviando...</span>'+
     '</div>'+
     (posts.length===0?'<div class="empty">Nenhuma publicacao ainda. Seja o primeiro!</div>':
     '<div class="feed-grid">'+postsHtml+'</div>');
@@ -963,6 +971,19 @@ window.feedPreview = function(e){
     img.src = ev.target.result; img.style.display='block';
   };
   reader.readAsDataURL(file);
+};
+
+window.abrirModalPost=function(){
+  const m=document.getElementById('feed-modal');
+  if(m){m.style.display='flex';}
+};
+window.fecharModalPost=function(){
+  const m=document.getElementById('feed-modal');
+  if(m){m.style.display='none';}
+  document.getElementById('feed-img-preview').style.display='none';
+  document.getElementById('feed-img-preview').src='';
+  document.getElementById('feed-legenda').value='';
+  document.getElementById('feed-file-input').value='';
 };
 
 window.publicarPost = async function(){
@@ -984,6 +1005,7 @@ window.publicarPost = async function(){
       legenda, imagemUrl, data, ts: Date.now()
     });
     showToast('Publicado!');
+    fecharModalPost();
     await renderFeed(document.getElementById('mainContent'));
   }catch(e){showToast('Erro ao publicar.');}
   feedUploading = false;
