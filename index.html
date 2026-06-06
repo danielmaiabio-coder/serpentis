@@ -551,8 +551,10 @@ async function renderResultado(mc,op){
   if(isCoord) banner+='<button class="reuniao-edit-btn" onclick="editarReuniao()">Editar</button>';
   banner+='</div></div>';
   mc.innerHTML=snakeHtml()+
-    '<div class="page-eyebrow">* '+(isCoord?op.nome+' ? ':'')+'Resultado Semanal</div>'+
+    '<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;">'+
+    '<div class="page-eyebrow">* '+(isCoord?op.nome+' · ':'')+'Resultado Semanal</div>'+
     '<div class="page-title">Semana atual</div><div class="page-sub">'+(sem.descricao||'Semana em andamento')+'</div>'+
+    '</div>'+
     banner+
     '<div class="cards-row"><div class="stat-card blue"><div class="sc-label">Valor Recuperado</div><div class="sc-value">'+atual.valor+'</div><div class="sc-sub">esta semana</div></div>'+
     '<div class="stat-card green"><div class="sc-label">Atendimentos</div><div class="sc-value">'+atual.atend+'</div><div class="sc-sub">esta semana</div></div>'+
