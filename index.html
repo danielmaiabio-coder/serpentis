@@ -20,6 +20,18 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
 #loadingScreen{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:100;flex-direction:column;gap:12px;}
 .loader{width:32px;height:32px;border:2.5px solid var(--border-md);border-top-color:var(--primary);border-radius:50%;animation:spin 0.7s linear infinite;}
 @keyframes spin{to{transform:rotate(360deg);}}
+@keyframes chocalho-shake{
+  0%{transform:rotate(0deg);}
+  15%{transform:rotate(20deg);}
+  30%{transform:rotate(-20deg);}
+  45%{transform:rotate(15deg);}
+  60%{transform:rotate(-15deg);}
+  75%{transform:rotate(8deg);}
+  90%{transform:rotate(-8deg);}
+  100%{transform:rotate(0deg);}
+}
+.chocalho-img{cursor:pointer;transform-origin:center bottom;}
+.chocalho-img.shaking{animation:chocalho-shake 0.6s ease;}
 .load-text{font-size:13px;color:var(--text-2);}
 #loginScreen{display:none;align-items:center;justify-content:center;min-height:100vh;padding:2rem;background:linear-gradient(135deg,#0d2e14 0%,#1A5C2A 60%,#2E8B45 100%);}
 .login-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:2rem;width:100%;max-width:360px;box-shadow:0 20px 60px rgba(0,0,0,0.25);}
@@ -254,7 +266,7 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
 </div>
 <div id="appShell">
   <div class="sidebar">
-    <div class="sb-brand"><div style="display:flex;align-items:center;justify-content:space-between;"><div><div class="sb-brand-name">Chocalho</div><div class="sb-brand-sub" id="sbSub">—</div></div><img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/e_bgremoval/q_auto/f_auto/v1780780614/chocalho_1_in7jon.png" style="width:36px;height:36px;object-fit:contain;"/></div></div>
+    <div class="sb-brand"><div style="display:flex;align-items:center;justify-content:space-between;"><div><div class="sb-brand-name">Chocalho</div><div class="sb-brand-sub" id="sbSub">—</div></div><img id="chocalho-logo" class="chocalho-img" src="https://res.cloudinary.com/dbd9hpwyb/image/upload/e_bgremoval/q_auto/f_auto/v1780780614/chocalho_1_in7jon.png" style="width:36px;height:36px;object-fit:contain;" onclick="balancaChocalho()"/></div></div>
     <div id="navItems"></div>
     <div class="sb-bottom">
       <div class="sb-user">
@@ -995,7 +1007,17 @@ async function renderPerfil(mc){
   window._bgTemas = TEMAS;
   window._bgSelecionado = bgAtual;
 }
-window.toggleBgPicker=function(){
+const CHOCALHO_SOM = new Audio('https://res.cloudinary.com/dbd9hpwyb/video/upload/q_auto/f_auto/v1780718539/freesound_community-snake-hissing-6092_a1uuwb.mp3');
+window.balancaChocalho=function(){
+  const img=document.getElementById('chocalho-logo');
+  if(!img)return;
+  img.classList.remove('shaking');
+  void img.offsetWidth; // force reflow
+  img.classList.add('shaking');
+  CHOCALHO_SOM.currentTime=0;
+  CHOCALHO_SOM.play().catch(()=>{});
+  setTimeout(()=>img.classList.remove('shaking'),700);
+};
   const el=document.getElementById('bg-picker');
   el.style.display=el.style.display==='none'?'block':'none';
 };
