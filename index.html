@@ -652,13 +652,46 @@ async function renderLinks(mc){
   const snap=await getDocs(collection(db,'links'));const items=[];snap.forEach(d=>items.push({id:d.id,...d.data()}));
   items.sort((a,b)=>(a.titulo||'').localeCompare(b.titulo||''));
   mc.innerHTML=snakeHtml()+'<div class="page-eyebrow">* Links de Renegociacao</div><div class="page-title">Links uteis</div><div class="page-sub">Acesso rapido a todos os links do setor</div>'+
-    (isCoord?'<div class="panel"><div class="panel-title">Adicionar link</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;"><div><label class="inp-label">Titulo</label><input type="text" class="inp" id="link-titulo" placeholder="Ex: Sistema de boletos"/></div><div><label class="inp-label">URL</label><input type="url" class="inp" id="link-url" placeholder="https://..."/></div></div><div style="margin-bottom:12px;"><label class="inp-label">Descricao (opcional)</label><input type="text" class="inp" id="link-desc" placeholder="Breve descricao do link"/></div><button class="btn-blue" onclick="salvarLink()">Adicionar link</button></div>':'')+
+    (isCoord?'<div class="panel"><div class="panel-title">Adicionar link</div>'+
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">'+
+        '<div><label class="inp-label">Titulo</label><input type="text" class="inp" id="link-titulo" placeholder="Ex: Sistema de boletos"/></div>'+
+        '<div><label class="inp-label">Tipo</label>'+
+          '<div style="display:flex;gap:8px;margin-top:2px;">'+
+            '<button id="tipo-recorrente" onclick="setTipoLink(\'Recorrente\')" style="flex:1;padding:9px;border:1px solid var(--primary);border-radius:var(--radius);background:var(--primary);color:#fff;font-family:var(--font);font-size:13px;cursor:pointer;">Recorrente</button>'+
+            '<button id="tipo-padrao" onclick="setTipoLink(\'Padrao\')" style="flex:1;padding:9px;border:1px solid var(--border-md);border-radius:var(--radius);background:transparent;color:var(--text-2);font-family:var(--font);font-size:13px;cursor:pointer;">Padrao</button>'+
+          '</div>'+
+        '</div>'+
+      '</div>'+
+      '<div style="margin-bottom:12px;"><label class="inp-label">URL</label><input type="url" class="inp" id="link-url" placeholder="https://..."/></div>'+
+      '<button class="btn-blue" onclick="salvarLink()">Adicionar link</button></div>':'')+
     '<div class="search-box"><svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" id="busca-link" placeholder="Buscar link..." oninput="filtrarLinks()"/></div>'+
     (items.length===0?'<div class="panel"><div class="empty">Nenhum link cadastrado ainda.</div></div>':'<div id="lista-links">'+
-    items.map(item=>'<div class="link-card" data-titulo="'+(item.titulo||'').toLowerCase()+'" data-desc="'+(item.desc||'').toLowerCase()+'"><div><div class="link-card-title">'+item.titulo+'</div>'+(item.desc?'<div class="link-card-desc">'+item.desc+'</div>':'')+'</div>'+(isCoord?'<button class="btn-ghost" onclick="deletarLink(\''+item.id+'\')">Excluir</button>':'')+' <a class="link-card-btn" href="'+item.url+'" target="_blank" rel="noopener">Abrir -></a></div>').join('')+'</div>');
+    items.map(item=>'<div class="link-card" data-titulo="'+(item.titulo||'').toLowerCase()+'" data-desc="'+(item.tipo||'').toLowerCase()+'">'+
+      '<div><div class="link-card-title">'+item.titulo+'</div>'+
+      '<div style="margin-top:4px;"><span style="font-size:10px;font-weight:500;padding:2px 8px;border-radius:20px;background:'+(item.tipo==='Recorrente'?'var(--green-light)':'var(--blue-light)')+';color:'+(item.tipo==='Recorrente'?'#085041':'var(--primary)')+';">'+(item.tipo||'Recorrente')+'</span></div>'+
+      '</div>'+
+      (isCoord?'<button class="btn-ghost" onclick="deletarLink(\''+item.id+'\')">Excluir</button>':'')+
+      ' <a class="link-card-btn" href="'+item.url+'" target="_blank" rel="noopener">Abrir -></a></div>').join('')+'</div>');
 }
 window.filtrarLinks=function(){const q=document.getElementById('busca-link').value.toLowerCase();document.querySelectorAll('.link-card').forEach(el=>{const match=(el.dataset.titulo+' '+el.dataset.desc).includes(q);el.style.display=match?'flex':'none';});};
-window.salvarLink=async function(){const titulo=document.getElementById('link-titulo').value.trim();const url=document.getElementById('link-url').value.trim();const desc=document.getElementById('link-desc').value.trim();if(!titulo||!url){showToast('Preencha titulo e URL.');return;}try{await addDoc(collection(db,'links'),{titulo,url,desc,ts:Date.now()});showToast('Link adicionado!');await renderLinks(document.getElementById('mainContent'));}catch(e){showToast('Erro.');}};
+window.setTipoLink=function(tipo){
+  window._linkTipo=tipo;
+  document.getElementById('tipo-recorrente').style.background=tipo==='Recorrente'?'var(--primary)':'transparent';
+  document.getElementById('tipo-recorrente').style.color=tipo==='Recorrente'?'#fff':'var(--text-2)';
+  document.getElementById('tipo-recorrente').style.borderColor=tipo==='Recorrente'?'var(--primary)':'var(--border-md)';
+  document.getElementById('tipo-padrao').style.background=tipo==='Padrao'?'var(--primary)':'transparent';
+  document.getElementById('tipo-padrao').style.color=tipo==='Padrao'?'#fff':'var(--text-2)';
+  document.getElementById('tipo-padrao').style.borderColor=tipo==='Padrao'?'var(--primary)':'var(--border-md)';
+};
+window._linkTipo='Recorrente';
+window.salvarLink=async function(){
+  const titulo=document.getElementById('link-titulo').value.trim();
+  const url=document.getElementById('link-url').value.trim();
+  const tipo=window._linkTipo||'Recorrente';
+  if(!titulo||!url){showToast('Preencha titulo e URL.');return;}
+  try{await addDoc(collection(db,'links'),{titulo,url,tipo,ts:Date.now()});showToast('Link adicionado!');await renderLinks(document.getElementById('mainContent'));}
+  catch(e){showToast('Erro.');}
+};
 window.deletarLink=async function(id){if(!confirm('Excluir?'))return;try{await deleteDoc(doc(db,'links',id));showToast('Excluido.');await renderLinks(document.getElementById('mainContent'));}catch(e){showToast('Erro.');}};
 
 async function renderEscala(mc){
