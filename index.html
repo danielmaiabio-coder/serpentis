@@ -254,7 +254,7 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
 </div>
 <div id="appShell">
   <div class="sidebar">
-    <div class="sb-brand"><div style="display:flex;align-items:center;justify-content:space-between;"><div><div class="sb-brand-name">Chocalho</div><div class="sb-brand-sub" id="sbSub">—</div></div><img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780780614/chocalho_1_in7jon.png" style="width:36px;height:36px;object-fit:contain;mix-blend-mode:screen;opacity:0.9;"/></div></div>
+    <div class="sb-brand"><div style="display:flex;align-items:center;justify-content:space-between;"><div><div class="sb-brand-name">Chocalho</div><div class="sb-brand-sub" id="sbSub">—</div></div><img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780780614/chocalho_1_in7jon.png" style="width:36px;height:36px;object-fit:contain;mix-blend-mode:multiply;filter:brightness(1.1);"/></div></div>
     <div id="navItems"></div>
     <div class="sb-bottom">
       <div class="sb-user">
@@ -398,6 +398,7 @@ function getPerms(){
 function setupApp(){
   hide('loginScreen');show('appShell','flex');
   updateSidebarUser();buildNav();
+  if(userProfile.bgColor) aplicarBg(userProfile.bgColor);
   navigate(userProfile.role==='coord'?'equipe':'resultado');
 }
 
@@ -945,16 +946,58 @@ async function renderPerfil(mc){
   const uid=currentUser.uid;
   const snap=await getDoc(doc(db,'usuarios',uid));
   const perfil=snap.exists()?snap.data():{};
+  const bgAtual=perfil.bgColor||'';
+
+  const TEMAS=[
+    {nome:'Floresta',bg:'linear-gradient(135deg,#0d2e14,#1A5C2A)'},
+    {nome:'Oceano',bg:'linear-gradient(135deg,#0a1628,#1a3a6b)'},
+    {nome:'Aurora',bg:'linear-gradient(135deg,#6b21a8,#db2777)'},
+    {nome:'Por do Sol',bg:'linear-gradient(135deg,#c2410c,#d97706)'},
+    {nome:'Midnight',bg:'linear-gradient(135deg,#0f172a,#1e3a5f)'},
+    {nome:'Rosa Neon',bg:'linear-gradient(135deg,#be185d,#7c3aed)'},
+    {nome:'Turquesa',bg:'linear-gradient(135deg,#0e7490,#0f766e)'},
+    {nome:'Lavanda',bg:'linear-gradient(135deg,#4c1d95,#5b21b6)'},
+    {nome:'Fogo',bg:'linear-gradient(135deg,#7f1d1d,#c2410c)'},
+    {nome:'Cosmos',bg:'linear-gradient(135deg,#1e1b4b,#4338ca)'},
+    {nome:'Menta',bg:'linear-gradient(135deg,#064e3b,#065f46)'},
+    {nome:'Nude',bg:'linear-gradient(135deg,#78716c,#a8a29e)'},
+    {nome:'Cereja',bg:'linear-gradient(135deg,#881337,#be123c)'},
+    {nome:'Cobre',bg:'linear-gradient(135deg,#92400e,#b45309)'},
+    {nome:'Indigo',bg:'linear-gradient(135deg,#312e81,#4f46e5)'},
+    {nome:'Esmeralda',bg:'linear-gradient(135deg,#064e3b,#10b981)'},
+    {nome:'Safira',bg:'linear-gradient(135deg,#1e3a8a,#2563eb)'},
+    {nome:'Roxo Rosa',bg:'linear-gradient(135deg,#7e22ce,#ec4899)'},
+    {nome:'Grafite',bg:'linear-gradient(135deg,#111827,#374151)'},
+    {nome:'Dourado',bg:'linear-gradient(135deg,#78350f,#d97706)'},
+  ];
+
   mc.innerHTML=snakeHtml()+'<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;"><div class="page-eyebrow">* Meu Perfil</div><div class="page-title">Perfil pessoal</div><div class="page-sub">Suas informacoes sao estritamente pessoais</div></div>'+
     '<div class="panel"><div class="perfil-avatar-area">'+
     (perfil.foto?'<div class="perfil-avatar-big"><img src="'+perfil.foto+'" alt="foto"/></div>':'<div class="perfil-avatar-big" id="perfil-av-preview" style="font-size:28px;font-weight:500;">'+((perfil.nome||'?')[0].toUpperCase())+'</div>')+
-    '<div style="text-align:center;"><div style="font-size:16px;font-weight:500;color:var(--text);">'+(perfil.nome||'&#8212;')+'</div><div style="font-size:12px;color:var(--text-3);">'+(userProfile.role==='coord'?'Coordenador':'Operador')+'</div></div>'+
+    '<div style="text-align:center;"><div style="font-size:16px;font-weight:500;color:var(--text);">'+(perfil.nome||'&#8212;')+'</div><div style="font-size:12px;color:var(--text-3);">'+(userProfile.role==='coord'?'Coordenador':'Painel Brille')+'</div></div>'+
     '<label style="cursor:pointer;"><input type="file" accept="image/*" onchange="uploadFoto(event)" style="display:none;"/><span class="btn-ghost">Alterar foto</span></label></div>'+
-    '<div style="margin-bottom:12px;"><label class="inp-label">Meu nome</label><input type="text" class="inp" id="perfil-nome" value="'+(perfil.nome||'')+'" placeholder="Seu nome completo"/></div>'+
+    '<div style="margin-bottom:16px;"><label class="inp-label">Meu nome</label><input type="text" class="inp" id="perfil-nome" value="'+(perfil.nome||'')+'" placeholder="Seu nome completo"/></div>'+
+    '<div style="margin-bottom:16px;"><label class="inp-label">Cor de fundo do painel</label>'+
+    '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:8px;">'+
+    TEMAS.map((t,i)=>'<div onclick="selecionarBg('+i+')" id="bg-opt-'+i+'" style="cursor:pointer;height:44px;border-radius:10px;background:'+t.bg+';border:3px solid '+(bgAtual===t.bg?'#fff':'transparent')+';box-shadow:'+(bgAtual===t.bg?'0 0 0 2px var(--primary)':'0 2px 6px rgba(0,0,0,0.15)')+';transition:all 0.15s;display:flex;align-items:flex-end;padding:4px 6px;" title="'+t.nome+'">'+
+      '<span style="font-size:9px;color:rgba(255,255,255,0.7);font-weight:500;">'+t.nome+'</span></div>').join('')+
+    '</div></div>'+
     '<button class="btn-blue" onclick="salvarPerfil()">Salvar alteracoes</button>'+
     '<img id="perfil-foto-preview" src="'+(perfil.foto||'')+'" style="display:none;"/>'+
     '</div>';
+
+  // Store themes for later use
+  window._bgTemas = TEMAS;
+  window._bgSelecionado = bgAtual;
 }
+window.selecionarBg=function(i){
+  window._bgSelecionado=window._bgTemas[i].bg;
+  document.querySelectorAll('[id^="bg-opt-"]').forEach((el,j)=>{
+    el.style.border=j===i?'3px solid #fff':'3px solid transparent';
+    el.style.boxShadow=j===i?'0 0 0 2px var(--primary)':'0 2px 6px rgba(0,0,0,0.15)';
+  });
+};
+
 window.uploadFoto=function(e){
   const file=e.target.files[0];if(!file)return;
   const reader=new FileReader();reader.onload=ev=>{
@@ -967,14 +1010,26 @@ window.salvarPerfil=async function(){
   const nome=document.getElementById('perfil-nome').value.trim();
   const fotoEl=document.getElementById('perfil-foto-preview');
   const foto=fotoEl&&fotoEl.src&&fotoEl.src!==window.location.href?fotoEl.src:null;
+  const bgColor=window._bgSelecionado||'';
   if(!nome){showToast('Digite seu nome.');return;}
   try{
-    const updates={nome};if(foto)updates.foto=foto;
+    const updates={nome};
+    if(foto)updates.foto=foto;
+    if(bgColor)updates.bgColor=bgColor;
     await setDoc(doc(db,'usuarios',currentUser.uid),updates,{merge:true});
-    userProfile.nome=nome;if(foto)userProfile.foto=foto;
+    userProfile.nome=nome;
+    if(foto)userProfile.foto=foto;
+    if(bgColor){userProfile.bgColor=bgColor;aplicarBg(bgColor);}
     updateSidebarUser();showToast('Perfil atualizado!');
   }catch(e){showToast('Erro ao salvar.');}
 };
+
+function aplicarBg(bg){
+  document.getElementById('appShell').style.background=bg||'';
+  document.body.style.background=bg?'':'';
+  const main=document.getElementById('mainContent');
+  if(main)main.style.background='transparent';
+}
 
 // ACIDO CHAT
 const CLOUDINARY_CLOUD = 'dbd9hpwyb';
