@@ -825,11 +825,12 @@ window.executarAcao=async function(acao){
   if(!email){msgEl.style.display='block';msgEl.style.color='var(--red)';msgEl.textContent='Digite um e-mail valido.';return;}
   msgEl.style.display='block';msgEl.style.color='var(--text-3)';msgEl.textContent='Processando...';
   try{
-    const res=await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({email,acao}),headers:{'Content-Type':'application/json'}});
+    const url=SCRIPT_URL+'?email='+encodeURIComponent(email)+'&acao='+acao;
+    const res=await fetch(url,{method:'GET',redirect:'follow'});
     const data=await res.json();
     if(data.ok){
       msgEl.style.color='var(--green)';
-      msgEl.textContent='Feito! Linha '+(data.linha)+' atualizada com sucesso.';
+      msgEl.textContent='Feito! Linha '+data.linha+' atualizada com sucesso.';
       document.getElementById(inputId).value='';
     } else {
       msgEl.style.color='var(--red)';
