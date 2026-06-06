@@ -667,12 +667,41 @@ async function renderFeedback(mc,op){
     '<button class="fb-tab '+(fbPeriodo==='trimestral'?'active':'')+'" onclick="setFbPeriodo(\'trimestral\',\''+op.uid+'\')">Trimestral</button>'+
     '<button class="fb-tab '+(fbPeriodo==='semestral'?'active':'')+'" onclick="setFbPeriodo(\'semestral\',\''+op.uid+'\')">Semestral</button>'+
     '<button class="fb-tab '+(fbPeriodo==='pontual'?'active':'')+'" onclick="setFbPeriodo(\'pontual\',\''+op.uid+'\')">Pontual</button></div>'+
-    (isCoord?'<div class="panel"><div class="panel-title">Novo registro</div><div style="margin-bottom:10px;"><label class="inp-label">Titulo</label><input type="text" class="inp" id="fb-titulo" placeholder="Ex: Reuniao de Maio 2026"/></div><div style="margin-bottom:12px;"><label class="inp-label">Conteudo</label><textarea class="inp" id="fb-texto" rows="5" style="resize:vertical;"></textarea></div><button class="btn-blue" onclick="salvarFeedback(\''+op.uid+'\')">Publicar feedback</button></div>':'')+
+    (isCoord?'<div class="panel"><div class="panel-title">Novo registro</div>'+
+      '<div style="margin-bottom:10px;"><label class="inp-label">Titulo</label><input type="text" class="inp" id="fb-titulo" placeholder="Ex: Reuniao de Maio 2026"/></div>'+
+      '<div style="margin-bottom:10px;"><label class="inp-label">Conteudo</label><textarea class="inp" id="fb-texto" rows="5" style="resize:vertical;"></textarea></div>'+
+      '<div style="margin-bottom:12px;"><label class="inp-label">Arquivo (opcional)</label>'+
+      '<label style="display:flex;align-items:center;gap:8px;padding:8px 12px;border:1px solid var(--border-md);border-radius:var(--radius);cursor:pointer;font-size:12px;color:var(--text-2);">'+
+      '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>'+
+      '<span id="fb-file-label">Selecionar arquivo</span>'+
+      '<input type="file" id="fb-file" style="display:none;" onchange="document.getElementById(\'fb-file-label\').textContent=this.files[0]?this.files[0].name:\'Selecionar arquivo\'"/></label></div>'+
+      '<button class="btn-blue" onclick="salvarFeedback(\''+op.uid+'\')">Publicar feedback</button></div>':'')+
     (items.length===0?'<div class="panel"><div class="empty">Nenhum registro ainda.</div></div>':
-    items.map(item=>'<div class="fb-card"><div class="fb-card-header"><span class="fb-card-title">'+item.titulo+'</span><span class="fb-card-date">'+item.data+(isCoord?' <button class="btn-ghost" style="margin-left:8px;" onclick="deletarFeedback(\''+op.uid+'\',\''+item.id+'\')">Excluir</button>':'')+'</span></div><div class="fb-card-body">'+item.texto+'</div></div>').join(''));
+    items.map(item=>'<div class="fb-card"><div class="fb-card-header"><span class="fb-card-title">'+item.titulo+'</span><span class="fb-card-date">'+item.data+(isCoord?' <button class="btn-ghost" style="margin-left:8px;" onclick="deletarFeedback(\''+op.uid+'\',\''+item.id+'\')">Excluir</button>':'')+'</span></div>'+
+      '<div class="fb-card-body">'+item.texto+'</div>'+
+      (item.arquivoUrl?'<a href="'+item.arquivoUrl+'" target="_blank" style="display:flex;align-items:center;gap:8px;margin-top:10px;padding:8px 12px;background:var(--bg);border-radius:var(--radius);border:1px solid var(--border);text-decoration:none;font-size:12px;color:var(--primary);"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>'+(item.arquivoNome||'Arquivo')+' — Abrir</a>':'')+'</div>').join(''));
 }
 window.setFbPeriodo=async function(p,opUid){fbPeriodo=p;const opSnap=await getDoc(doc(db,'usuarios',opUid));const op=opSnap.exists()?{uid:opUid,...opSnap.data()}:null;if(op)await renderFeedback(document.getElementById('mainContent'),op);};
-window.salvarFeedback=async function(opUid){const titulo=document.getElementById('fb-titulo').value.trim();const texto=document.getElementById('fb-texto').value.trim();if(!titulo||!texto){showToast('Preencha titulo e conteudo.');return;}const data=new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'short',year:'numeric'});try{await addDoc(collection(db,'feedbacks',opUid,'registros'),{titulo,texto,periodo:fbPeriodo,data,ts:Date.now()});showToast('Publicado!');const opSnap=await getDoc(doc(db,'usuarios',opUid));const op=opSnap.exists()?{uid:opUid,...opSnap.data()}:null;if(op)await renderFeedback(document.getElementById('mainContent'),op);}catch(e){showToast('Erro.');}};
+window.salvarFeedback=async function(opUid){
+  const titulo=document.getElementById('fb-titulo').value.trim();
+  const texto=document.getElementById('fb-texto').value.trim();
+  const file=document.getElementById('fb-file').files[0];
+  if(!titulo||!texto){showToast('Preencha titulo e conteudo.');return;}
+  let arquivoUrl=null,arquivoNome=null;
+  if(file){
+    showToast('Enviando arquivo...');
+    try{arquivoUrl=await uploadToCloudinary(file);arquivoNome=file.name;}
+    catch(e){showToast('Erro ao enviar arquivo.');return;}
+  }
+  const data=new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'short',year:'numeric'});
+  try{
+    await addDoc(collection(db,'feedbacks',opUid,'registros'),{titulo,texto,periodo:fbPeriodo,data,arquivoUrl,arquivoNome,ts:Date.now()});
+    showToast('Publicado!');
+    const opSnap=await getDoc(doc(db,'usuarios',opUid));
+    const op=opSnap.exists()?{uid:opUid,...opSnap.data()}:null;
+    if(op)await renderFeedback(document.getElementById('mainContent'),op);
+  }catch(e){showToast('Erro.');}
+};
 window.deletarFeedback=async function(opUid,fbId){if(!confirm('Excluir?'))return;try{await deleteDoc(doc(db,'feedbacks',opUid,'registros',fbId));showToast('Excluido.');const opSnap=await getDoc(doc(db,'usuarios',opUid));const op=opSnap.exists()?{uid:opUid,...opSnap.data()}:null;if(op)await renderFeedback(document.getElementById('mainContent'),op);}catch(e){showToast('Erro.');}};
 
 async function renderCopys(mc){
