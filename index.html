@@ -193,7 +193,7 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
 .chat-send-btn{padding:10px 18px;background:var(--primary);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:13px;font-weight:500;cursor:pointer;}
 .chat-send-btn:hover{background:#0d3a19;}
 /* FEED */
-.feed-grid{display:grid;grid-template-columns:1fr;gap:2.5rem;}
+.feed-grid{display:grid;grid-template-columns:1fr;gap:5rem;}
 .feed-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;}
 .feed-card-inner{display:grid;grid-template-columns:1fr 320px;}
 .feed-card-av{width:32px;height:32px;border-radius:50%;background:var(--primary-light);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;color:var(--primary);overflow:hidden;flex-shrink:0;}
@@ -429,6 +429,7 @@ window.navigate=async function(page){
   // Reset padding (Basilisco removes it)
   mc.style.padding='2rem';
   mc.style.overflow='auto';
+  mc.style.backgroundImage='none';
   mc.innerHTML='<div class="snake-corner"><img src="'+SNAKE_IMG+'"/></div><div class="empty">Carregando...</div>';
   if(page==='equipe'){await renderEquipe(mc);return;}
   if(page==='lancar'){await renderLancar(mc);return;}
@@ -441,7 +442,12 @@ window.navigate=async function(page){
   if(page==='planilha'){renderPlanilha(mc);return;}
   if(page==='basilisco'){await renderBasilisco(mc);return;}
   if(page==='acido'){await renderAcido(mc);return;}
-  if(page==='feed'){await renderFeed(mc);return;}
+  if(page==='feed'){
+    mc.style.backgroundImage='url(https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780773361/fundo-verde-da-textura-da-pele-de-serpente-do-pit%C3%A3o-32356761_dlml4i.webp)';
+    mc.style.backgroundSize='cover';
+    mc.style.backgroundAttachment='fixed';
+    await renderFeed(mc);return;
+  }
   if(!viewingOp&&userProfile.role==='coord'){await renderEquipe(mc);return;}
   const opSnap=await getDoc(doc(db,'usuarios',viewingOp));
   const op=opSnap.exists()?{uid:viewingOp,...opSnap.data()}:null;
