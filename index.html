@@ -1166,11 +1166,17 @@ function showToast(msg){const t=document.getElementById('toast');t.textContent=m
 
 // BASILISCO
 let basiliscoMsgs=[];
-let basiliscoKey=localStorage.getItem('basilisco_key')||'';
-let basiliscoDocs=JSON.parse(localStorage.getItem('basilisco_docs')||'[]');
+let basiliscoKey='';
+let basiliscoDocs=[];
 
 async function renderBasilisco(mc){
   const isCoord=userProfile.role==='coord';
+  // Load config from Firebase
+  const cfgSnap=await getDoc(doc(db,'config','basilisco'));
+  if(cfgSnap.exists()){
+    basiliscoKey=cfgSnap.data().key||'';
+    basiliscoDocs=cfgSnap.data().docs||[];
+  }
   mc.style.padding='0';
   mc.style.overflow='hidden';
   mc.innerHTML=
@@ -1211,9 +1217,34 @@ async function renderBasilisco(mc){
 
 window.fecharConfig=function(){document.getElementById('basilisco-config').style.display='none';};
 window.toggleBasiliscoConfig=function(){const c=document.getElementById('basilisco-config');c.style.display=c.style.display==='none'?'flex':'none';};
-window.salvarConfigBasilisco=function(){const key=document.getElementById('bsk-key').value.trim();if(!key){showToast('Cole a chave da API.');return;}basiliscoKey=key;localStorage.setItem('basilisco_key',key);localStorage.setItem('basilisco_docs',JSON.stringify(basiliscoDocs));showToast('Basilisco ativado!');renderBasilisco(document.getElementById('mainContent'));};
-window.adicionarDoc=function(){const nome=document.getElementById('bsk-doc-nome').value.trim();const texto=document.getElementById('bsk-doc-texto').value.trim();if(!nome||!texto){showToast('Preencha nome e conteudo.');return;}basiliscoDocs.push({nome,texto});localStorage.setItem('basilisco_docs',JSON.stringify(basiliscoDocs));showToast('Documento adicionado!');renderBasilisco(document.getElementById('mainContent'));};
-window.removerDoc=function(i){basiliscoDocs.splice(i,1);localStorage.setItem('basilisco_docs',JSON.stringify(basiliscoDocs));renderBasilisco(document.getElementById('mainContent'));};
+window.salvarConfigBasilisco=async function(){
+  const key=document.getElementById('bsk-key').value.trim();
+  if(!key){showToast('Cole a chave da API.');return;}
+  basiliscoKey=key;
+  try{
+    await setDoc(doc(db,'config','basilisco'),{key,docs:basiliscoDocs},{merge:true});
+    showToast('Basilisco ativado para toda a equipe!');
+    renderBasilisco(document.getElementById('mainContent'));
+  }catch(e){showToast('Erro ao salvar.');}
+};
+window.adicionarDoc=async function(){
+  const nome=document.getElementById('bsk-doc-nome').value.trim();
+  const texto=document.getElementById('bsk-doc-texto').value.trim();
+  if(!nome||!texto){showToast('Preencha nome e conteudo.');return;}
+  basiliscoDocs.push({nome,texto});
+  try{
+    await setDoc(doc(db,'config','basilisco'),{key:basiliscoKey,docs:basiliscoDocs},{merge:true});
+    showToast('Documento adicionado!');
+    renderBasilisco(document.getElementById('mainContent'));
+  }catch(e){showToast('Erro ao salvar.');}
+};
+window.removerDoc=async function(i){
+  basiliscoDocs.splice(i,1);
+  try{
+    await setDoc(doc(db,'config','basilisco'),{key:basiliscoKey,docs:basiliscoDocs},{merge:true});
+    renderBasilisco(document.getElementById('mainContent'));
+  }catch(e){showToast('Erro ao remover.');}
+};
 window.perguntarBasilisco=async function(){
   const input=document.getElementById('bsk-input');
   const pergunta=input.value.trim();if(!pergunta)return;
