@@ -1063,7 +1063,7 @@ async function renderBasilisco(mc){
   mc.style.padding='0';
   mc.style.overflow='hidden';
   mc.innerHTML=
-    '<div style="position:relative;width:100%;height:100vh;background:url(https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780758121/basilisco_gizvje.png) center/cover no-repeat;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;">'+
+    '<div style="position:relative;width:100%;height:100vh;background:url(https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780761816/foto_snake_rswhrg.png) center/cover no-repeat;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;">'+
     snakeHtml()+
 
     // API Key panel — top right
@@ -1115,7 +1115,7 @@ window.perguntarBasilisco=async function(){
   const contexto=basiliscoDocs.length>0?'DOCUMENTOS INTERNOS:\n\n'+basiliscoDocs.map(d=>'=== '+d.nome+' ===\n'+d.texto).join('\n\n'):'Nenhum documento carregado.';
   const systemPrompt='Voce e o Basilisco, assistente interno da equipe de Contas a Receber da Brille.\nResponda APENAS com base nos documentos internos fornecidos abaixo.\nSe a informacao nao estiver nos documentos, responda: "Nao encontrei essa informacao nos documentos internos."\nNunca invente informacoes. Nunca use conhecimento externo. Responda em portugues.\n\n'+contexto;
   try{
-    const res=await fetch('https://api.groq.com/openai/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+basiliscoKey},body:JSON.stringify({model:'llama3-8b-8192',messages:[{role:'system',content:systemPrompt},...basiliscoMsgs,{role:'user',content:pergunta}],max_tokens:1000,temperature:0.2})});
+    const res=await fetch('https://api.groq.com/openai/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+basiliscoKey},body:JSON.stringify({model:'llama-3.1-8b-instant',messages:[{role:'system',content:systemPrompt},...basiliscoMsgs,{role:'user',content:pergunta}],max_tokens:1000,temperature:0.2})});
     const data=await res.json();loading.style.display='none';
     if(data.error){showToast('Erro: '+data.error.message);return;}
     const resposta=data.choices[0].message.content;
