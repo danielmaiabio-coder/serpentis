@@ -1309,6 +1309,8 @@ window.carregarPDF=async function(e){
     showToast('Erro ao ler PDF. Tente colar o texto.');
   }
 };
+
+window.salvarConfigBasilisco=async function(){
   const key=document.getElementById('bsk-key').value.trim();
   if(!key){showToast('Cole a chave da API.');return;}
   basiliscoKey=key;
