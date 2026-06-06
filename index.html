@@ -374,9 +374,16 @@ function showLogin(){hide('appShell');show('loginScreen','flex');}
 
 function getPerms(){
   const isCoord = userProfile.role==='coord';
-  const canManageIA = isCoord || userProfile.subrole==='iamanager';
-  const canLancar = isCoord || userProfile.subrole==='economic';
-  return {isCoord, canManageIA, canLancar};
+  // subroles can be a string or array
+  const subs = Array.isArray(userProfile.subrole)
+    ? userProfile.subrole
+    : (userProfile.subrole ? [userProfile.subrole] : []);
+  const hasSub = (s) => subs.includes(s);
+  const canManageIA = isCoord || hasSub('iamanager');
+  const canLancar = isCoord || hasSub('economic');
+  const canRenegoc = isCoord || hasSub('renegoc');
+  const canBanco = isCoord || hasSub('banco');
+  return {isCoord, canManageIA, canLancar, canRenegoc, canBanco};
 }
 
 function setupApp(){
@@ -654,7 +661,8 @@ window.salvarFeedback=async function(opUid){const titulo=document.getElementById
 window.deletarFeedback=async function(opUid,fbId){if(!confirm('Excluir?'))return;try{await deleteDoc(doc(db,'feedbacks',opUid,'registros',fbId));showToast('Excluido.');const opSnap=await getDoc(doc(db,'usuarios',opUid));const op=opSnap.exists()?{uid:opUid,...opSnap.data()}:null;if(op)await renderFeedback(document.getElementById('mainContent'),op);}catch(e){showToast('Erro.');}};
 
 async function renderCopys(mc){
-  const isCoord=userProfile.role==='coord';
+  const {canBanco} = getPerms();
+  const isCoord = canBanco;
   const snap=await getDocs(collection(db,'copys'));const items=[];snap.forEach(d=>items.push({id:d.id,...d.data()}));
   mc.innerHTML=snakeHtml()+'<div class="page-eyebrow">* Banco de Copys</div><div class="page-title">Copys mais utilizadas</div><div class="page-sub">Textos prontos para uso</div>'+
     (isCoord?'<div class="panel"><div class="panel-title">Adicionar nova copy</div><div style="margin-bottom:10px;"><label class="inp-label">Titulo</label><input type="text" class="inp" id="copy-titulo" placeholder="Ex: Abertura de atendimento"/></div><div style="margin-bottom:12px;"><label class="inp-label">Texto</label><textarea class="inp" id="copy-texto" rows="4" style="resize:vertical;"></textarea></div><button class="btn-blue" onclick="salvarCopy()">Adicionar copy</button></div>':'')+
@@ -666,7 +674,8 @@ window.salvarCopy=async function(){const titulo=document.getElementById('copy-ti
 window.deletarCopy=async function(id){if(!confirm('Excluir?'))return;try{await deleteDoc(doc(db,'copys',id));showToast('Excluida.');await renderCopys(document.getElementById('mainContent'));}catch(e){showToast('Erro.');}};
 
 async function renderLinks(mc){
-  const isCoord=userProfile.role==='coord';
+  const {canRenegoc} = getPerms();
+  const isCoord = canRenegoc;
   const snap=await getDocs(collection(db,'links'));const items=[];snap.forEach(d=>items.push({id:d.id,...d.data()}));
   items.sort((a,b)=>(a.titulo||'').localeCompare(b.titulo||''));
   mc.innerHTML=snakeHtml()+'<div class="page-eyebrow">* Links de Renegociacao</div><div class="page-title">Links uteis</div><div class="page-sub">Acesso rapido a todos os links do setor</div>'+
