@@ -1018,6 +1018,8 @@ window.balancaChocalho=function(){
   CHOCALHO_SOM.play().catch(()=>{});
   setTimeout(()=>img.classList.remove('shaking'),700);
 };
+
+window.toggleBgPicker=function(){
   const el=document.getElementById('bg-picker');
   el.style.display=el.style.display==='none'?'block':'none';
 };
