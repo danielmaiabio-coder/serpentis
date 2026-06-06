@@ -397,8 +397,8 @@ function buildNav(){
     {sep:true,label:'GERAL'},
     {id:'acido',label:'Acido'},{id:'feed',label:'Feed da Cobranca'},
     {id:'copys',label:'Banco de Copys'},{id:'links',label:'Links de Reneg.'},{id:'escala',label:'Escala de Roteamento'},
-    {id:'calcquit',label:'Calculo Quitacao'},{id:'calcreneg',label:'Calculo Renegociacao'},
-    {id:'planilha',label:'Automacoes Planilha'},
+    {id:'calc',label:'🧮 Calculadoras'},
+    {id:'planilha',label:'⚡ Automacoes Planilha'},
     {sep:true,label:'CONTA'},
     {id:'basilisco',label:'Basilisco'},
     {id:'perfil',label:'Meu Perfil'},
@@ -408,8 +408,8 @@ function buildNav(){
     {sep:true,label:'GERAL'},
     {id:'acido',label:'Acido'},{id:'feed',label:'Feed da Cobranca'},
     {id:'copys',label:'Banco de Copys'},{id:'links',label:'Links de Reneg.'},{id:'escala',label:'Escala de Roteamento'},
-    {id:'calcquit',label:'Calculo Quitacao'},{id:'calcreneg',label:'Calculo Renegociacao'},
-    {id:'planilha',label:'Automacoes Planilha'},
+    {id:'calc',label:'🧮 Calculadoras'},
+    {id:'planilha',label:'⚡ Automacoes Planilha'},
     {sep:true,label:'CONTA'},
     {id:'basilisco',label:'Basilisco'},
     {id:'perfil',label:'Meu Perfil'},
@@ -439,7 +439,6 @@ window.navigate=async function(page){
   if(page==='calcquit'){renderCalcQuit(mc);return;}
   if(page==='calcreneg'){renderCalcReneg(mc);return;}
   if(page==='planilha'){renderPlanilha(mc);return;}
-  if(page==='perfil'){await renderPerfil(mc);return;}
   if(page==='basilisco'){await renderBasilisco(mc);return;}
   if(page==='acido'){await renderAcido(mc);return;}
   if(page==='feed'){await renderFeed(mc);return;}
@@ -715,27 +714,40 @@ const CURSOS=[
   {nome:'Assinatura Vitalicia',parcelas:24,valorParcela:199},{nome:'Assinatura Vitalicia',parcelas:18,valorParcela:199},
   {nome:'Curso Avancado',parcelas:12,valorParcela:299},{nome:'Curso Basico',parcelas:6,valorParcela:149},{nome:'Mentoria Premium',parcelas:12,valorParcela:399},
 ];
-function renderCalcQuit(mc){
+function renderCalc(mc){
   mc.innerHTML=snakeHtml()+
-    '<div class="page-eyebrow">* Calculo Quitacao</div>'+
-    '<div class="page-title">Calculo de Quitacao</div>'+
-    '<div class="page-sub">Calcule o valor a vista e opcoes de parcelamento</div>'+
-    '<div class="calc-wrap">'+
-      '<div class="calc-box">'+
-        '<div class="calc-title">Dados do curso</div>'+
-        '<div style="margin-bottom:12px;"><label class="inp-label">Valor total do curso (R$)</label><input type="number" class="inp" id="quit-total" placeholder="2997" oninput="calcularQuit()"/></div>'+
-        '<div style="margin-bottom:12px;"><label class="inp-label">Parcelas totais</label><input type="number" class="inp" id="quit-parc-total" placeholder="12" oninput="calcularQuit()"/></div>'+
-        '<div style="margin-bottom:12px;"><label class="inp-label">Parcelas pagas</label><input type="number" class="inp" id="quit-parc-pagas" placeholder="2" oninput="calcularQuit()"/></div>'+
-        '<div class="calc-result">'+
-          '<div class="calc-result-label">Valor a vista (quitacao)</div>'+
-          '<div class="calc-result-val" id="quit-resultado">R$ 0,00</div>'+
-          '<div style="font-size:11px;opacity:0.75;margin-top:4px;" id="quit-detalhe">Preencha os campos acima</div>'+
+    '<div class="page-eyebrow">🧮 Calculadoras</div>'+
+    '<div class="page-title">Calculadoras</div>'+
+    '<div class="page-sub">Quitacao e Renegociacao em um so lugar</div>'+
+    '<div class="panel" style="margin-bottom:1.5rem;">'+
+      '<div style="font-size:15px;font-weight:500;color:var(--text);border-bottom:1px solid var(--border);padding-bottom:10px;margin-bottom:1rem;">Calculo de Quitacao</div>'+
+      '<div class="calc-wrap">'+
+        '<div class="calc-box">'+
+          '<div style="margin-bottom:12px;"><label class="inp-label">Valor total do curso (R$)</label><input type="number" class="inp" id="quit-total" placeholder="2997" oninput="calcularQuit()"/></div>'+
+          '<div style="margin-bottom:12px;"><label class="inp-label">Parcelas totais</label><input type="number" class="inp" id="quit-parc-total" placeholder="12" oninput="calcularQuit()"/></div>'+
+          '<div style="margin-bottom:12px;"><label class="inp-label">Parcelas pagas</label><input type="number" class="inp" id="quit-parc-pagas" placeholder="2" oninput="calcularQuit()"/></div>'+
+          '<div class="calc-result"><div class="calc-result-label">Valor a vista (quitacao)</div><div class="calc-result-val" id="quit-resultado">R$ 0,00</div><div style="font-size:11px;opacity:0.75;margin-top:4px;" id="quit-detalhe">Preencha os campos acima</div></div>'+
+        '</div>'+
+        '<div class="calc-box">'+
+          '<div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:12px;">Opcoes de parcelamento</div>'+
+          '<div id="quit-parcelas" style="display:flex;flex-direction:column;gap:8px;max-height:280px;overflow-y:auto;"><div style="text-align:center;color:var(--text-3);font-size:13px;padding:2rem;">Preencha os campos ao lado</div></div>'+
         '</div>'+
       '</div>'+
-      '<div class="calc-box">'+
-        '<div class="calc-title">Opcoes de parcelamento</div>'+
-        '<div id="quit-parcelas" style="display:flex;flex-direction:column;gap:8px;">'+
-          '<div style="text-align:center;color:var(--text-3);font-size:13px;padding:2rem;">Preencha os campos ao lado</div>'+
+    '</div>'+
+    '<div class="panel">'+
+      '<div style="font-size:15px;font-weight:500;color:var(--text);border-bottom:1px solid var(--border);padding-bottom:10px;margin-bottom:1rem;">Calculo de Renegociacao</div>'+
+      '<div class="calc-wrap">'+
+        '<div class="calc-box">'+
+          '<div style="margin-bottom:12px;"><label class="inp-label">Valor total do curso (R$)</label><input type="number" class="inp" id="calc-total" placeholder="2997" oninput="calcular()"/></div>'+
+          '<div style="margin-bottom:12px;"><label class="inp-label">Parcelas totais</label><input type="number" class="inp" id="calc-parc-total" placeholder="12" oninput="calcular()"/></div>'+
+          '<div style="margin-bottom:12px;"><label class="inp-label">Parcelas pagas</label><input type="number" class="inp" id="calc-parc-pagas" placeholder="2" oninput="calcular()"/></div>'+
+          '<div class="calc-result"><div class="calc-result-label">Valor a vista para renegociacao</div><div class="calc-result-val" id="calc-resultado">R$ 0,00</div><div style="font-size:11px;opacity:0.75;margin-top:4px;" id="calc-detalhe">Preencha os campos acima</div></div>'+
+        '</div>'+
+        '<div class="calc-box">'+
+          '<div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:12px;">Tabela de cursos</div>'+
+          '<div class="search-box"><svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="number" id="busca-parcela" placeholder="Digite o valor da parcela (ex: 199)" oninput="buscarCurso()"/></div>'+
+          '<div id="lista-cursos">'+CURSOS.map(c=>'<div class="curso-row" data-parc="'+c.valorParcela+'"><div class="curso-nome">'+c.parcelas+'x de R$ '+c.valorParcela.toLocaleString("pt-BR",{minimumFractionDigits:2})+' - '+c.nome+'</div><div class="curso-val">R$ '+(c.parcelas*c.valorParcela).toLocaleString("pt-BR",{minimumFractionDigits:2})+'</div></div>').join('')+'</div>'+
+          '<p style="font-size:11px;color:var(--text-3);margin-top:12px;">* Envie sua planilha para atualizar esta tabela</p>'+
         '</div>'+
       '</div>'+
     '</div>';
@@ -748,50 +760,14 @@ window.calcularQuit=function(){
   const resEl=document.getElementById('quit-resultado');
   const detEl=document.getElementById('quit-detalhe');
   const parcsEl=document.getElementById('quit-parcelas');
-  if(!total||!parcTotal||parcPagas>=parcTotal){
-    resEl.textContent='R$ 0,00';detEl.textContent='Verifique os valores';
-    parcsEl.innerHTML='<div style="text-align:center;color:var(--text-3);font-size:13px;padding:2rem;">Preencha os campos ao lado</div>';
-    return;
-  }
-  const valorParc=total/parcTotal;
-  const restantes=parcTotal-parcPagas;
-  const vista=valorParc*restantes;
+  if(!total||!parcTotal||parcPagas>=parcTotal){resEl.textContent='R$ 0,00';detEl.textContent='Verifique os valores';parcsEl.innerHTML='<div style="text-align:center;color:var(--text-3);font-size:13px;padding:2rem;">Preencha os campos ao lado</div>';return;}
+  const valorParc=total/parcTotal;const restantes=parcTotal-parcPagas;const vista=valorParc*restantes;
   resEl.textContent=vista.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
   detEl.textContent=restantes+' parcelas restantes x R$ '+valorParc.toFixed(2).replace('.',',');
-  // Gera opcoes de parcelamento do total restante
   let html='';
-  for(let p=restantes;p>=1;p--){
-    const valParc=vista/p;
-    html+='<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--bg);border-radius:var(--radius);border:1px solid var(--border);">'+
-      '<div style="font-size:14px;font-weight:500;color:var(--text);">'+p+'x</div>'+
-      '<div style="font-size:14px;color:var(--primary);font-weight:500;">R$ '+valParc.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})+'</div>'+
-      '<div style="font-size:11px;color:var(--text-3);">Total: '+vista.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})+'</div>'+
-    '</div>';
-  }
+  for(let p=restantes;p>=1;p--){const valParc=vista/p;html+='<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--bg);border-radius:var(--radius);border:1px solid var(--border);"><div style="font-size:14px;font-weight:500;color:var(--text);">'+p+'x</div><div style="font-size:14px;color:var(--primary);font-weight:500;">R$ '+valParc.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})+'</div><div style="font-size:11px;color:var(--text-3);">Total: '+vista.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})+'</div></div>';}
   parcsEl.innerHTML=html;
 };
-
-function renderCalcReneg(mc){
-  mc.innerHTML=snakeHtml()+
-    '<div class="page-eyebrow">* Calculo Renegociacao</div>'+
-    '<div class="page-title">Calculo de Renegociacao</div>'+
-    '<div class="page-sub">Calcule o valor a vista para renegociacao</div>'+
-    '<div class="calc-wrap">'+
-      '<div class="calc-box">'+
-        '<div class="calc-title">Calculadora de renegociacao</div>'+
-        '<div style="margin-bottom:12px;"><label class="inp-label">Valor total do curso (R$)</label><input type="number" class="inp" id="calc-total" placeholder="2997" oninput="calcular()"/></div>'+
-        '<div style="margin-bottom:12px;"><label class="inp-label">Parcelas totais</label><input type="number" class="inp" id="calc-parc-total" placeholder="12" oninput="calcular()"/></div>'+
-        '<div style="margin-bottom:12px;"><label class="inp-label">Parcelas pagas</label><input type="number" class="inp" id="calc-parc-pagas" placeholder="2" oninput="calcular()"/></div>'+
-        '<div class="calc-result"><div class="calc-result-label">Valor a vista para renegociacao</div><div class="calc-result-val" id="calc-resultado">R$ 0,00</div><div style="font-size:11px;opacity:0.75;margin-top:4px;" id="calc-detalhe">Preencha os campos acima</div></div>'+
-      '</div>'+
-      '<div class="calc-box">'+
-        '<div class="calc-title">Tabela de cursos</div>'+
-        '<div class="search-box"><svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="number" id="busca-parcela" placeholder="Digite o valor da parcela (ex: 199)" oninput="buscarCurso()"/></div>'+
-        '<div id="lista-cursos">'+CURSOS.map(c=>'<div class="curso-row" data-parc="'+c.valorParcela+'"><div class="curso-nome">'+c.parcelas+'x de R$ '+c.valorParcela.toLocaleString('pt-BR',{minimumFractionDigits:2})+' - '+c.nome+'</div><div class="curso-val">R$ '+(c.parcelas*c.valorParcela).toLocaleString('pt-BR',{minimumFractionDigits:2})+'</div></div>').join('')+'</div>'+
-        '<p style="font-size:11px;color:var(--text-3);margin-top:12px;">* Envie sua planilha para atualizar esta tabela</p>'+
-      '</div>'+
-    '</div>';
-}
 
 window.calcular=function(){
   const total=parseFloat(document.getElementById('calc-total').value)||0;
