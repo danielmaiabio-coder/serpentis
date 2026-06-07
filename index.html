@@ -1247,52 +1247,60 @@ window.removerCapa=async function(){
   }catch(e){showToast('Erro ao remover.');}
 };
 
-window.uploadCapa=function(e){
+window.uploadCapa=async function(e){
   const file=e.target.files[0];if(!file)return;
-  const reader=new FileReader();reader.onload=ev=>{
+  showToast('Enviando capa...');
+  try{
+    const url=await uploadToCloudinary(file);
     const capaPreview=document.getElementById('perfil-capa-preview');
-    if(capaPreview)capaPreview.src=ev.target.result;
-    // Update visible capa immediately
+    if(capaPreview)capaPreview.src=url;
     const capaImg=document.getElementById('perfil-capa-preview-img');
-    if(capaImg){capaImg.src=ev.target.result;}
+    if(capaImg){capaImg.src=url;}
     else{
       const area=document.querySelector('.perfil-capa-placeholder');
-      if(area){
-        area.outerHTML='<div style="position:relative;width:100%;"><img src="'+ev.target.result+'" class="perfil-capa" id="perfil-capa-preview-img"/><label style="cursor:pointer;" onclick="document.getElementById(\'input-capa\').click()"><span class="perfil-capa-edit">✏️ Alterar capa</span></label></div>';
-      }
+      if(area) area.outerHTML='<img src="'+url+'" class="perfil-capa" id="perfil-capa-preview-img"/>';
     }
-    showToast('Capa carregada! Clique em salvar.');
-  };reader.readAsDataURL(file);
+    showToast('Capa pronta! Clique em salvar.');
+  }catch(e){showToast('Erro ao enviar capa.');}
 };
 
-window.uploadFoto=function(e){
+window.uploadFoto=async function(e){
   const file=e.target.files[0];if(!file)return;
-  const reader=new FileReader();reader.onload=ev=>{
-    const preview=document.getElementById('perfil-foto-preview');if(preview)preview.src=ev.target.result;
-    const av=document.getElementById('perfil-av-preview');if(av){av.innerHTML='<img src="'+ev.target.result+'" alt="foto"/>';}
-    showToast('Foto carregada! Clique em salvar.');
-  };reader.readAsDataURL(file);
+  showToast('Enviando foto...');
+  try{
+    const url=await uploadToCloudinary(file);
+    const preview=document.getElementById('perfil-foto-preview');
+    if(preview)preview.src=url;
+    const av=document.getElementById('perfil-av-preview');
+    if(av){av.innerHTML='<img src="'+url+'" alt="foto"/>';}
+    const bigImg=document.querySelector('.perfil-avatar-big img');
+    if(bigImg)bigImg.src=url;
+    showToast('Foto pronta! Clique em salvar.');
+  }catch(e){showToast('Erro ao enviar foto.');}
 };
 window.salvarPerfil=async function(){
   const nome=document.getElementById('perfil-nome').value.trim();
   const fotoEl=document.getElementById('perfil-foto-preview');
   const capaEl=document.getElementById('perfil-capa-preview');
-  const foto=fotoEl&&fotoEl.src&&!fotoEl.src.endsWith(window.location.href)?fotoEl.src:null;
-  const capa=capaEl&&capaEl.src&&!capaEl.src.endsWith(window.location.href)?capaEl.src:null;
-  const bgColor=window._bgSelecionado!==undefined?window._bgSelecionado:'';
+  const fotoSrc=fotoEl?fotoEl.src:'';
+  const capaSrc=capaEl?capaEl.src:'';
+  const foto=(fotoSrc&&fotoSrc.length>10&&fotoSrc!==window.location.href&&!fotoSrc.endsWith('/'))?fotoSrc:null;
+  const capa=(capaSrc&&capaSrc.length>10&&capaSrc!==window.location.href&&!capaSrc.endsWith('/'))?capaSrc:null;
+  const bgColor=window._bgSelecionado!==undefined?window._bgSelecionado:(userProfile.bgColor||'');
   if(!nome){showToast('Digite seu nome.');return;}
   try{
     const updates={nome,bgColor};
-    if(foto)updates.foto=foto;
-    if(capa)updates.capa=capa;
+    if(foto&&foto!==userProfile.foto) updates.foto=foto;
+    if(capa&&capa!==userProfile.capa) updates.capa=capa;
     await setDoc(doc(db,'usuarios',currentUser.uid),updates,{merge:true});
     userProfile.nome=nome;
     userProfile.bgColor=bgColor;
-    if(foto)userProfile.foto=foto;
-    if(capa)userProfile.capa=capa;
+    if(updates.foto) userProfile.foto=updates.foto;
+    if(updates.capa) userProfile.capa=updates.capa;
     aplicarBg(bgColor);
-    updateSidebarUser();showToast('Perfil atualizado!');
-  }catch(e){showToast('Erro ao salvar.');}
+    updateSidebarUser();
+    showToast('Perfil atualizado!');
+  }catch(e){showToast('Erro: '+e.message);}
 };
 
 function aplicarBg(bg){
