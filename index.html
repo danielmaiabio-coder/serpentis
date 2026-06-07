@@ -2005,62 +2005,6 @@ window.salvarPerfil=async function(){
 
 
 
-async function renderAcido(mc){
-  mc.innerHTML = snakeHtml()+
-    '<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;">'+
-    '<div class="page-eyebrow">* Chat da Uol</div>'+
-    '<div class="page-title"><img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780767902/uol_dqoo8g.webp" style="width:28px;height:28px;object-fit:contain;vertical-align:middle;margin-right:8px;"/>Chat da Uol</div>'+
-    '<div class="page-sub">Mensagens em tempo real</div>'+
-    '</div>'+
-    '<div class="page-sub">Mensagens em tempo real</div>'+
-    '<div class="chat-wrap">'+
-      '<div class="chat-messages" id="chat-msgs"><div class="empty">Carregando mensagens...</div></div>'+
-      '<div id="chat-attach-preview" style="display:none;margin-bottom:8px;"></div>'+
-      '<div class="chat-input-row">'+
-        '<label class="chat-attach-btn" title="Foto ou arquivo">'+
-          '<input type="file" id="chat-file-input" style="display:none;" onchange="chatFileSelected(event)"/>'+
-          '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>'+
-        '</label>'+
-        '<textarea id="chat-input" placeholder="Digite uma mensagem..." rows="1" onkeydown="chatKeyDown(event)"></textarea>'+
-        '<button class="chat-send-btn" onclick="enviarMensagem()">Enviar</button>'+
-      '</div>'+
-    '</div>';
-
-  // Load messages with realtime
-  const { onSnapshot, orderBy, limit, query: fsQuery } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
-  const q = fsQuery(collection(db,'chat_acido'), orderBy('ts','asc'), limit(100));
-  if(acidoUnsub) acidoUnsub();
-  acidoUnsub = onSnapshot(q, snap => {
-    const msgsEl = document.getElementById('chat-msgs');
-    if(!msgsEl) { if(acidoUnsub){acidoUnsub();acidoUnsub=null;} return; }
-    msgsEl.innerHTML = '';
-    snap.forEach(d => {
-      const msg = d.data();
-      const mine = msg.uid === currentUser.uid;
-      const div = document.createElement('div');
-      div.className = 'chat-msg '+(mine?'mine':'theirs');
-      let content = '';
-      if(!mine) content += '<div class="chat-msg-name">'+(msg.nome||'?')+'</div>';
-      if(msg.tipo==='imagem'){
-        content += '<img class="chat-msg-img" src="'+msg.url+'" onclick="window.open(\''+msg.url+'\',\'_blank\')" />';
-      } else if(msg.tipo==='arquivo'){
-        content += '<a class="chat-msg-bubble chat-msg-file" href="'+msg.url+'" target="_blank" download>'+
-          '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>'+
-          (msg.nome_arquivo||'Arquivo')+'</a>';
-      } else {
-        content += '<div class="chat-msg-bubble">'+msg.texto+'</div>';
-      }
-      const h = new Date(msg.ts);
-      const canDelete = mine || userProfile.role==='coord';
-      content += '<div class="chat-msg-time">'+h.getHours().toString().padStart(2,'0')+':'+h.getMinutes().toString().padStart(2,'0')+
-        (canDelete?' &nbsp;<span onclick="deletarMsgChat(\''+d.id+'\')" style="cursor:pointer;opacity:0.4;font-size:10px;" title="Excluir">&#x2715;</span>':'')+
-        '</div>';
-      div.innerHTML = content;
-      msgsEl.appendChild(div);
-    });
-    msgsEl.scrollTop = msgsEl.scrollHeight;
-  });
-}
 
 window.chatFileSelected = function(e){
   const file = e.target.files[0]; if(!file) return;
@@ -2116,90 +2060,6 @@ window.deletarMsgChat=async function(msgId){
 };
 let feedUploading = false;
 
-async function renderFeed(mc){
-  const snap = await getDocs(collection(db,'feed_posts'));
-  const posts = [];
-  snap.forEach(d => posts.push({id:d.id,...d.data()}));
-  posts.sort((a,b)=>(b.ts||0)-(a.ts||0));
-
-  let postsHtml = '';
-  for(const post of posts){
-    const commSnap = await getDocs(collection(db,'feed_posts',post.id,'comentarios'));
-    const comms = [];
-    commSnap.forEach(d => comms.push({id:d.id,...d.data()}));
-    comms.sort((a,b)=>(a.ts||0)-(b.ts||0));
-    const ini = (post.autor||'?')[0].toUpperCase();
-    const avHtml = post.autorFoto?'<img src="'+post.autorFoto+'" alt=""/>':ini;
-    const canDeletePost = post.uid===currentUser.uid || userProfile.role==='coord';
-    postsHtml += '<div class="feed-card"><div class="feed-card-inner">';
-    postsHtml += '<div class="feed-card-img-wrap">';
-    if(post.imagemUrl) postsHtml += '<img class="feed-card-img" src="'+post.imagemUrl+'" alt="post"/>';
-    postsHtml += '</div>';
-    postsHtml += '<div class="feed-card-body">';
-    postsHtml += '<div class="feed-card-header"><div class="feed-card-av">'+avHtml+'</div>'+
-      '<div style="flex:1;"><div class="feed-card-author">'+post.autor+'</div><div class="feed-card-date">'+(post.data||'')+'</div></div>'+
-      (canDeletePost?'<button class="btn-ghost" style="font-size:11px;padding:4px 10px;" onclick="deletarPost(\''+post.id+'\')">Excluir</button>':'')+
-      '</div>';
-    if(post.legenda) postsHtml += '<div class="feed-card-caption">'+post.legenda+'</div>';
-    postsHtml += '<div class="feed-comments">';
-    comms.forEach(c => {
-      const cini = (c.autor||'?')[0].toUpperCase();
-      const cavHtml = c.autorFoto?'<img src="'+c.autorFoto+'" alt=""/>':cini;
-      const canDeleteComm = c.uid===currentUser.uid || userProfile.role==='coord';
-      postsHtml += '<div class="feed-comment"><div class="feed-comment-av">'+cavHtml+'</div>'+
-        '<div class="feed-comment-body"><div class="feed-comment-name">'+c.autor+
-        (canDeleteComm?' <span onclick="deletarComentario(\''+post.id+'\',\''+c.id+'\')" style="cursor:pointer;opacity:0.4;font-size:10px;margin-left:4px;">&#x2715;</span>':'')+
-        '</div><div class="feed-comment-text">'+c.texto+'</div></div></div>';
-    });
-    postsHtml += '</div>';
-    postsHtml += '<div class="feed-comment-input"><input type="text" id="comm-input-'+post.id+'" placeholder="Comentar..." onkeydown="if(event.key===\'Enter\')comentarPost(\''+post.id+'\')"/><button onclick="comentarPost(\''+post.id+'\')">Enviar</button></div>';
-    postsHtml += '</div></div></div>';
-  }
-
-  mc.innerHTML = snakeHtml()+
-    '<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;">'+
-    '<div>'+
-    '<div class="page-eyebrow">* Feed da Cobranca</div>'+
-    '<div class="page-title">Feed da Cobranca</div>'+
-    '<div class="page-sub" style="margin-bottom:1rem;">Fotos e momentos do time</div>'+
-    '<div style="margin-bottom:1.25rem;">'+
-      '<div style="position:relative;display:inline-block;">'+
-        '<button class="postar-btn" onclick="abrirModalPost()">'+
-          '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>'+
-          'Postar'+
-        '</button>'+
-        '<svg class="postar-btn-tail" viewBox="0 0 22 10" fill="none" xmlns="http://www.w3.org/2000/svg">'+
-          '<path d="M0 5 Q6 5 10 2 Q14 -1 18 3 Q20 5 22 5" stroke="#1A5C2A" stroke-width="2" fill="none" stroke-linecap="round"/>'+
-          '<circle cx="21" cy="5" r="2" fill="#2E8B45"/>'+
-        '</svg>'+
-      '</div>'+
-    '</div>'+
-    '</div>'+
-    '</div>'+
-    '<div id="feed-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;align-items:center;justify-content:center;">'+
-      '<div style="background:var(--surface);border-radius:var(--radius-lg);padding:1.5rem;width:100%;max-width:480px;box-shadow:0 20px 60px rgba(0,0,0,0.3);">'+
-        '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;">'+
-          '<div style="font-size:15px;font-weight:500;color:var(--text);">Nova publicacao</div>'+
-          '<button onclick="fecharModalPost()" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:18px;">&#x2715;</button>'+
-        '</div>'+
-        '<label style="cursor:pointer;" onclick="document.getElementById(\'feed-file-input\').click()">'+
-          '<div class="upload-area">'+
-            '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="1.5" style="margin-bottom:8px;"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>'+
-            '<div class="upload-area-text">Clique para selecionar uma foto</div>'+
-          '</div>'+
-        '</label>'+
-        '<input type="file" id="feed-file-input" accept="image/*" style="display:none;" onchange="feedPreview(event)"/>'+
-        '<img id="feed-img-preview" class="upload-preview"/>'+
-        '<div style="margin-bottom:12px;"><label class="inp-label">Legenda</label><textarea class="inp" id="feed-legenda" rows="3" placeholder="Escreva uma legenda..." style="resize:none;"></textarea></div>'+
-        '<div style="display:flex;align-items:center;gap:10px;">'+
-          '<button class="btn-blue" onclick="publicarPost()">Publicar</button>'+
-          '<span id="feed-uploading" style="font-size:12px;color:var(--text-3);display:none;">Enviando...</span>'+
-        '</div>'+
-      '</div>'+
-    '</div>'+
-    (posts.length===0?'<div class="empty">Nenhuma publicacao ainda. Seja o primeiro!</div>':
-    '<div class="feed-grid">'+postsHtml+'</div>');
-}
 
 window.feedPreview = function(e){
   const file = e.target.files[0]; if(!file) return;
@@ -2285,28 +2145,6 @@ window.deletarComentario=async function(postId,commId){
 let escritorioTab='registros';
 let escritorioOpAtual=null;
 
-async function renderEscritorio(mc){
-  const {isCoord}=getPerms();
-  if(!isCoord){mc.innerHTML=snakeHtml()+'<div class="empty">Acesso restrito ao coordenador.</div>';return;}
-  const snap=await getDocs(collection(db,'usuarios'));
-  const ops=[];
-  snap.forEach(d=>{const data=d.data();if(data.role==='op')ops.push({uid:d.id,...data});});
-  mc.innerHTML=snakeHtml()+
-    '<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;">'+
-    '<div class="page-eyebrow">🗂️ Escritorio</div>'+
-    '<div class="page-title">Escritorio</div>'+
-    '<div class="page-sub">Registros e anotacoes por operador — visivel apenas para coordenadores</div>'+
-    '</div>'+
-    ops.map(op=>{
-      const ini=(op.nome||'?').split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
-      const avHtml=op.foto?'<img src="'+op.foto+'" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/>':ini;
-      return'<div class="escritorio-card" onclick="abrirEscritorio(\''+op.uid+'\')">'+
-        '<div class="op-av" style="background:'+(op.cor||'#1A5C2A')+';color:#fff;">'+avHtml+'</div>'+
-        '<div><div class="op-nm">'+op.nome+'</div><div class="op-mt">'+(op.email||'')+'</div></div>'+
-        '<div style="margin-left:auto;font-size:12px;color:var(--primary);">Abrir →</div>'+
-      '</div>';
-    }).join('');
-}
 
 window.abrirEscritorio=async function(uid){
   escritorioOpAtual=uid;
@@ -2315,22 +2153,6 @@ window.abrirEscritorio=async function(uid){
   await renderEscritorioOp(document.getElementById('mainContent'),op);
 };
 
-async function renderEscritorioOp(mc,op){
-  const ini=(op.nome||'?').split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
-  let html=snakeHtml()+
-    '<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;">'+
-    '<div style="display:flex;align-items:center;gap:10px;">'+
-    '<button onclick="renderEscritorio(document.getElementById(\'mainContent\'))" style="background:none;border:none;cursor:pointer;color:var(--primary);font-size:13px;padding:0;margin-right:4px;">← Voltar</button>'+
-    '<div class="op-av" style="background:'+(op.cor||'#1A5C2A')+';color:#fff;">'+(op.foto?'<img src="'+op.foto+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/>':ini)+'</div>'+
-    '<div><div class="page-eyebrow">🗂️ Escritorio</div><div class="page-title">'+op.nome+'</div></div></div></div>'+
-    '<div style="display:flex;gap:8px;margin-bottom:1.25rem;">'+
-    '<button class="escr-tab '+(escritorioTab==='registros'?'active':'')+'" onclick="setEscrTab(\'registros\')">Registros</button>'+
-    '<button class="escr-tab '+(escritorioTab==='semanal'?'active':'')+'" onclick="setEscrTab(\'semanal\')">Semanal</button>'+
-    '</div>'+
-    '<div id="escr-content"></div>';
-  mc.innerHTML=html;
-  await carregarEscrConteudo(op);
-}
 
 window.setEscrTab=async function(tab){
   escritorioTab=tab;
@@ -2341,38 +2163,6 @@ window.setEscrTab=async function(tab){
   await carregarEscrConteudo(op);
 };
 
-async function carregarEscrConteudo(op){
-  const cont=document.getElementById('escr-content');
-  if(!cont)return;
-  const snap=await getDocs(collection(db,'escritorio',op.uid,escritorioTab));
-  const notas=[];snap.forEach(d=>notas.push({id:d.id,...d.data()}));
-  notas.sort((a,b)=>(b.ts||0)-(a.ts||0));
-
-  cont.innerHTML=
-    '<div class="panel" style="margin-bottom:1rem;">'+
-    '<div class="panel-title">Nova nota — '+(escritorioTab==='registros'?'Registro':'Semanal')+'</div>'+
-    '<div style="margin-bottom:10px;"><label class="inp-label">Titulo</label><input type="text" class="inp" id="escr-titulo" placeholder="Ex: Aviso verbal - 06/06/2026"/></div>'+
-    '<div style="margin-bottom:10px;"><label class="inp-label">Conteudo</label><textarea class="inp" id="escr-texto" rows="5" style="resize:vertical;" placeholder="Escreva aqui..."></textarea></div>'+
-    '<div style="margin-bottom:12px;"><label class="inp-label">Arquivo (opcional)</label>'+
-    '<label style="display:flex;align-items:center;gap:8px;padding:8px 12px;border:1px solid var(--border-md);border-radius:var(--radius);cursor:pointer;font-size:12px;color:var(--text-2);">'+
-    '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>'+
-    '<span id="escr-file-label">Selecionar arquivo</span>'+
-    '<input type="file" id="escr-file" style="display:none;" onchange="escr_previewFile(event)"/></label></div>'+
-    '<button class="btn-blue" onclick="salvarEscrNota(\''+op.uid+'\')">Salvar nota</button>'+
-    '</div>'+
-    (notas.length===0?'<div class="panel"><div class="empty">Nenhuma nota ainda.</div></div>':
-    notas.map(n=>'<div class="escr-nota">'+
-      '<div class="escr-nota-title"><span>'+n.titulo+'</span>'+
-      '<div style="display:flex;align-items:center;gap:8px;">'+
-      '<span style="font-size:11px;color:var(--text-3);">'+( n.data||'')+'</span>'+
-      '<button class="btn-ghost" onclick="deletarEscrNota(\''+op.uid+'\',\''+n.id+'\')">Excluir</button>'+
-      '</div></div>'+
-      '<div class="escr-nota-body">'+n.texto+'</div>'+
-      (n.arquivoUrl?'<a href="'+n.arquivoUrl+'" target="_blank" class="escr-arquivo" style="margin-top:10px;text-decoration:none;">'+
-        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>'+
-        '<span class="escr-arquivo-nome">'+(n.arquivoNome||'Arquivo')+'</span>'+
-        '<span style="font-size:11px;color:var(--primary);">Abrir</span></a>':'')+'</div>').join(''));
-}
 
 window.escr_previewFile=function(e){
   const file=e.target.files[0];
