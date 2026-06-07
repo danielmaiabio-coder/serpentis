@@ -1611,7 +1611,6 @@ window.deletarMsgChat=async function(msgId){
   if(!confirm('Excluir mensagem?'))return;
   try{await deleteDoc(doc(db,'chat_acido',msgId));} catch(e){showToast('Erro ao excluir.');}
 };
-let feedUploading = false;
 
 async function renderFeed(mc){
   const snap = await getDocs(collection(db,'feed_posts'));
@@ -1779,8 +1778,6 @@ window.deletarComentario=async function(postId,commId){
 
 
 // ESCRITORIO
-let escritorioTab='registros';
-let escritorioOpAtual=null;
 
 async function renderEscritorio(mc){
   const {isCoord}=getPerms();
@@ -2007,7 +2004,6 @@ window.salvarPerfil=async function(){
 // ACIDO CHAT
 
 
-let acidoUnsub = null;
 
 async function renderAcido(mc){
   mc.innerHTML = snakeHtml()+
