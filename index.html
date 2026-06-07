@@ -1038,7 +1038,7 @@ async function xadrezRenderBoard(el,gameId,gd){
     for(const c of cols){
       const light=(r+c)%2===0;const piece=board[r][c];const sq=String.fromCharCode(97+c)+(r+1);
       html+='<div id="sq-'+sq+'" onclick="xadrezClick(\''+sq+'\')" style="width:64px;height:64px;background:'+(light?'#f0d9b5':'#b58863')+';display:flex;align-items:center;justify-content:center;font-size:44px;cursor:pointer;user-select:none;">'+
-        (piece?'<span style="text-shadow:0 1px 4px rgba(0,0,0,0.4);">'+XP[piece]+'</span>':'')+'</div>';
+        (piece?'<span style="text-shadow:0 1px 4px rgba(0,0,0,0.4);pointer-events:none;">'+XP[piece]+'</span>':'')+'</div>';
     }
     html+='</div>';
   }
@@ -1055,12 +1055,17 @@ async function xadrezRenderBoard(el,gameId,gd){
   xadrezGameUnsub=onSnapshot(doc(db,'xadrez_games',gameId),async snap=>{
     if(!snap.exists())return;const data=snap.data();
     if(data.status==='finished'){
-      el.innerHTML='<div class="panel" style="text-align:center;padding:2rem;">'+
+      const xel=document.getElementById('xadrez-content');
+      if(xel)xel.innerHTML='<div class="panel" style="text-align:center;padding:2rem;">'+
         '<div style="font-size:24px;margin-bottom:1rem;">🏆 Partida encerrada!</div>'+
         '<div style="font-size:14px;color:var(--text-2);margin-bottom:1.5rem;">'+(data.winner||'Empate!')+'</div>'+
         '<button class="btn-blue" onclick="xadrezCheckState(document.getElementById(\'xadrez-content\'))">Nova partida</button></div>';return;
     }
-    await xadrezRenderBoard(el,gameId,data);
+    // Only re-render when it's now our turn (opponent just moved)
+    if(data.turn===xadrezMyColor){
+      const xel=document.getElementById('xadrez-content');
+      if(xel)await xadrezRenderBoard(xel,gameId,data);
+    }
   });
 }
 
