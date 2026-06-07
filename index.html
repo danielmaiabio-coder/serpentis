@@ -1637,12 +1637,12 @@ async function openDMConv(peer, convId){
         bubble.innerHTML = pAv + '<div style="display:flex;flex-direction:column;align-items:flex-start;">'+
           '<div class="chat-msg-name">'+peer.nome+'</div>'+
           '<div class="chat-msg-bubble">'+m.texto+'</div>'+
-          '<div class="chat-msg-time">'+time+(canDel?' &nbsp;<span onclick="deletarDM(''+d.id+'')" style="cursor:pointer;opacity:0.4;font-size:10px;" title="Excluir">&#x2715;</span>':'')+'</div>'+
+          '<div class="chat-msg-time">'+time+(canDel?' &nbsp;<span onclick="deletarDM(\''+d.id+'\')" style="cursor:pointer;opacity:0.4;font-size:10px;" title="Excluir">&#x2715;</span>':'')+'</div>'+
           '</div>';
       } else {
         bubble.innerHTML =
           '<div class="chat-msg-bubble">'+m.texto+'</div>'+
-          '<div class="chat-msg-time">'+time+(canDel?' &nbsp;<span onclick="deletarDM(''+d.id+'')" style="cursor:pointer;opacity:0.4;font-size:10px;" title="Excluir">&#x2715;</span>':'')+'</div>';
+          '<div class="chat-msg-time">'+time+(canDel?' &nbsp;<span onclick="deletarDM(\''+d.id+'\')" style="cursor:pointer;opacity:0.4;font-size:10px;" title="Excluir">&#x2715;</span>':'')+'</div>';
       }
       msgsEl.appendChild(bubble);
     });
