@@ -2656,8 +2656,8 @@ window.abrirPerfil=async function(uid){
     '</div></div>'+
 
     // Profile card
-    '<div class="panel" style="padding:0;overflow:hidden;margin-bottom:1.25rem;">'+
-    (u.capa?'<img src="'+u.capa+'" style="width:100%;height:200px;object-fit:cover;display:block;"/>':'<div style="width:100%;height:200px;background:linear-gradient(135deg,#0d2e14,#1A5C2A);"></div>')+
+    '<div class="panel" style="padding:0;overflow:visible;margin-bottom:1.25rem;">'+
+    (u.capa?'<img src="'+u.capa+'" style="width:100%;height:320px;object-fit:cover;display:block;border-radius:14px 14px 0 0;"/>':'<div style="width:100%;height:320px;background:linear-gradient(135deg,#0d2e14,#1A5C2A);border-radius:14px 14px 0 0;"></div>')+
     '<div style="display:flex;flex-direction:column;align-items:center;padding:0 1.5rem 1.5rem;margin-top:-50px;">'+
     '<div style="width:100px;height:100px;border-radius:50%;background:'+(u.cor||'#1A5C2A')+';color:#fff;display:flex;align-items:center;justify-content:center;font-size:36px;font-weight:500;overflow:hidden;border:4px solid #fff;box-shadow:0 4px 12px rgba(0,0,0,0.15);">'+av+'</div>'+
     '<div style="font-size:20px;font-weight:600;color:var(--text);margin-top:10px;">'+u.nome+'</div>'+
