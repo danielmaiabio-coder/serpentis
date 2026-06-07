@@ -1014,9 +1014,11 @@ async function renderPerfil(mc){
       ?'<div class="perfil-avatar-big"><img src="'+perfil.foto+'" alt="foto"/></div>'
       :'<div class="perfil-avatar-big" id="perfil-av-preview">'+((perfil.nome||'?')[0].toUpperCase())+'</div>'
     )+
-    '<div style="display:flex;gap:6px;">'+
+    '<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;">'+
     '<label style="cursor:pointer;"><input type="file" accept="image/*" onchange="uploadFoto(event)" style="display:none;"/><span style="padding:4px 12px;background:rgba(0,0,0,0.45);color:#fff;border-radius:20px;font-size:11px;border:1px solid rgba(255,255,255,0.3);backdrop-filter:blur(4px);">Alterar foto</span></label>'+
+    (perfil.foto?'<span onclick="removerFoto()" style="padding:4px 12px;background:rgba(180,0,0,0.5);color:#fff;border-radius:20px;font-size:11px;cursor:pointer;border:1px solid rgba(255,255,255,0.2);backdrop-filter:blur(4px);">Remover foto</span>':'')+
     '<label onclick="document.getElementById(\'input-capa\').click()" style="cursor:pointer;"><span style="padding:4px 12px;background:rgba(0,0,0,0.45);color:#fff;border-radius:20px;font-size:11px;border:1px solid rgba(255,255,255,0.3);backdrop-filter:blur(4px);">+ Capa</span></label>'+
+    (perfil.capa?'<span onclick="removerCapa()" style="padding:4px 12px;background:rgba(180,0,0,0.5);color:#fff;border-radius:20px;font-size:11px;cursor:pointer;border:1px solid rgba(255,255,255,0.2);backdrop-filter:blur(4px);">Remover capa</span>':'')+
     '</div></div>'+
     '<input type="file" id="input-capa" accept="image/*" style="display:none;" onchange="uploadCapa(event)"/>'+
     '<img id="perfil-capa-preview" src="'+(perfil.capa||'')+'" style="display:none;"/>'+
@@ -1212,6 +1214,26 @@ window.selecionarBg=function(i){
     el.style.border=j===i?'3px solid #fff':'3px solid transparent';
     el.style.boxShadow=j===i?'0 0 0 2px var(--primary)':'0 2px 6px rgba(0,0,0,0.15)';
   });
+};
+
+window.removerFoto=async function(){
+  if(!confirm('Remover foto de perfil?'))return;
+  try{
+    await setDoc(doc(db,'usuarios',currentUser.uid),{foto:''},{ merge:true});
+    userProfile.foto='';
+    showToast('Foto removida!');
+    await renderPerfil(document.getElementById('mainContent'));
+  }catch(e){showToast('Erro ao remover.');}
+};
+
+window.removerCapa=async function(){
+  if(!confirm('Remover foto de capa?'))return;
+  try{
+    await setDoc(doc(db,'usuarios',currentUser.uid),{capa:''},{ merge:true});
+    userProfile.capa='';
+    showToast('Capa removida!');
+    await renderPerfil(document.getElementById('mainContent'));
+  }catch(e){showToast('Erro ao remover.');}
 };
 
 window.uploadCapa=function(e){
