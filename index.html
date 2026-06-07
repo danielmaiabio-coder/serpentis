@@ -514,6 +514,7 @@ window.navigate=async function(page){
   mc.style.padding='2rem';
   mc.style.overflow='auto';
   mc.style.backgroundImage='none';
+  mc.style.background='';
   mc.innerHTML='<div class="snake-corner"><img src="'+SNAKE_IMG+'"/></div><div class="empty">Carregando...</div>';
   if(page==='equipe'){await renderEquipe(mc);return;}
   if(page==='escritorio'){await renderEscritorio(mc);return;}
@@ -835,6 +836,68 @@ async function renderEscala(mc){
   const snap2=await getDocs(collection(db,'usuarios'));
   const ops=[];
   snap2.forEach(function(d){var data=d.data();if(data.role==='op')ops.push({uid:d.id,nome:data.nome,email:data.email});});
+
+  // Check if current user is escalado THIS week
+  const hoje=new Date();
+  const nome=(userProfile.nome||'').toLowerCase();
+  let escaladoAgora=null;
+
+  function isThisWeek(datesStr){
+    if(!datesStr)return false;
+    // Parse "02/06 a 06/06" format
+    const match=datesStr.match(/(\d{2})\/(\d{2})/);
+    if(!match)return false;
+    const day=parseInt(match[1]);
+    const month=parseInt(match[2])-1;
+    const ano=hoje.getFullYear();
+    const inicio=new Date(ano,month,day);
+    const fim=new Date(inicio);fim.setDate(fim.getDate()+6);
+    return hoje>=inicio&&hoje<=fim;
+  }
+
+  [...watiPedro.map((s,i)=>({...s,wati:'WATI Pedro'})),...watiDaniel.map((s,i)=>({...s,wati:'WATI Daniel'}))].forEach(s=>{
+    if(s.operador&&s.operador.toLowerCase()===nome&&isThisWeek(s.dates)){
+      escaladoAgora={wati:s.wati,dates:s.dates};
+    }
+  });
+
+  // Load today's pontos if escalado
+  let pontosHoje=[];
+  if(escaladoAgora){
+    const dataKey=hoje.toISOString().split('T')[0];
+    try{
+      const pontoSnap=await getDocs(query(collection(db,'roteamento_pontos',currentUser.uid,'pontos'),where('dataKey','==',dataKey),orderBy('ts','asc')));
+      pontoSnap.forEach(d=>pontosHoje.push({id:d.id,...d.data()}));
+    }catch(e){pontosHoje=[];}
+  }
+
+  // Build high-five button section
+  let highFiveHtml='';
+  if(escaladoAgora&&!isCoord){
+    const agora=hoje;
+    const hora=agora.getHours();
+    const ultimo=pontosHoje.length?pontosHoje[pontosHoje.length-1]:null;
+    const passouUmaHora=!ultimo||(Date.now()-ultimo.ts)>=3600000;
+    const dentroDoPeriodo=hora>=9&&hora<20;
+    const podeBater=passouUmaHora&&dentroDoPeriodo;
+
+    highFiveHtml='<div style="background:linear-gradient(135deg,#1e3a8a,#2563eb);border-radius:var(--radius-lg);padding:1.5rem 2rem;margin-bottom:1.5rem;color:#fff;">'+
+      '<div style="font-size:11px;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">Você está escalado agora · '+escaladoAgora.wati+'</div>'+
+      '<div style="display:flex;align-items:center;gap:1.5rem;flex-wrap:wrap;">'+
+      '<div>'+
+      '<div style="font-size:15px;font-weight:500;margin-bottom:4px;">Pontos hoje: <b>'+pontosHoje.length+'</b></div>'+
+      '<div style="font-size:12px;color:rgba(255,255,255,0.6);">'+pontosHoje.map(p=>'✓ '+p.hora).join(' · ')+'</div>'+
+      '</div>'+
+      (podeBater?
+        '<button onclick="baterPontoRoteamento()" style="margin-left:auto;padding:16px 24px;background:rgba(255,255,255,0.15);border:2px solid rgba(255,255,255,0.3);border-radius:16px;cursor:pointer;font-size:36px;transition:all 0.15s;backdrop-filter:blur(4px);" title="Bater ponto de roteamento" onmouseover="this.style.background=\'rgba(255,255,255,0.25)\'" onmouseout="this.style.background=\'rgba(255,255,255,0.15)\'">🖐️</button>'
+        :
+        '<div style="margin-left:auto;padding:16px 24px;background:rgba(0,0,0,0.2);border:2px solid rgba(255,255,255,0.1);border-radius:16px;font-size:36px;opacity:0.4;" title="'+(hora<9?'Disponível a partir das 09h':!dentroDoPeriodo?'Fora do horário':'Aguarde 1h para o próximo ponto')+'">🖐️</div>'
+      )+
+      '</div>'+
+      (!podeBater?'<div style="font-size:11px;color:rgba(255,255,255,0.5);margin-top:8px;">'+(hora<9?'Disponível a partir das 09h':!dentroDoPeriodo?'Fora do período (09h-20h)':'Próximo ponto disponível em '+(60-Math.floor((Date.now()-ultimo.ts)/60000))+'min')+'</div>':'')+
+      '</div>';
+  }
+
   function renderGrid(key,semanas){
     var html='';
     for(var i=0;i<4;i++){
@@ -858,14 +921,29 @@ async function renderEscala(mc){
     }
     return html;
   }
+
   mc.innerHTML=snakeHtml()+
     '<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;"><div class="page-eyebrow">&#9679; Escala de Roteamento</div><div class="page-title">Escala do mes</div><div class="page-sub">Distribuicao dos operadores por semana</div></div>'+
+    highFiveHtml+
     '<div class="escala-section"><div class="escala-section-title">WATI Pedro</div>'+
     '<div class="escala-grid">'+renderGrid('pedro',watiPedro)+'</div></div>'+
     '<div class="escala-section"><div class="escala-section-title">WATI Daniel</div>'+
     '<div class="escala-grid">'+renderGrid('daniel',watiDaniel)+'</div></div>'+
     (isCoord?'<div style="margin-top:1rem;"><button class="btn-blue" onclick="salvarEscala()">Publicar escala</button></div>':'');
 }
+window.baterPontoRoteamento=async function(){
+  const agora=new Date();
+  const hora=agora.getHours().toString().padStart(2,'0')+':'+agora.getMinutes().toString().padStart(2,'0');
+  const dataKey=agora.toISOString().split('T')[0];
+  try{
+    await addDoc(collection(db,'roteamento_pontos',currentUser.uid,'pontos'),{
+      hora,dataKey,ts:Date.now(),nome:userProfile.nome||'?'
+    });
+    showToast('🖐️ Ponto registrado às '+hora+'!');
+    await renderEscala(document.getElementById('mainContent'));
+  }catch(e){showToast('Erro ao registrar ponto.');}
+};
+
 window.salvarEscala=async function(){
   const watiPedro=[0,1,2,3].map(i=>({dates:document.getElementById('pedro-dates-'+i).value.trim(),operador:document.getElementById('pedro-op-'+i).value}));
   const watiDaniel=[0,1,2,3].map(i=>({dates:document.getElementById('daniel-dates-'+i).value.trim(),operador:document.getElementById('daniel-op-'+i).value}));
@@ -1116,7 +1194,40 @@ async function renderPerfil(mc){
   const pedro = disp.pedro && disp.pedro.length>0 ? disp.pedro : [{hora:'',data:'',plat:'WATI PEDRO'}];
   const daniel = disp.daniel && disp.daniel.length>0 ? disp.daniel : [{hora:'',data:'',plat:'WATI DANIEL'}];
 
+  // Check escala
+  const escalaSnap=await getDoc(doc(db,'config','escala'));
+  let escalaBanner='';
+  if(escalaSnap.exists()&&!isViewer){
+    const escData=escalaSnap.data();
+    const nome=(userProfile.nome||'').toLowerCase();
+    let escalado=null;
+    // Check watiPedro weeks
+    if(escData.watiPedro){
+      escData.watiPedro.forEach((semana,i)=>{
+        if(semana.operador&&semana.operador.toLowerCase()===nome) escalado={wati:'WATI Pedro',semana:i+1,dates:semana.dates};
+      });
+    }
+    // Check watiDaniel weeks
+    if(escData.watiDaniel){
+      escData.watiDaniel.forEach((semana,i)=>{
+        if(semana.operador&&semana.operador.toLowerCase()===nome) escalado={wati:'WATI Daniel',semana:i+1,dates:semana.dates};
+      });
+    }
+    if(escalado){
+      escalaBanner='<div style="background:linear-gradient(135deg,#1e3a8a,#2563eb);border-radius:var(--radius-lg);padding:18px 24px;margin-bottom:1.25rem;display:flex;align-items:center;gap:16px;box-shadow:0 4px 20px rgba(37,99,235,0.3);">'+
+        '<div style="font-size:28px;">🔀</div>'+
+        '<div>'+
+        '<div style="font-size:11px;font-weight:500;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">Escala de Roteamento</div>'+
+        '<div style="font-size:16px;font-weight:600;color:#fff;">Você está escalado esta semana!</div>'+
+        '<div style="font-size:13px;color:rgba(255,255,255,0.75);margin-top:2px;">'+escalado.wati+' &nbsp;·&nbsp; Semana '+escalado.semana+(escalado.dates?' &nbsp;·&nbsp; '+escalado.dates:'')+'</div>'+
+        '</div>'+
+        '<button onclick="navigate(\'escala\')" style="margin-left:auto;padding:8px 16px;background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.2);border-radius:20px;font-family:var(--font);font-size:12px;cursor:pointer;">Ver escala</button>'+
+        '</div>';
+    }
+  }
+
   mc.innerHTML += 
+    escalaBanner+
     (!isViewer ? mensalBanner+meetBanner : '')+
     (!isViewer ?
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.25rem;">'+
@@ -2181,8 +2292,14 @@ function showToast(msg){const t=document.getElementById('toast');t.textContent=m
 
 // CADERNO
 async function renderCaderno(mc){
-  const snap=await getDocs(query(collection(db,'caderno',currentUser.uid,'notas'),orderBy('ts','desc')));
-  const notas=[];snap.forEach(d=>notas.push({id:d.id,...d.data()}));
+  let notas=[];
+  try{
+    const snap=await getDocs(query(collection(db,'caderno',currentUser.uid,'notas'),orderBy('ts','desc')));
+    snap.forEach(d=>notas.push({id:d.id,...d.data()}));
+  }catch(e){
+    // Collection doesn't exist yet - that's fine, start empty
+    notas=[];
+  }
 
   mc.style.background='#f0ebe0';
   mc.style.backgroundImage='repeating-linear-gradient(transparent,transparent 31px,#d9cfbd 31px,#d9cfbd 32px)';
