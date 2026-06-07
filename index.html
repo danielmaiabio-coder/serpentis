@@ -941,9 +941,9 @@ async function renderXadrez(mc){
 
 async function xadrezCheckState(el){
   if(!el)return;
-  const gameSnap=await getDocs(fsQuery(collection(db,'xadrez_games'),where('status','==','active'),where('players','array-contains',currentUser.uid),limit(1)));
+  const gameSnap=await getDocs(query(collection(db,'xadrez_games'),where('status','==','active'),where('players','array-contains',currentUser.uid),limit(1)));
   if(!gameSnap.empty){await xadrezRenderBoard(el,gameSnap.docs[0].id,gameSnap.docs[0].data());return;}
-  const invSnap=await getDocs(fsQuery(collection(db,'xadrez_invites'),where('to','==',currentUser.uid),where('status','==','pending'),limit(1)));
+  const invSnap=await getDocs(query(collection(db,'xadrez_invites'),where('to','==',currentUser.uid),where('status','==','pending'),limit(1)));
   if(!invSnap.empty){
     const inv=invSnap.docs[0].data();
     el.innerHTML='<div class="panel" style="text-align:center;padding:2rem;">'+
@@ -989,7 +989,7 @@ window.desafiarXadrez=async function(toUid,toNome){
 };
 
 window.cancelarDesafio=async function(){
-  const snap=await getDocs(fsQuery(collection(db,'xadrez_invites'),where('from','==',currentUser.uid),where('status','==','pending'),limit(1)));
+  const snap=await getDocs(query(collection(db,'xadrez_invites'),where('from','==',currentUser.uid),where('status','==','pending'),limit(1)));
   for(const d of snap.docs)await deleteDoc(doc(db,'xadrez_invites',d.id));
   await xadrezCheckState(document.getElementById('xadrez-content'));
 };
@@ -1525,7 +1525,7 @@ async function renderAcido(mc){
 
   // Load messages with realtime
   const { onSnapshot, orderBy, limit, query: fsQuery } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
-  const q = fsQuery(collection(db,'chat_acido'), orderBy('ts','asc'), limit(100));
+  const q = query(collection(db,'chat_acido'), orderBy('ts','asc'), limit(100));
   if(acidoUnsub) acidoUnsub();
   acidoUnsub = onSnapshot(q, snap => {
     const msgsEl = document.getElementById('chat-msgs');
@@ -2225,7 +2225,7 @@ function hideBadge(id){
 
 async function setupBadges(){
   // Chat da Uol - listen for new messages
-  const chatQ=fsQuery(collection(db,'chat_acido'),orderBy('ts','desc'),limit(1));
+  const chatQ=query(collection(db,'chat_acido'),orderBy('ts','desc'),limit(1));
   const u1=onSnapshot(chatQ,snap=>{
     if(!snap.empty){
       const msg=snap.docs[0].data();
@@ -2235,7 +2235,7 @@ async function setupBadges(){
   unsubBadges.push(u1);
 
   // Feed - listen for new posts
-  const feedQ=fsQuery(collection(db,'feed_posts'),orderBy('ts','desc'),limit(1));
+  const feedQ=query(collection(db,'feed_posts'),orderBy('ts','desc'),limit(1));
   const u2=onSnapshot(feedQ,snap=>{
     if(!snap.empty){
       const post=snap.docs[0].data();
@@ -2246,7 +2246,7 @@ async function setupBadges(){
 
   // Feedbacks - new feedback for this user
   if(userProfile.role!=='coord'){
-    const fbQ=fsQuery(collection(db,'feedbacks',currentUser.uid,'registros'),orderBy('ts','desc'),limit(1));
+    const fbQ=query(collection(db,'feedbacks',currentUser.uid,'registros'),orderBy('ts','desc'),limit(1));
     const u3=onSnapshot(fbQ,snap=>{
       if(!snap.empty){
         const fb=snap.docs[0].data();
@@ -2257,7 +2257,7 @@ async function setupBadges(){
   }
 
   // Resultado - new semana
-  const semQ=fsQuery(collection(db,'semanas'),orderBy('ts','desc'),limit(1));
+  const semQ=query(collection(db,'semanas'),orderBy('ts','desc'),limit(1));
   const u4=onSnapshot(semQ,snap=>{
     if(!snap.empty){
       const s=snap.docs[0].data();
