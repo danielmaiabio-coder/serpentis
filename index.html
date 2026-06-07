@@ -489,31 +489,33 @@ function buildNav(){
     {id:'equipe',label:'Minha Equipe'},{id:'lancar',label:'Lancar Resultados'},
     {id:'escritorio',label:'🗂️ Escritorio'},
     {sep:true,label:'OPERADOR'},
-    {id:'resultado',label:'Resultado'},{id:'historico',label:'Historico'},{id:'notas',label:'Analise de Chat'},{id:'dashboard',label:'Dashboard'},{id:'feedback',label:'Feedbacks'},
+    {id:'resultado',label:'Resultado'},{id:'historico',label:'Historico'},{id:'notas',label:'Analise de Chat'},{id:'dashboard',label:'Dashboard'},
     {sep:true,label:'GERAL'},
-    {id:'dm',label:'💬 Mensagens'},{id:'acido',label:'<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780767902/uol_dqoo8g.webp" style="width:16px;height:16px;object-fit:contain;vertical-align:middle;margin-right:4px;"/> Chat da Uol'},{id:'feed',label:'Feed da Cobranca'},
+    {id:'acido',label:'<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780767902/uol_dqoo8g.webp" style="width:16px;height:16px;object-fit:contain;vertical-align:middle;margin-right:4px;"/> Chat da Uol'},{id:'feed',label:'Feed da Cobranca'},{id:'dm',label:'💬 Mensagens'},
     {id:'copys',label:'Banco de Copys'},{id:'links',label:'Links de Reneg.'},{id:'escala',label:'Escala de Roteamento'},
     {id:'calc',label:'🧮 Calculadoras'},
     {id:'planilha',label:'⚡ Automacoes Planilha'},
     {id:'perfis',label:'👥 Perfis'},
     {sep:true,label:'CONTA'},
+    {id:'perfil',label:'Pagina Inicial'},
     {id:'caderno',label:'📓 Caderno'},
     {id:'basilisco',label:'Basilisco'},
-    {id:'perfil',label:'Pagina Inicial'},
+    {id:'feedback',label:'Feedbacks'},
   ];
   const opNavs=[
-    {id:'resultado',label:'Resultado'},{id:'historico',label:'Historico'},{id:'notas',label:'Analise de Chat'},{id:'dashboard',label:'Dashboard'},{id:'feedback',label:'Feedbacks'},
+    {id:'resultado',label:'Resultado'},{id:'historico',label:'Historico'},{id:'notas',label:'Analise de Chat'},{id:'dashboard',label:'Dashboard'},
     ...(canLancar && !isCoord ? [{id:'lancar',label:'Lancar Resultados'}] : []),
     {sep:true,label:'GERAL'},
-    {id:'dm',label:'💬 Mensagens'},{id:'acido',label:'<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780767902/uol_dqoo8g.webp" style="width:16px;height:16px;object-fit:contain;vertical-align:middle;margin-right:4px;"/> Chat da Uol'},{id:'feed',label:'Feed da Cobranca'},
+    {id:'acido',label:'<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780767902/uol_dqoo8g.webp" style="width:16px;height:16px;object-fit:contain;vertical-align:middle;margin-right:4px;"/> Chat da Uol'},{id:'feed',label:'Feed da Cobranca'},{id:'dm',label:'💬 Mensagens'},
     {id:'copys',label:'Banco de Copys'},{id:'links',label:'Links de Reneg.'},{id:'escala',label:'Escala de Roteamento'},
     {id:'calc',label:'🧮 Calculadoras'},
     {id:'planilha',label:'⚡ Automacoes Planilha'},
     {id:'perfis',label:'👥 Perfis'},
     {sep:true,label:'CONTA'},
+    {id:'perfil',label:'Pagina Inicial'},
     {id:'caderno',label:'📓 Caderno'},
     {id:'basilisco',label:'Basilisco'},
-    {id:'perfil',label:'Pagina Inicial'},
+    {id:'feedback',label:'Feedbacks'},
   ];
   const isViewer=userProfile.role==='viewer';
   const viewerNavs=[
@@ -522,9 +524,9 @@ function buildNav(){
     {id:'feed',label:'Feed da Cobranca'},
     {id:'perfis',label:'👥 Perfis'},
     {sep:true,label:'CONTA'},
+    {id:'perfil',label:'Pagina Inicial'},
     {id:'caderno',label:'📓 Caderno'},
     {id:'basilisco',label:'Basilisco'},
-    {id:'perfil',label:'Pagina Inicial'},
   ];
   const navs=isCoord?coordNavs:(isViewer?viewerNavs:opNavs);
   document.getElementById('navItems').innerHTML=navs.map(n=>
