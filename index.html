@@ -57,6 +57,13 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
 .nav-item{display:flex;align-items:center;gap:9px;padding:8px 1rem;font-size:13px;color:rgba(255,255,255,0.6);cursor:pointer;border-left:2px solid transparent;transition:all 0.12s;user-select:none;}
 .nav-item:hover{background:rgba(255,255,255,0.08);color:#fff;}
 .nav-item.active{color:#fff;background:rgba(46,139,69,0.35);border-left-color:#4CAF6A;font-weight:500;}
+.nav-badge{display:inline-block;width:7px;height:7px;border-radius:50%;background:#4CAF6A;margin-left:auto;flex-shrink:0;box-shadow:0 0 4px #4CAF6A;}
+.nav-badge.red{background:#e53e3e;box-shadow:0 0 6px #e53e3e;}
+@keyframes pulse-badge{0%,100%{transform:scale(1);opacity:1;}50%{transform:scale(1.5);opacity:0.7;}}
+.nav-badge.pulse{animation:pulse-badge 1s infinite;}
+.toast-big{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:linear-gradient(135deg,#0d2e14,#1A5C2A);color:#fff;padding:2rem 3rem;border-radius:18px;font-size:18px;font-weight:600;z-index:9999;box-shadow:0 20px 60px rgba(0,0,0,0.5);text-align:center;pointer-events:none;opacity:0;transition:opacity 0.3s;}
+.toast-big.show{opacity:1;}
+
 .sb-bottom{margin-top:auto;padding:1rem;border-top:1px solid rgba(255,255,255,0.1);}
 .sb-user{display:flex;align-items:center;gap:9px;margin-bottom:10px;}
 .sb-avatar{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;flex-shrink:0;overflow:hidden;}
@@ -164,7 +171,7 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
 .link-card-btn{padding:6px 14px;background:var(--primary);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap;text-decoration:none;display:inline-block;}
 .link-card-btn:hover{background:#0d3a19;}
 .perfil-avatar-area{display:flex;flex-direction:column;align-items:center;gap:12px;padding:2rem;background:var(--bg);border-radius:var(--radius-lg);margin-bottom:1.25rem;}
-.perfil-avatar-big{width:90px;height:90px;border-radius:50%;background:var(--primary-light);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:500;color:var(--primary);overflow:hidden;border:3px solid var(--primary-mid);}
+.perfil-avatar-big{width:180px;height:180px;border-radius:50%;background:var(--primary-light);display:flex;align-items:center;justify-content:center;font-size:56px;font-weight:500;color:var(--primary);overflow:hidden;border:3px solid var(--primary-mid);}
 .perfil-avatar-big img{width:100%;height:100%;object-fit:cover;}
 .reuniao-banner{display:flex;align-items:center;justify-content:space-between;background:linear-gradient(135deg,#0d2e14 0%,#1A5C2A 100%);color:#fff;border-radius:var(--radius-lg);padding:18px 24px;margin-bottom:1.25rem;gap:12px;flex-wrap:wrap;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(13,46,20,0.25);}
 .reuniao-banner::before{content:'';position:absolute;top:-30px;right:-30px;width:120px;height:120px;background:rgba(255,255,255,0.04);border-radius:50%;}
@@ -411,6 +418,11 @@ function setupApp(){
   hide('loginScreen');show('appShell','flex');
   updateSidebarUser();buildNav();
   if(userProfile.bgColor) aplicarBg(userProfile.bgColor);
+  // Request notification permission and setup badges
+  if('Notification' in window && Notification.permission==='default'){
+    Notification.requestPermission();
+  }
+  setupBadges();
   navigate(userProfile.role==='coord'?'perfil':'perfil');
 }
 
@@ -455,7 +467,7 @@ function buildNav(){
   const navs=isCoord?coordNavs:opNavs;
   document.getElementById('navItems').innerHTML=navs.map(n=>
     n.sep?'<div class="sb-label">'+n.label+'</div>':
-    '<div class="nav-item" id="nav-'+n.id+'" onclick="navigate(\''+n.id+'\')">'+( SVG[n.id]||'')+' '+n.label+'</div>'
+    '<div class="nav-item" id="nav-'+n.id+'" onclick="navigate(\''+n.id+'\')">'+( SVG[n.id]||'')+' '+n.label+'<span class="nav-badge" id="badge-'+n.id+'" style="display:none;"></span></div>'
   ).join('');
 }
 
@@ -463,6 +475,7 @@ window.navigate=async function(page){
   activePage=page;
   document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
   const el=document.getElementById('nav-'+page);if(el)el.classList.add('active');
+  hideBadge(page);
   const mc=document.getElementById('mainContent');
   // Reset padding (Basilisco removes it)
   mc.style.padding='2rem';
@@ -822,7 +835,7 @@ async function renderEscala(mc){
 window.salvarEscala=async function(){
   const watiPedro=[0,1,2,3].map(i=>({dates:document.getElementById('pedro-dates-'+i).value.trim(),operador:document.getElementById('pedro-op-'+i).value}));
   const watiDaniel=[0,1,2,3].map(i=>({dates:document.getElementById('daniel-dates-'+i).value.trim(),operador:document.getElementById('daniel-op-'+i).value}));
-  try{await setDoc(doc(db,'config','escala'),{watiPedro,watiDaniel});showToast('Escala publicada!');await renderEscala(document.getElementById('mainContent'));}
+  try{await setDoc(doc(db,'config','escala'),{watiPedro,watiDaniel,ts:Date.now()});showToast('Escala publicada!');await renderEscala(document.getElementById('mainContent'));}
   catch(e){showToast('Erro.');}
 };
 
@@ -1070,8 +1083,13 @@ window.salvarDisparos=async function(id){
     const snap=await getDoc(doc(db,'config','disparos'));
     const atual=snap.exists()?snap.data():{};
     atual[id]=slots;
+    atual.ts=Date.now();
     await setDoc(doc(db,'config','disparos'),atual);
     showToast('Disparos salvos!');
+    // MAX NOTIFICATION
+    toastBig('Novos disparos salvos! Confira em Meu Perfil.');
+    notificarBrowser('🚨 Disparos atualizados!','O coordenador atualizou os horarios de disparo. Confira em Meu Perfil.');
+    if(!isMuted){CHOCALHO_SOM.currentTime=0;CHOCALHO_SOM.play().catch(()=>{});}
     await renderPerfil(document.getElementById('mainContent'));
   }catch(e){showToast('Erro ao salvar.');}
 };
@@ -1572,6 +1590,103 @@ window.deletarEscrNota=async function(opUid,nId){
     await carregarEscrConteudo(op);
   }catch(e){showToast('Erro ao excluir.');}
 };
+
+// NOTIFICATION SYSTEM
+const BADGES = ['resultado','feedback','acido','feed','escala','perfil'];
+let lastSeen = JSON.parse(localStorage.getItem('lastSeen')||'{}');
+let unsubBadges = [];
+
+function showBadge(id, pulse=false){
+  const el=document.getElementById('badge-'+id);
+  if(el){el.style.display='inline-block';if(pulse){el.classList.add('red','pulse');}else{el.classList.remove('red','pulse');}}
+}
+function hideBadge(id){
+  const el=document.getElementById('badge-'+id);
+  if(el)el.style.display='none';
+  lastSeen[id]=Date.now();
+  localStorage.setItem('lastSeen',JSON.stringify(lastSeen));
+}
+
+async function setupBadges(){
+  // Chat da Uol - listen for new messages
+  const chatQ=fsQuery(collection(db,'chat_acido'),orderBy('ts','desc'),limit(1));
+  const u1=onSnapshot(chatQ,snap=>{
+    if(!snap.empty){
+      const msg=snap.docs[0].data();
+      if(msg.uid!==currentUser.uid&&msg.ts>(lastSeen.acido||0)){showBadge('acido');}
+    }
+  });
+  unsubBadges.push(u1);
+
+  // Feed - listen for new posts
+  const feedQ=fsQuery(collection(db,'feed_posts'),orderBy('ts','desc'),limit(1));
+  const u2=onSnapshot(feedQ,snap=>{
+    if(!snap.empty){
+      const post=snap.docs[0].data();
+      if(post.uid!==currentUser.uid&&post.ts>(lastSeen.feed||0)){showBadge('feed');}
+    }
+  });
+  unsubBadges.push(u2);
+
+  // Feedbacks - new feedback for this user
+  if(userProfile.role!=='coord'){
+    const fbQ=fsQuery(collection(db,'feedbacks',currentUser.uid,'registros'),orderBy('ts','desc'),limit(1));
+    const u3=onSnapshot(fbQ,snap=>{
+      if(!snap.empty){
+        const fb=snap.docs[0].data();
+        if(fb.ts>(lastSeen.feedback||0)){showBadge('feedback');}
+      }
+    });
+    unsubBadges.push(u3);
+  }
+
+  // Resultado - new semana
+  const semQ=fsQuery(collection(db,'semanas'),orderBy('ts','desc'),limit(1));
+  const u4=onSnapshot(semQ,snap=>{
+    if(!snap.empty){
+      const s=snap.docs[0].data();
+      if(s.ts>(lastSeen.resultado||0)){showBadge('resultado');}
+    }
+  });
+  unsubBadges.push(u4);
+
+  // Escala - config changes
+  const u5=onSnapshot(doc(db,'config','escala'),snap=>{
+    if(snap.exists()){
+      const ts=snap.data().ts||0;
+      if(ts>(lastSeen.escala||0)){showBadge('escala');}
+    }
+  });
+  unsubBadges.push(u5);
+
+  // Disparos (perfil) - coordenador salva disparos → badge pulsante vermelho para todos
+  const u6=onSnapshot(doc(db,'config','disparos'),snap=>{
+    if(snap.exists()){
+      const ts=snap.data().ts||0;
+      if(ts>(lastSeen.perfil||0)){showBadge('perfil',true);}
+    }
+  });
+  unsubBadges.push(u6);
+}
+
+function notificarBrowser(titulo, corpo){
+  if(!('Notification' in window)) return;
+  if(Notification.permission==='granted'){
+    new Notification(titulo,{body:corpo,icon:'https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780780614/chocalho_1_in7jon.png'});
+  } else if(Notification.permission!=='denied'){
+    Notification.requestPermission().then(p=>{
+      if(p==='granted') new Notification(titulo,{body:corpo});
+    });
+  }
+}
+
+function toastBig(msg){
+  let el=document.getElementById('toast-big');
+  if(!el){el=document.createElement('div');el.id='toast-big';el.className='toast-big';document.body.appendChild(el);}
+  el.innerHTML='🚨 '+msg;
+  el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'),4000);
+}
 
 function show(id,display='block'){document.getElementById(id).style.display=display;}
 function hide(id){document.getElementById(id).style.display='none';}
