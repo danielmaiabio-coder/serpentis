@@ -1006,7 +1006,19 @@ async function renderPerfil(mc){
   // Load Meet link and Disparos
   const isCoord = userProfile.role==='coord';
   const cfgSnap2 = await getDoc(doc(db,'config','reuniao'));
-  const meetLink = cfgSnap2.exists()? cfgSnap2.data().link||'' : '';
+  const reuniao = cfgSnap2.exists()? cfgSnap2.data() : {};
+  const meetLink = reuniao.meet||'';
+
+  let meetBanner='<div class="reuniao-banner">';
+  meetBanner+='<div class="reuniao-info">';
+  meetBanner+='<div class="reuniao-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>';
+  meetBanner+='<div><div class="reuniao-label">Reuniao Semanal</div>';
+  meetBanner+='<div class="reuniao-datetime">'+(reuniao.horario?reuniao.horario+(reuniao.data?' &nbsp;&middot;&nbsp; '+reuniao.data:''):'Nenhuma reuniao agendada')+'</div>';
+  meetBanner+='</div></div>';
+  meetBanner+='<div class="reuniao-actions">';
+  if(meetLink) meetBanner+='<a class="reuniao-meet-btn" href="'+meetLink+'" target="_blank"><span class="reuniao-meet-dot"></span>Entrar no Meet</a>';
+  if(isCoord) meetBanner+='<button class="reuniao-edit-btn" onclick="editarReuniao()">Editar</button>';
+  meetBanner+='</div></div>';
 
   const dispSnap = await getDoc(doc(db,'config','disparos'));
   const disp = dispSnap.exists()? dispSnap.data() : {};
@@ -1016,16 +1028,7 @@ async function renderPerfil(mc){
   while(daniel.length<5) daniel.push({});
 
   mc.innerHTML += 
-    // Meet banner
-    '<div style="background:linear-gradient(135deg,#0d2e14,#1A5C2A);border-radius:14px;padding:1.5rem 2rem;margin-bottom:1.25rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;">'+
-      '<div style="display:flex;align-items:center;gap:12px;">'+
-        '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>'+
-        '<div><div style="font-size:11px;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:0.08em;">Integracao Google Meet</div>'+
-        '<div style="font-size:14px;color:#fff;font-weight:500;">'+(meetLink?'Reuniao semanal':'Nenhum link configurado')+'</div></div>'+
-      '</div>'+
-      (meetLink?'<a href="'+meetLink+'" target="_blank" style="padding:8px 18px;background:rgba(255,255,255,0.15);color:#fff;border-radius:20px;font-size:13px;text-decoration:none;border:1px solid rgba(255,255,255,0.2);">Entrar na reuniao</a>':'')+
-      (isCoord?'<div style="display:flex;gap:8px;align-items:center;"><input type="text" id="meet-link-input" value="'+meetLink+'" placeholder="https://meet.google.com/..." style="padding:7px 12px;border-radius:var(--radius);border:1px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.1);color:#fff;font-family:var(--font);font-size:12px;width:280px;"/><button onclick="salvarMeetLink()" style="padding:7px 14px;background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.3);border-radius:var(--radius);color:#fff;font-family:var(--font);font-size:12px;cursor:pointer;">Salvar</button></div>':'')+
-    '</div>'+
+    meetBanner+
 
     // Disparos
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.25rem;">'+
@@ -1053,12 +1056,6 @@ function renderDisparosCard(id, titulo, slots, isCoord){
     (isCoord?'<button onclick="salvarDisparos(\''+id+'\')" class="btn-blue" style="font-size:12px;padding:7px 16px;margin-top:4px;">Salvar</button>':'')+
   '</div>';
 }
-
-window.salvarMeetLink=async function(){
-  const link=document.getElementById('meet-link-input').value.trim();
-  try{await setDoc(doc(db,'config','reuniao'),{link},{merge:true});showToast('Link salvo!');await renderPerfil(document.getElementById('mainContent'));}
-  catch(e){showToast('Erro ao salvar.');}
-};
 
 window.salvarDisparos=async function(id){
   const slots=[];
