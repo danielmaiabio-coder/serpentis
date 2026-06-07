@@ -434,7 +434,7 @@ function updateSidebarUser(){
   const ini=(userProfile.nome||'?').split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
   document.getElementById('sbName').textContent=userProfile.nome||'&#8212;';
   document.getElementById('sbRole').textContent=userProfile.role==='coord'?'Coordenador':'Operador';
-  document.getElementById('sbSub').textContent=userProfile.role==='coord'?'Visao da equipe':'Meus resultados';
+  document.getElementById('sbSub').textContent=userProfile.role==='coord'?'Visao da equipe':'Painel Brille';
   const av=document.getElementById('sbAvatar');
   if(userProfile.foto){av.innerHTML='<img src="'+userProfile.foto+'" alt="foto"/>';}
   else{av.textContent=ini;av.style.background=userProfile.cor||'#1A5C2A';av.style.color='#fff';}
