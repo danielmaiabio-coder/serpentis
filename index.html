@@ -1048,6 +1048,11 @@ async function renderPerfil(mc){
   const reuniao = cfgSnap2.exists()? cfgSnap2.data() : {};
   const meetLink = reuniao.meet||'';
 
+  // Reuniao Mensal
+  const cfgMensal = await getDoc(doc(db,'config','reuniao_mensal'));
+  const mensal = cfgMensal.exists()? cfgMensal.data() : {};
+  const menLink = mensal.meet||'';
+
   let meetBanner='<div class="reuniao-banner">';
   meetBanner+='<div class="reuniao-info">';
   meetBanner+='<div class="reuniao-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>';
@@ -1059,17 +1064,25 @@ async function renderPerfil(mc){
   if(isCoord) meetBanner+='<button class="reuniao-edit-btn" onclick="editarReuniao()">Editar</button>';
   meetBanner+='</div></div>';
 
+  let mensalBanner='<div class="reuniao-banner" style="background:linear-gradient(135deg,#7f1d1d,#b91c1c);">';
+  mensalBanner+='<div class="reuniao-info">';
+  mensalBanner+='<div class="reuniao-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>';
+  mensalBanner+='<div><div class="reuniao-label">Reuniao Mensal</div>';
+  mensalBanner+='<div class="reuniao-datetime">'+(mensal.horario?mensal.horario+(mensal.data?' &nbsp;&middot;&nbsp; '+mensal.data:''):'Nenhuma reuniao agendada')+'</div>';
+  mensalBanner+='</div></div>';
+  mensalBanner+='<div class="reuniao-actions">';
+  if(menLink) mensalBanner+='<a class="reuniao-meet-btn" href="'+menLink+'" target="_blank"><span class="reuniao-meet-dot"></span>Entrar no Meet</a>';
+  if(isCoord) mensalBanner+='<button class="reuniao-edit-btn" onclick="editarReuniaoMensal()">Editar</button>';
+  mensalBanner+='</div></div>';
+
   const dispSnap = await getDoc(doc(db,'config','disparos'));
   const disp = dispSnap.exists()? dispSnap.data() : {};
-  const pedro = disp.pedro || [{},{},{},{},{}];
-  const daniel = disp.daniel || [{},{},{},{},{}];
-  while(pedro.length<5) pedro.push({});
-  while(daniel.length<5) daniel.push({});
+  const pedro = disp.pedro && disp.pedro.length>0 ? disp.pedro : [{hora:'',data:'',plat:'WATI PEDRO'}];
+  const daniel = disp.daniel && disp.daniel.length>0 ? disp.daniel : [{hora:'',data:'',plat:'WATI DANIEL'}];
 
   mc.innerHTML += 
     meetBanner+
-
-    // Disparos
+    mensalBanner+
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.25rem;">'+
       renderDisparosCard('pedro','Disparos Wati Pedro',pedro,isCoord)+
       renderDisparosCard('daniel','Disparos Wati Daniel',daniel,isCoord)+
@@ -1079,32 +1092,61 @@ async function renderPerfil(mc){
   window._bgSelecionado = bgAtual;
 }
 function renderDisparosCard(id, titulo, slots, isCoord){
-  return '<div class="panel">'+
+  const platDefault = id==='pedro'?'WATI PEDRO':'WATI DANIEL';
+  return '<div class="panel" id="card-disp-'+id+'">'+
     '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">'+
       '<div class="panel-title" style="margin:0;">'+titulo+'</div>'+
       (isCoord?'<button onclick="limparDisparos(\''+id+'\')" class="btn-ghost" style="font-size:11px;">Limpar</button>':'')+
     '</div>'+
-    slots.map((s,i)=>
-      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">'+
-        '<input type="text" id="disp-'+id+'-hora-'+i+'" value="'+(s.hora||'')+'" placeholder="HH/MM" style="width:90px;padding:7px 10px;border:1px solid var(--border-md);border-radius:var(--radius);font-family:var(--font);font-size:12px;background:var(--bg);" '+(isCoord?'':'readonly')+'/>'+
-        '<span style="color:var(--text-3);font-size:12px;">—</span>'+
-        '<input type="text" id="disp-'+id+'-data-'+i+'" value="'+(s.data||'')+'" placeholder="DD/MM" style="width:90px;padding:7px 10px;border:1px solid var(--border-md);border-radius:var(--radius);font-family:var(--font);font-size:12px;background:var(--bg);" '+(isCoord?'':'readonly')+'/>'+
-        '<input type="text" id="disp-'+id+'-plat-'+i+'" value="'+(s.plat||'')+'" placeholder="Plataforma" style="flex:1;padding:7px 10px;border:1px solid var(--border-md);border-radius:var(--radius);font-family:var(--font);font-size:12px;background:var(--bg);" '+(isCoord?'':'readonly')+'/>'+
-      '</div>'
-    ).join('')+
-    (isCoord?'<button onclick="salvarDisparos(\''+id+'\')" class="btn-blue" style="font-size:12px;padding:7px 16px;margin-top:4px;">Salvar</button>':'')+
+    '<div id="slots-'+id+'">'+
+    slots.map((s,i)=>dispSlotHtml(id,i,s,isCoord,platDefault)).join('')+
+    '</div>'+
+    (isCoord?
+      '<div style="display:flex;gap:8px;margin-top:8px;">'+
+      '<button onclick="addDispSlot(\''+id+'\')" class="btn-ghost" style="font-size:12px;">+ Adicionar</button>'+
+      '<button onclick="salvarDisparos(\''+id+'\')" class="btn-blue" style="font-size:12px;padding:7px 16px;">Salvar</button>'+
+      '</div>':'')+
   '</div>';
 }
 
+function dispSlotHtml(id,i,s,isCoord,platDefault){
+  return '<div id="slot-'+id+'-'+i+'" style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">'+
+    '<input type="text" id="disp-'+id+'-hora-'+i+'" value="'+(s.hora||'')+'" placeholder="HH/MM" style="width:80px;padding:7px 10px;border:1px solid var(--border-md);border-radius:var(--radius);font-family:var(--font);font-size:12px;background:var(--bg);" '+(isCoord?'':'readonly')+'/>'+
+    '<span style="color:var(--text-3);font-size:12px;">—</span>'+
+    '<input type="text" id="disp-'+id+'-data-'+i+'" value="'+(s.data||'')+'" placeholder="DD/MM" style="width:80px;padding:7px 10px;border:1px solid var(--border-md);border-radius:var(--radius);font-family:var(--font);font-size:12px;background:var(--bg);" '+(isCoord?'':'readonly')+'/>'+
+    '<input type="text" id="disp-'+id+'-plat-'+i+'" value="'+(s.plat||platDefault)+'" placeholder="Plataforma" style="flex:1;padding:7px 10px;border:1px solid var(--border-md);border-radius:var(--radius);font-family:var(--font);font-size:12px;background:var(--bg);" '+(isCoord?'':'readonly')+'/>'+
+    (isCoord&&i>0?'<button onclick="removeDispSlot(\''+id+'\','+i+')" style="padding:4px 8px;border:none;background:none;color:var(--text-3);cursor:pointer;font-size:16px;">&#x2715;</button>':'')+
+  '</div>';
+}
+
+window._dispSlotCount={pedro:0,daniel:0};
+
+window.addDispSlot=function(id){
+  const container=document.getElementById('slots-'+id);
+  const platDefault=id==='pedro'?'WATI PEDRO':'WATI DANIEL';
+  const slots=container.querySelectorAll('[id^="slot-'+id+'-"]');
+  const i=slots.length;
+  window._dispSlotCount[id]=i;
+  const div=document.createElement('div');
+  div.innerHTML=dispSlotHtml(id,i,{},true,platDefault);
+  container.appendChild(div.firstChild);
+};
+
+window.removeDispSlot=function(id,i){
+  const el=document.getElementById('slot-'+id+'-'+i);
+  if(el)el.remove();
+};
+
 window.salvarDisparos=async function(id){
+  const container=document.getElementById('slots-'+id);
   const slots=[];
-  for(let i=0;i<5;i++){
-    slots.push({
-      hora:document.getElementById('disp-'+id+'-hora-'+i).value.trim(),
-      data:document.getElementById('disp-'+id+'-data-'+i).value.trim(),
-      plat:document.getElementById('disp-'+id+'-plat-'+i).value.trim(),
-    });
-  }
+  container.querySelectorAll('[id^="slot-'+id+'-"]').forEach(row=>{
+    const idx=row.id.split('-').pop();
+    const hora=(document.getElementById('disp-'+id+'-hora-'+idx)||{}).value||'';
+    const data=(document.getElementById('disp-'+id+'-data-'+idx)||{}).value||'';
+    const plat=(document.getElementById('disp-'+id+'-plat-'+idx)||{}).value||'';
+    if(hora||data) slots.push({hora,data,plat});
+  });
   try{
     const snap=await getDoc(doc(db,'config','disparos'));
     const atual=snap.exists()?snap.data():{};
@@ -1112,7 +1154,6 @@ window.salvarDisparos=async function(id){
     atual.ts=Date.now();
     await setDoc(doc(db,'config','disparos'),atual);
     showToast('Disparos salvos!');
-    // MAX NOTIFICATION
     toastBig('Novos disparos salvos! Confira em Meu Perfil.');
     notificarBrowser('🚨 Disparos atualizados!','O coordenador atualizou os horarios de disparo. Confira em Meu Perfil.');
     if(!isMuted){CHOCALHO_SOM.currentTime=0;CHOCALHO_SOM.play().catch(()=>{});}
@@ -1120,12 +1161,25 @@ window.salvarDisparos=async function(id){
   }catch(e){showToast('Erro ao salvar.');}
 };
 
-window.limparDisparos=async function(id){
+window.editarReuniaoMensal=async function(){
+  const snap=await getDoc(doc(db,'config','reuniao_mensal'));
+  const r=snap.exists()?snap.data():{};
+  const horario=prompt('Horario (ex: 09:00)',r.horario||'');
+  if(horario===null) return;
+  const data=prompt('Data (ex: 13/06)',r.data||'');
+  if(data===null) return;
+  const meet=prompt('Link do Meet',r.meet||'');
+  if(meet===null) return;
+  await setDoc(doc(db,'config','reuniao_mensal'),{horario,data,meet},{merge:true});
+  showToast('Reuniao Mensal atualizada!');
+  await renderPerfil(document.getElementById('mainContent'));
+};
   if(!confirm('Limpar todos os disparos de '+id+'?'))return;
   try{
     const snap=await getDoc(doc(db,'config','disparos'));
     const atual=snap.exists()?snap.data():{};
-    atual[id]=[{},{},{},{},{}];
+    const platDefault=id==='pedro'?'WATI PEDRO':'WATI DANIEL';
+    atual[id]=[{hora:'',data:'',plat:platDefault}];
     await setDoc(doc(db,'config','disparos'),atual);
     showToast('Limpo!');
     await renderPerfil(document.getElementById('mainContent'));
