@@ -2003,16 +2003,6 @@ window.salvarPerfil=async function(){
   }catch(e){showToast('Erro: '+e.message);}
 };
 
-function aplicarBg(bg){
-  const shell=document.getElementById('appShell');
-  if(bg){
-    shell.style.background=bg;
-    document.body.style.background=bg;
-  } else {
-    shell.style.background='';
-    document.body.style.background='';
-  }
-}
 
 // ACIDO CHAT
 const CLOUDINARY_CLOUD = 'dbd9hpwyb';
