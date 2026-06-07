@@ -427,14 +427,14 @@ function setupApp(){
     Notification.requestPermission();
   }
   setupBadges();
-  navigate(userProfile.role==='coord'?'perfil':'perfil');
+  navigate('perfil');
 }
 
 function updateSidebarUser(){
   const ini=(userProfile.nome||'?').split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
   document.getElementById('sbName').textContent=userProfile.nome||'&#8212;';
   document.getElementById('sbRole').textContent=userProfile.role==='coord'?'Coordenador':'Operador';
-  document.getElementById('sbSub').textContent=userProfile.role==='coord'?'Visao da equipe':'Painel Brille';
+  document.getElementById('sbSub').textContent=userProfile.role==='coord'?'Visao da equipe':(userProfile.role==='viewer'?'Painel Brille':'Painel Brille');
   const av=document.getElementById('sbAvatar');
   if(userProfile.foto){av.innerHTML='<img src="'+userProfile.foto+'" alt="foto"/>';}
   else{av.textContent=ini;av.style.background=userProfile.cor||'#1A5C2A';av.style.color='#fff';}
@@ -468,7 +468,16 @@ function buildNav(){
     {id:'basilisco',label:'Basilisco'},
     {id:'perfil',label:'Pagina Inicial'},
   ];
-  const navs=isCoord?coordNavs:opNavs;
+  const isViewer=userProfile.role==='viewer';
+  const viewerNavs=[
+    {sep:true,label:'GERAL'},
+    {id:'acido',label:'<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780767902/uol_dqoo8g.webp" style="width:16px;height:16px;object-fit:contain;vertical-align:middle;margin-right:4px;"/> Chat da Uol'},
+    {id:'feed',label:'Feed da Cobranca'},
+    {sep:true,label:'CONTA'},
+    {id:'basilisco',label:'Basilisco'},
+    {id:'perfil',label:'Pagina Inicial'},
+  ];
+  const navs=isCoord?coordNavs:(isViewer?viewerNavs:opNavs);
   document.getElementById('navItems').innerHTML=navs.map(n=>
     n.sep?'<div class="sb-label">'+n.label+'</div>':
     '<div class="nav-item" id="nav-'+n.id+'" onclick="navigate(\''+n.id+'\')">'+( SVG[n.id]||'')+' '+n.label+'<span class="nav-badge" id="badge-'+n.id+'" style="display:none;"></span></div>'
@@ -1047,6 +1056,15 @@ async function renderPerfil(mc){
 
   // Load Meet link and Disparos
   const isCoord = userProfile.role==='coord';
+  const isViewer = userProfile.role==='viewer';
+
+  // Viewers don't see meet or disparos
+  if(isViewer){
+    window._bgTemas = TEMAS;
+    window._bgSelecionado = bgAtual;
+    return;
+  }
+
   const cfgSnap2 = await getDoc(doc(db,'config','reuniao'));
   const reuniao = cfgSnap2.exists()? cfgSnap2.data() : {};
   const meetLink = reuniao.meet||'';
