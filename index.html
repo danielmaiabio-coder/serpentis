@@ -217,6 +217,32 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
 .empty{text-align:center;padding:3rem 1rem;color:var(--text-3);font-size:13px;}
 .toast{position:fixed;bottom:24px;right:24px;background:#0d2e14;color:#fff;font-size:13px;padding:10px 16px;border-radius:var(--radius);opacity:0;transform:translateY(8px);transition:all 0.2s;pointer-events:none;z-index:999;}
 .toast.show{opacity:1;transform:translateY(0);}
+
+/* DMs */
+.dm-wrap{display:flex;height:calc(100vh - 140px);gap:0;border-radius:var(--radius-lg);overflow:hidden;border:1px solid var(--border);background:var(--surface);}
+.dm-sidebar{width:260px;flex-shrink:0;border-right:1px solid var(--border);display:flex;flex-direction:column;background:var(--bg);}
+.dm-sidebar-header{padding:14px 16px;font-size:13px;font-weight:600;color:var(--text);border-bottom:1px solid var(--border);}
+.dm-contact{display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;transition:background 0.12s;border-bottom:1px solid var(--border);position:relative;}
+.dm-contact:hover{background:var(--surface);}
+.dm-contact.active{background:var(--primary-light);border-left:3px solid var(--primary);}
+.dm-contact-av{width:36px;height:36px;border-radius:50%;flex-shrink:0;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:#fff;background:var(--primary);}
+.dm-contact-av img{width:100%;height:100%;object-fit:cover;}
+.dm-contact-info{flex:1;min-width:0;}
+.dm-contact-name{font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.dm-contact-preview{font-size:11px;color:var(--text-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px;}
+.dm-contact-unread{width:8px;height:8px;border-radius:50%;background:#22c55e;flex-shrink:0;}
+.dm-main{flex:1;display:flex;flex-direction:column;min-width:0;}
+.dm-main-header{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;background:var(--surface);}
+.dm-main-header-av{width:32px;height:32px;border-radius:50%;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#fff;background:var(--primary);flex-shrink:0;}
+.dm-main-header-av img{width:100%;height:100%;object-fit:cover;}
+.dm-messages{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:6px;padding:1rem;}
+.dm-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--text-3);font-size:13px;gap:8px;}
+.dm-input-row{display:flex;gap:8px;padding:12px 16px;border-top:1px solid var(--border);align-items:flex-end;}
+.dm-input-row textarea{flex:1;padding:9px 12px;border:1px solid var(--border-md);border-radius:var(--radius);background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px;resize:none;max-height:100px;min-height:40px;}
+.dm-input-row textarea:focus{outline:none;border-color:var(--primary-mid);}
+.dm-send-btn{padding:9px 16px;background:var(--primary);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:13px;font-weight:500;cursor:pointer;}
+.dm-send-btn:hover{background:#0d3a19;}
+
 /* CHAT */
 .chat-wrap{display:flex;flex-direction:column;height:calc(100vh - 180px);}
 .chat-messages{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding:1rem;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);margin-bottom:10px;}
@@ -465,7 +491,7 @@ function buildNav(){
     {sep:true,label:'OPERADOR'},
     {id:'resultado',label:'Resultado'},{id:'historico',label:'Historico'},{id:'notas',label:'Analise de Chat'},{id:'dashboard',label:'Dashboard'},{id:'feedback',label:'Feedbacks'},
     {sep:true,label:'GERAL'},
-    {id:'acido',label:'<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780767902/uol_dqoo8g.webp" style="width:16px;height:16px;object-fit:contain;vertical-align:middle;margin-right:4px;"/> Chat da Uol'},{id:'feed',label:'Feed da Cobranca'},
+    {id:'dm',label:'💬 Mensagens'},{id:'acido',label:'<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780767902/uol_dqoo8g.webp" style="width:16px;height:16px;object-fit:contain;vertical-align:middle;margin-right:4px;"/> Chat da Uol'},{id:'feed',label:'Feed da Cobranca'},
     {id:'copys',label:'Banco de Copys'},{id:'links',label:'Links de Reneg.'},{id:'escala',label:'Escala de Roteamento'},
     {id:'calc',label:'🧮 Calculadoras'},
     {id:'planilha',label:'⚡ Automacoes Planilha'},
@@ -479,7 +505,7 @@ function buildNav(){
     {id:'resultado',label:'Resultado'},{id:'historico',label:'Historico'},{id:'notas',label:'Analise de Chat'},{id:'dashboard',label:'Dashboard'},{id:'feedback',label:'Feedbacks'},
     ...(canLancar && !isCoord ? [{id:'lancar',label:'Lancar Resultados'}] : []),
     {sep:true,label:'GERAL'},
-    {id:'acido',label:'<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780767902/uol_dqoo8g.webp" style="width:16px;height:16px;object-fit:contain;vertical-align:middle;margin-right:4px;"/> Chat da Uol'},{id:'feed',label:'Feed da Cobranca'},
+    {id:'dm',label:'💬 Mensagens'},{id:'acido',label:'<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780767902/uol_dqoo8g.webp" style="width:16px;height:16px;object-fit:contain;vertical-align:middle;margin-right:4px;"/> Chat da Uol'},{id:'feed',label:'Feed da Cobranca'},
     {id:'copys',label:'Banco de Copys'},{id:'links',label:'Links de Reneg.'},{id:'escala',label:'Escala de Roteamento'},
     {id:'calc',label:'🧮 Calculadoras'},
     {id:'planilha',label:'⚡ Automacoes Planilha'},
@@ -492,7 +518,7 @@ function buildNav(){
   const isViewer=userProfile.role==='viewer';
   const viewerNavs=[
     {sep:true,label:'GERAL'},
-    {id:'acido',label:'<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780767902/uol_dqoo8g.webp" style="width:16px;height:16px;object-fit:contain;vertical-align:middle;margin-right:4px;"/> Chat da Uol'},
+    {id:'dm',label:'💬 Mensagens'},{id:'acido',label:'<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780767902/uol_dqoo8g.webp" style="width:16px;height:16px;object-fit:contain;vertical-align:middle;margin-right:4px;"/> Chat da Uol'},
     {id:'feed',label:'Feed da Cobranca'},
     {id:'perfis',label:'👥 Perfis'},
     {sep:true,label:'CONTA'},
@@ -536,6 +562,7 @@ window.navigate=async function(page){
   if(page==='perfis'){await renderPerfis(mc);return;}
   if(page==='caderno'){await renderCaderno(mc);return;}
   if(page==='perfil'){await renderPerfil(mc);return;}
+  if(page==='dm'){await renderDM(mc);return;}
   if(page==='acido'){await renderAcido(mc);return;}
   if(page==='feed'){
     mc.style.backgroundImage='url(https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780774424/fundo-cinza-solido_jeyxuj.jpg)';
@@ -1487,6 +1514,171 @@ async function uploadToCloudinary(file){
 
 let acidoUnsub = null;
 
+
+// ── DM ────────────────────────────────────────────────────────
+let dmUnsub = null;
+let dmActivePeer = null; // {uid, nome, foto}
+
+async function renderDM(mc){
+  if(dmUnsub){dmUnsub();dmUnsub=null;}
+  dmActivePeer = null;
+
+  // Buscar todos os usuários exceto o próprio
+  const snap = await getDocs(collection(db,'usuarios'));
+  const users = [];
+  snap.forEach(d=>{ if(d.id!==currentUser.uid) users.push({uid:d.id,...d.data()}); });
+  users.sort((a,b)=>(a.nome||'').localeCompare(b.nome||''));
+
+  mc.innerHTML = snakeHtml() +
+    '<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;">' +
+      '<div class="page-eyebrow">💬 MENSAGENS</div>' +
+      '<div class="page-title">Mensagens Diretas</div>' +
+      '<div class="page-sub">Conversas privadas com a equipe</div>' +
+    '</div>' +
+    '<div class="dm-wrap">' +
+      '<div class="dm-sidebar">' +
+        '<div class="dm-sidebar-header">Equipe</div>' +
+        '<div id="dm-contacts"></div>' +
+      '</div>' +
+      '<div class="dm-main" id="dm-main">' +
+        '<div class="dm-empty">' +
+          '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.3"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>' +
+          '<span>Selecione uma conversa</span>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+
+  // Montar lista de contatos com preview da última msg
+  const contactsEl = document.getElementById('dm-contacts');
+  for(const u of users){
+    const convId = [currentUser.uid, u.uid].sort().join('_');
+    const div = document.createElement('div');
+    div.className = 'dm-contact';
+    div.id = 'dm-contact-'+u.uid;
+    const ini = (u.nome||'?').split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
+    const avHtml = u.foto
+      ? '<div class="dm-contact-av"><img src="'+u.foto+'"/></div>'
+      : '<div class="dm-contact-av">'+ini+'</div>';
+    div.innerHTML = avHtml +
+      '<div class="dm-contact-info">' +
+        '<div class="dm-contact-name">'+u.nome+'</div>' +
+        '<div class="dm-contact-preview" id="dm-prev-'+u.uid+'">...</div>' +
+      '</div>' +
+      '<div class="dm-contact-unread" id="dm-unread-'+u.uid+'" style="display:none;"></div>';
+    div.onclick = ()=>openDMConv(u, convId);
+    contactsEl.appendChild(div);
+
+    // Preview da última mensagem + badge não lida
+    const prevQ = query(collection(db,'dm_msgs'), where('convId','==',convId), orderBy('ts','desc'), limit(1));
+    onSnapshot(prevQ, s=>{
+      const prevEl = document.getElementById('dm-prev-'+u.uid);
+      const unreadEl = document.getElementById('dm-unread-'+u.uid);
+      if(!s.empty){
+        const m = s.docs[0].data();
+        if(prevEl) prevEl.textContent = (m.fromUid===currentUser.uid?'Você: ':'')+m.texto;
+        if(unreadEl && m.fromUid!==currentUser.uid && m.ts>(lastSeen['dm_'+u.uid]||0)){
+          unreadEl.style.display='block';
+        } else if(unreadEl){
+          unreadEl.style.display='none';
+        }
+      } else {
+        if(prevEl) prevEl.textContent = 'Nenhuma mensagem';
+      }
+    });
+  }
+}
+
+async function openDMConv(peer, convId){
+  if(dmUnsub){dmUnsub();dmUnsub=null;}
+  dmActivePeer = peer;
+  lastSeen['dm_'+peer.uid] = Date.now();
+  localStorage.setItem('lastSeen', JSON.stringify(lastSeen));
+  const unreadEl = document.getElementById('dm-unread-'+peer.uid);
+  if(unreadEl) unreadEl.style.display='none';
+
+  // Marcar contato ativo
+  document.querySelectorAll('.dm-contact').forEach(el=>el.classList.remove('active'));
+  const cc = document.getElementById('dm-contact-'+peer.uid);
+  if(cc) cc.classList.add('active');
+
+  const ini = (peer.nome||'?').split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
+  const avHtml = peer.foto
+    ? '<div class="dm-main-header-av"><img src="'+peer.foto+'"/></div>'
+    : '<div class="dm-main-header-av">'+ini+'</div>';
+
+  const mainEl = document.getElementById('dm-main');
+  mainEl.innerHTML =
+    '<div class="dm-main-header">'+avHtml+'<span style="font-size:13px;font-weight:600;color:var(--text);">'+peer.nome+'</span></div>' +
+    '<div class="dm-messages" id="dm-msgs"></div>' +
+    '<div class="dm-input-row">' +
+      '<textarea id="dm-input" placeholder="Mensagem para '+peer.nome+'..." rows="1" onkeydown="dmKeyDown(event)"></textarea>' +
+      '<button class="dm-send-btn" onclick="enviarDM()">Enviar</button>' +
+    '</div>';
+
+  // Listener em tempo real
+  const q = query(collection(db,'dm_msgs'), where('convId','==',convId), orderBy('ts','asc'), limit(100));
+  dmUnsub = onSnapshot(q, snap=>{
+    const msgsEl = document.getElementById('dm-msgs');
+    if(!msgsEl){if(dmUnsub){dmUnsub();dmUnsub=null;}return;}
+    msgsEl.innerHTML='';
+    snap.forEach(d=>{
+      const m = d.data();
+      const mine = m.fromUid === currentUser.uid;
+      const bubble = document.createElement('div');
+      bubble.className = 'chat-msg '+(mine?'mine':'theirs');
+      const h = new Date(m.ts);
+      const time = h.getHours().toString().padStart(2,'0')+':'+h.getMinutes().toString().padStart(2,'0');
+      const canDel = mine || userProfile.role==='coord';
+      if(!mine){
+        const pIni = (peer.nome||'?').split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
+        const pAv = peer.foto
+          ? '<img src="'+peer.foto+'" style="width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0;"/>'
+          : '<div style="width:32px;height:32px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;flex-shrink:0;">'+pIni+'</div>';
+        bubble.innerHTML = pAv + '<div style="display:flex;flex-direction:column;align-items:flex-start;">'+
+          '<div class="chat-msg-name">'+peer.nome+'</div>'+
+          '<div class="chat-msg-bubble">'+m.texto+'</div>'+
+          '<div class="chat-msg-time">'+time+(canDel?' &nbsp;<span onclick="deletarDM(''+d.id+'')" style="cursor:pointer;opacity:0.4;font-size:10px;" title="Excluir">&#x2715;</span>':'')+'</div>'+
+          '</div>';
+      } else {
+        bubble.innerHTML =
+          '<div class="chat-msg-bubble">'+m.texto+'</div>'+
+          '<div class="chat-msg-time">'+time+(canDel?' &nbsp;<span onclick="deletarDM(''+d.id+'')" style="cursor:pointer;opacity:0.4;font-size:10px;" title="Excluir">&#x2715;</span>':'')+'</div>';
+      }
+      msgsEl.appendChild(bubble);
+    });
+    msgsEl.scrollTop = msgsEl.scrollHeight;
+    // Marcar como lido
+    lastSeen['dm_'+peer.uid] = Date.now();
+    localStorage.setItem('lastSeen', JSON.stringify(lastSeen));
+  });
+}
+
+window.enviarDM = async function(){
+  if(!dmActivePeer) return;
+  const input = document.getElementById('dm-input');
+  const texto = input.value.trim();
+  if(!texto) return;
+  const convId = [currentUser.uid, dmActivePeer.uid].sort().join('_');
+  try{
+    await addDoc(collection(db,'dm_msgs'),{
+      convId, fromUid:currentUser.uid, toUid:dmActivePeer.uid,
+      nome:userProfile.nome||'?', foto:userProfile.foto||'',
+      texto, ts:Date.now()
+    });
+    input.value='';
+  }catch(e){showToast('Erro ao enviar.');}
+};
+
+window.dmKeyDown = function(e){
+  if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();enviarDM();}
+};
+
+window.deletarDM = async function(id){
+  if(!confirm('Excluir mensagem?'))return;
+  try{await deleteDoc(doc(db,'dm_msgs',id));}catch(e){showToast('Erro ao excluir.');}
+};
+// ── /DM ───────────────────────────────────────────────────────
+
 async function renderAcido(mc){
   mc.innerHTML = snakeHtml()+
     '<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;">'+
@@ -2216,7 +2408,7 @@ window.deletarEscrNota=async function(opUid,nId){
 };
 
 // NOTIFICATION SYSTEM
-const BADGES = ['resultado','feedback','acido','feed','escala','perfil'];
+const BADGES = ['resultado','feedback','acido','feed','escala','perfil','dm'];
 let lastSeen = JSON.parse(localStorage.getItem('lastSeen')||'{}');
 let unsubBadges = [];
 
@@ -2282,6 +2474,16 @@ async function setupBadges(){
     }
   });
   unsubBadges.push(u5);
+
+  // DMs - mensagens privadas não lidas
+  const dmQ=query(collection(db,'dm_msgs'),where('toUid','==',currentUser.uid),orderBy('ts','desc'),limit(1));
+  const uDM=onSnapshot(dmQ,snap=>{
+    if(!snap.empty){
+      const m=snap.docs[0].data();
+      if(m.ts>(lastSeen.dm||0)){showBadge('dm');}
+    }
+  });
+  unsubBadges.push(uDM);
 
   // Disparos (perfil) - coordenador salva disparos → badge pulsante vermelho para todos
   const u6=onSnapshot(doc(db,'config','disparos'),snap=>{
