@@ -222,8 +222,8 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
 .chat-messages{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding:1rem;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);margin-bottom:10px;}
 .chat-msg{display:flex;flex-direction:column;max-width:70%;}
 .chat-msg.mine{align-self:flex-end;align-items:flex-end;}
-.chat-msg.theirs{align-self:flex-start;align-items:flex-start;}
-.chat-msg-name{font-size:11px;color:var(--text-3);margin-bottom:3px;}
+.chat-msg.theirs{align-self:flex-start;align-items:flex-end;flex-direction:row;gap:8px;}
+.chat-msg-name{font-size:11px;font-weight:700;color:var(--text-2);margin-bottom:3px;}
 .chat-msg-bubble{padding:9px 13px;border-radius:14px;font-size:13px;line-height:1.5;word-break:break-word;}
 .chat-msg.mine .chat-msg-bubble{background:var(--primary);color:#fff;border-bottom-right-radius:4px;}
 .chat-msg.theirs .chat-msg-bubble{background:var(--bg);color:var(--text);border-bottom-left-radius:4px;}
@@ -1521,7 +1521,13 @@ async function renderAcido(mc){
       const div = document.createElement('div');
       div.className = 'chat-msg '+(mine?'mine':'theirs');
       let content = '';
-      if(!mine) content += '<div class="chat-msg-name">'+(msg.nome||'?')+'</div>';
+      if(!mine){
+        const ini=(msg.nome||'?').split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
+        const avatarHtml = msg.foto
+          ? '<img src="'+msg.foto+'" style="width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0;"/>'
+          : '<div style="width:32px;height:32px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;flex-shrink:0;">'+ini+'</div>';
+        content += avatarHtml + '<div style="display:flex;flex-direction:column;align-items:flex-start;"><div class="chat-msg-name">'+(msg.nome||'?')+'</div>';
+      }
       if(msg.tipo==='imagem'){
         content += '<img class="chat-msg-img" src="'+msg.url+'" onclick="window.open(\''+msg.url+'\',\'_blank\')" />';
       } else if(msg.tipo==='arquivo'){
@@ -1575,7 +1581,7 @@ window.enviarMensagem = async function(){
   const texto = input.value.trim();
   const file = fileInput.files[0];
   if(!texto && !file) return;
-  const base = {uid:currentUser.uid, nome:userProfile.nome||'?', ts:Date.now()};
+  const base = {uid:currentUser.uid, nome:userProfile.nome||'?', foto:userProfile.foto||'', ts:Date.now()};
   try{
     if(file){
       showToast('Enviando arquivo...');
@@ -2022,7 +2028,7 @@ window.enviarMensagem = async function(){
   const texto = input.value.trim();
   const file = fileInput.files[0];
   if(!texto && !file) return;
-  const base = {uid:currentUser.uid, nome:userProfile.nome||'?', ts:Date.now()};
+  const base = {uid:currentUser.uid, nome:userProfile.nome||'?', foto:userProfile.foto||'', ts:Date.now()};
   try{
     if(file){
       showToast('Enviando arquivo...');
