@@ -175,7 +175,7 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
 .perfil-capa-placeholder{width:100%;height:510px;background:linear-gradient(135deg,var(--primary-light),#d4edda);display:block;}
 .perfil-capa-edit{position:absolute;top:12px;right:12px;padding:5px 12px;background:rgba(0,0,0,0.45);color:#fff;border-radius:20px;font-size:11px;cursor:pointer;border:1px solid rgba(255,255,255,0.3);backdrop-filter:blur(4px);line-height:normal;}
 .perfil-avatar-over{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:6px;line-height:normal;}
-.perfil-avatar-big{width:120px;height:120px;border-radius:50%;background:var(--primary-light);display:flex;align-items:center;justify-content:center;font-size:40px;font-weight:500;color:var(--primary);overflow:hidden;border:4px solid #fff;box-shadow:0 4px 16px rgba(0,0,0,0.2);}
+.perfil-avatar-big{width:240px;height:240px;border-radius:50%;background:var(--primary-light);display:flex;align-items:center;justify-content:center;font-size:80px;font-weight:500;color:var(--primary);overflow:hidden;border:4px solid #fff;box-shadow:0 4px 16px rgba(0,0,0,0.2);}
 .perfil-avatar-big img{width:100%;height:100%;object-fit:cover;}
 .reuniao-banner{display:flex;align-items:center;justify-content:space-between;background:linear-gradient(135deg,#0d2e14 0%,#1A5C2A 100%);color:#fff;border-radius:var(--radius-lg);padding:18px 24px;margin-bottom:1.25rem;gap:12px;flex-wrap:wrap;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(13,46,20,0.25);}
 .reuniao-banner::before{content:'';position:absolute;top:-30px;right:-30px;width:120px;height:120px;background:rgba(255,255,255,0.04);border-radius:50%;}
@@ -1007,7 +1007,7 @@ async function renderPerfil(mc){
       ?'<img src="'+perfil.capa+'" class="perfil-capa" id="perfil-capa-preview-img"/>'
       :'<div class="perfil-capa-placeholder"></div>'
     )+
-    '<label onclick="document.getElementById(\'input-capa\').click()" style="cursor:pointer;"><span class="perfil-capa-edit">✏️ Alterar capa</span></label>'+
+    '<label onclick="document.getElementById(\'input-capa\').click()" style="cursor:pointer;position:absolute;top:0;left:0;width:100%;height:100%;"></label>'+
     '<div class="perfil-avatar-over">'+
     (perfil.foto
       ?'<div class="perfil-avatar-big"><img src="'+perfil.foto+'" alt="foto"/></div>'
