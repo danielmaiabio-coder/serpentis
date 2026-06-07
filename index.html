@@ -411,7 +411,7 @@ function setupApp(){
   hide('loginScreen');show('appShell','flex');
   updateSidebarUser();buildNav();
   if(userProfile.bgColor) aplicarBg(userProfile.bgColor);
-  navigate(userProfile.role==='coord'?'equipe':'resultado');
+  navigate(userProfile.role==='coord'?'perfil':'perfil');
 }
 
 function updateSidebarUser(){
@@ -1003,11 +1003,93 @@ async function renderPerfil(mc){
     '<img id="perfil-foto-preview" src="'+(perfil.foto||'')+'" style="display:none;"/>'+
     '</div>';
 
-  // Store themes for later use
+  // Load Meet link and Disparos
+  const isCoord = userProfile.role==='coord';
+  const cfgSnap2 = await getDoc(doc(db,'config','reuniao'));
+  const meetLink = cfgSnap2.exists()? cfgSnap2.data().link||'' : '';
+
+  const dispSnap = await getDoc(doc(db,'config','disparos'));
+  const disp = dispSnap.exists()? dispSnap.data() : {};
+  const pedro = disp.pedro || [{},{},{},{},{}];
+  const daniel = disp.daniel || [{},{},{},{},{}];
+  while(pedro.length<5) pedro.push({});
+  while(daniel.length<5) daniel.push({});
+
+  mc.innerHTML += 
+    // Meet banner
+    '<div style="background:linear-gradient(135deg,#0d2e14,#1A5C2A);border-radius:14px;padding:1.5rem 2rem;margin-bottom:1.25rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;">'+
+      '<div style="display:flex;align-items:center;gap:12px;">'+
+        '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>'+
+        '<div><div style="font-size:11px;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:0.08em;">Integracao Google Meet</div>'+
+        '<div style="font-size:14px;color:#fff;font-weight:500;">'+(meetLink?'Reuniao semanal':'Nenhum link configurado')+'</div></div>'+
+      '</div>'+
+      (meetLink?'<a href="'+meetLink+'" target="_blank" style="padding:8px 18px;background:rgba(255,255,255,0.15);color:#fff;border-radius:20px;font-size:13px;text-decoration:none;border:1px solid rgba(255,255,255,0.2);">Entrar na reuniao</a>':'')+
+      (isCoord?'<div style="display:flex;gap:8px;align-items:center;"><input type="text" id="meet-link-input" value="'+meetLink+'" placeholder="https://meet.google.com/..." style="padding:7px 12px;border-radius:var(--radius);border:1px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.1);color:#fff;font-family:var(--font);font-size:12px;width:280px;"/><button onclick="salvarMeetLink()" style="padding:7px 14px;background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.3);border-radius:var(--radius);color:#fff;font-family:var(--font);font-size:12px;cursor:pointer;">Salvar</button></div>':'')+
+    '</div>'+
+
+    // Disparos
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.25rem;">'+
+      renderDisparosCard('pedro','Disparos Wati Pedro',pedro,isCoord)+
+      renderDisparosCard('daniel','Disparos Wati Daniel',daniel,isCoord)+
+    '</div>';
+
   window._bgTemas = TEMAS;
   window._bgSelecionado = bgAtual;
 }
-const CHOCALHO_SOM = new Audio('https://res.cloudinary.com/dbd9hpwyb/video/upload/q_auto/f_auto/v1780718539/freesound_community-snake-hissing-6092_a1uuwb.mp3');
+function renderDisparosCard(id, titulo, slots, isCoord){
+  return '<div class="panel">'+
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">'+
+      '<div class="panel-title" style="margin:0;">'+titulo+'</div>'+
+      (isCoord?'<button onclick="limparDisparos(\''+id+'\')" class="btn-ghost" style="font-size:11px;">Limpar</button>':'')+
+    '</div>'+
+    slots.map((s,i)=>
+      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">'+
+        '<input type="text" id="disp-'+id+'-hora-'+i+'" value="'+(s.hora||'')+'" placeholder="HH/MM" style="width:90px;padding:7px 10px;border:1px solid var(--border-md);border-radius:var(--radius);font-family:var(--font);font-size:12px;background:var(--bg);" '+(isCoord?'':'readonly')+'/>'+
+        '<span style="color:var(--text-3);font-size:12px;">—</span>'+
+        '<input type="text" id="disp-'+id+'-data-'+i+'" value="'+(s.data||'')+'" placeholder="DD/MM" style="width:90px;padding:7px 10px;border:1px solid var(--border-md);border-radius:var(--radius);font-family:var(--font);font-size:12px;background:var(--bg);" '+(isCoord?'':'readonly')+'/>'+
+        '<input type="text" id="disp-'+id+'-plat-'+i+'" value="'+(s.plat||'')+'" placeholder="Plataforma" style="flex:1;padding:7px 10px;border:1px solid var(--border-md);border-radius:var(--radius);font-family:var(--font);font-size:12px;background:var(--bg);" '+(isCoord?'':'readonly')+'/>'+
+      '</div>'
+    ).join('')+
+    (isCoord?'<button onclick="salvarDisparos(\''+id+'\')" class="btn-blue" style="font-size:12px;padding:7px 16px;margin-top:4px;">Salvar</button>':'')+
+  '</div>';
+}
+
+window.salvarMeetLink=async function(){
+  const link=document.getElementById('meet-link-input').value.trim();
+  try{await setDoc(doc(db,'config','reuniao'),{link},{merge:true});showToast('Link salvo!');await renderPerfil(document.getElementById('mainContent'));}
+  catch(e){showToast('Erro ao salvar.');}
+};
+
+window.salvarDisparos=async function(id){
+  const slots=[];
+  for(let i=0;i<5;i++){
+    slots.push({
+      hora:document.getElementById('disp-'+id+'-hora-'+i).value.trim(),
+      data:document.getElementById('disp-'+id+'-data-'+i).value.trim(),
+      plat:document.getElementById('disp-'+id+'-plat-'+i).value.trim(),
+    });
+  }
+  try{
+    const snap=await getDoc(doc(db,'config','disparos'));
+    const atual=snap.exists()?snap.data():{};
+    atual[id]=slots;
+    await setDoc(doc(db,'config','disparos'),atual);
+    showToast('Disparos salvos!');
+    await renderPerfil(document.getElementById('mainContent'));
+  }catch(e){showToast('Erro ao salvar.');}
+};
+
+window.limparDisparos=async function(id){
+  if(!confirm('Limpar todos os disparos de '+id+'?'))return;
+  try{
+    const snap=await getDoc(doc(db,'config','disparos'));
+    const atual=snap.exists()?snap.data():{};
+    atual[id]=[{},{},{},{},{}];
+    await setDoc(doc(db,'config','disparos'),atual);
+    showToast('Limpo!');
+    await renderPerfil(document.getElementById('mainContent'));
+  }catch(e){showToast('Erro.');}
+};'https://res.cloudinary.com/dbd9hpwyb/video/upload/q_auto/f_auto/v1780718539/freesound_community-snake-hissing-6092_a1uuwb.mp3');
 window.balancaChocalho=function(){
   const img=document.getElementById('chocalho-logo');
   if(!img)return;
