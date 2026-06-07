@@ -978,6 +978,7 @@ async function renderPerfil(mc){
   const bgAtual=perfil.bgColor||'';
 
   const TEMAS=[
+    {nome:'Padrao',bg:''},
     {nome:'Floresta',bg:'linear-gradient(135deg,#0d2e14,#1A5C2A)'},
     {nome:'Oceano',bg:'linear-gradient(135deg,#0a1628,#1a3a6b)'},
     {nome:'Aurora',bg:'linear-gradient(135deg,#6b21a8,#db2777)'},
@@ -1034,8 +1035,8 @@ async function renderPerfil(mc){
     '<svg style="margin-left:auto;" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></button>'+
     '<div id="bg-picker" style="display:none;">'+
     '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:8px;">'+
-    TEMAS.map((t,i)=>'<div onclick="selecionarBg('+i+')" id="bg-opt-'+i+'" style="cursor:pointer;height:44px;border-radius:10px;background:'+t.bg+';border:3px solid '+(bgAtual===t.bg?'#fff':'transparent')+';box-shadow:'+(bgAtual===t.bg?'0 0 0 2px var(--primary)':'0 2px 6px rgba(0,0,0,0.15)')+';transition:all 0.15s;display:flex;align-items:flex-end;padding:4px 6px;" title="'+t.nome+'">'+
-    '<span style="font-size:9px;color:rgba(255,255,255,0.7);font-weight:500;">'+t.nome+'</span></div>').join('')+
+    TEMAS.map((t,i)=>'<div onclick="selecionarBg('+i+')" id="bg-opt-'+i+'" style="cursor:pointer;height:44px;border-radius:10px;background:'+(t.bg||'linear-gradient(135deg,#f0fdf4,#dcfce7)')+';border:3px solid '+(bgAtual===t.bg?'#fff':'transparent')+';box-shadow:'+(bgAtual===t.bg?'0 0 0 2px var(--primary)':'0 2px 6px rgba(0,0,0,0.15)')+';transition:all 0.15s;display:flex;align-items:'+(t.bg?'flex-end':'center')+';justify-content:'+(t.bg?'flex-start':'center')+';padding:4px 6px;" title="'+t.nome+'">'+
+    '<span style="font-size:9px;color:'+(t.bg?'rgba(255,255,255,0.7)':'var(--text-3)')+';font-weight:500;">'+t.nome+'</span></div>').join('')+
     '</div></div></div>'+
     '<button class="btn-blue" onclick="salvarPerfil()" style="height:42px;white-space:nowrap;align-self:flex-end;">Salvar alteracoes</button>'+
     '</div>'+
@@ -1262,10 +1263,14 @@ window.salvarPerfil=async function(){
 };
 
 function aplicarBg(bg){
-  document.getElementById('appShell').style.background=bg||'';
-  document.body.style.background=bg?'':'';
-  const main=document.getElementById('mainContent');
-  if(main)main.style.background='transparent';
+  const shell=document.getElementById('appShell');
+  if(bg){
+    shell.style.background=bg;
+    document.body.style.background=bg;
+  } else {
+    shell.style.background='';
+    document.body.style.background='';
+  }
 }
 
 // ACIDO CHAT
