@@ -454,7 +454,7 @@ function buildNav(){
     {id:'planilha',label:'⚡ Automacoes Planilha'},
     {sep:true,label:'CONTA'},
     {id:'basilisco',label:'Basilisco'},
-    {id:'perfil',label:'Meu Perfil'},
+    {id:'perfil',label:'Pagina Inicial'},
   ];
   const opNavs=[
     {id:'resultado',label:'Meu Resultado'},{id:'historico',label:'Historico'},{id:'notas',label:'Notas'},{id:'dashboard',label:'Dashboard'},{id:'feedback',label:'Feedbacks'},
@@ -466,7 +466,7 @@ function buildNav(){
     {id:'planilha',label:'⚡ Automacoes Planilha'},
     {sep:true,label:'CONTA'},
     {id:'basilisco',label:'Basilisco'},
-    {id:'perfil',label:'Meu Perfil'},
+    {id:'perfil',label:'Pagina Inicial'},
   ];
   const navs=isCoord?coordNavs:opNavs;
   document.getElementById('navItems').innerHTML=navs.map(n=>
@@ -1246,18 +1246,18 @@ window.salvarPerfil=async function(){
   const capaEl=document.getElementById('perfil-capa-preview');
   const foto=fotoEl&&fotoEl.src&&!fotoEl.src.endsWith(window.location.href)?fotoEl.src:null;
   const capa=capaEl&&capaEl.src&&!capaEl.src.endsWith(window.location.href)?capaEl.src:null;
-  const bgColor=window._bgSelecionado||'';
+  const bgColor=window._bgSelecionado!==undefined?window._bgSelecionado:'';
   if(!nome){showToast('Digite seu nome.');return;}
   try{
-    const updates={nome};
+    const updates={nome,bgColor};
     if(foto)updates.foto=foto;
     if(capa)updates.capa=capa;
-    if(bgColor)updates.bgColor=bgColor;
     await setDoc(doc(db,'usuarios',currentUser.uid),updates,{merge:true});
     userProfile.nome=nome;
+    userProfile.bgColor=bgColor;
     if(foto)userProfile.foto=foto;
     if(capa)userProfile.capa=capa;
-    if(bgColor){userProfile.bgColor=bgColor;aplicarBg(bgColor);}
+    aplicarBg(bgColor);
     updateSidebarUser();showToast('Perfil atualizado!');
   }catch(e){showToast('Erro ao salvar.');}
 };
