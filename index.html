@@ -433,7 +433,7 @@ function setupApp(){
 function updateSidebarUser(){
   const ini=(userProfile.nome||'?').split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
   document.getElementById('sbName').textContent=userProfile.nome||'&#8212;';
-  document.getElementById('sbRole').textContent=userProfile.role==='coord'?'Coordenador':'Painel Brille';
+  document.getElementById('sbRole').textContent=userProfile.role==='coord'?'Coordenador':'Operador';
   document.getElementById('sbSub').textContent=userProfile.role==='coord'?'Visao da equipe':'Meus resultados';
   const av=document.getElementById('sbAvatar');
   if(userProfile.foto){av.innerHTML='<img src="'+userProfile.foto+'" alt="foto"/>';}
@@ -1022,7 +1022,7 @@ async function renderPerfil(mc){
     '</div></div>'+
     '<div style="text-align:center;margin-bottom:1.25rem;padding:0.5rem 0;">'+
     '<div style="font-size:18px;font-weight:600;color:var(--text);">'+(perfil.nome||'&#8212;')+'</div>'+
-    '<div style="font-size:12px;color:var(--text-3);">'+(userProfile.role==='coord'?'Coordenador':'Painel Brille')+'</div>'+
+    '<div style="font-size:12px;color:var(--text-3);">'+(userProfile.role==='coord'?'Coordenador':'Operador')+'</div>'+
     '</div>'+
     '<div class="panel" style="margin-bottom:1.25rem;">'+
     '<div style="display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;">'+
