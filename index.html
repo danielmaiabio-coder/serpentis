@@ -1081,8 +1081,8 @@ async function renderPerfil(mc){
   const daniel = disp.daniel && disp.daniel.length>0 ? disp.daniel : [{hora:'',data:'',plat:'WATI DANIEL'}];
 
   mc.innerHTML += 
-    meetBanner+
     mensalBanner+
+    meetBanner+
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.25rem;">'+
       renderDisparosCard('pedro','Disparos Wati Pedro',pedro,isCoord)+
       renderDisparosCard('daniel','Disparos Wati Daniel',daniel,isCoord)+
