@@ -1070,11 +1070,13 @@ async function xadrezRenderBoard(el,gameId,gd){
 }
 
 window.xadrezClick=async function(sq){
+  console.log('Click em:', sq);
   // Get game info from DOM
   const boardEl=document.getElementById('xadrez-board');
-  if(!boardEl)return;
+  if(!boardEl){console.log('Sem boardEl');return;}
   const gameId=boardEl.dataset.gameId;
   const myColor=boardEl.dataset.myColor;
+  console.log('gameId:', gameId, 'myColor:', myColor);
   if(!gameId||!myColor){console.log('No gameId or myColor');return;}
 
   const gameSnap=await getDoc(doc(db,'xadrez_games',gameId));
