@@ -200,6 +200,19 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
 .escr-nota-body{font-size:13px;color:var(--text-2);line-height:1.65;white-space:pre-wrap;}
 .escr-arquivo{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg);border-radius:var(--radius);border:1px solid var(--border);margin-bottom:6px;}
 .escr-arquivo-nome{font-size:13px;color:var(--text);flex:1;}
+.mural-post{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1rem;margin-bottom:10px;}
+.mural-post-header{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+.mural-post-av{width:36px;height:36px;border-radius:50%;background:var(--primary-light);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:500;color:var(--primary);overflow:hidden;flex-shrink:0;}
+.mural-post-av img{width:100%;height:100%;object-fit:cover;}
+.mural-post-body{font-size:13px;color:var(--text-2);line-height:1.6;white-space:pre-wrap;}
+.mural-post-date{font-size:11px;color:var(--text-3);}
+.perfil-card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:1rem;margin-bottom:1.5rem;}
+.perfil-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;cursor:pointer;transition:all 0.15s;}
+.perfil-card:hover{border-color:var(--primary-mid);transform:translateY(-2px);box-shadow:0 4px 16px rgba(0,0,0,0.08);}
+.perfil-card-capa{width:100%;height:70px;object-fit:cover;background:linear-gradient(135deg,var(--primary-light),#d4edda);display:block;}
+.perfil-card-info{padding:0 12px 12px;margin-top:-24px;display:flex;flex-direction:column;align-items:center;text-align:center;}
+.perfil-card-av{width:48px;height:48px;border-radius:50%;background:var(--primary-light);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:500;color:var(--primary);overflow:hidden;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.1);}
+.perfil-card-av img{width:100%;height:100%;object-fit:cover;}
 .empty{text-align:center;padding:3rem 1rem;color:var(--text-3);font-size:13px;}
 .toast{position:fixed;bottom:24px;right:24px;background:#0d2e14;color:#fff;font-size:13px;padding:10px 16px;border-radius:var(--radius);opacity:0;transform:translateY(8px);transition:all 0.2s;pointer-events:none;z-index:999;}
 .toast.show{opacity:1;transform:translateY(0);}
@@ -451,7 +464,9 @@ function buildNav(){
     {id:'acido',label:'<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780767902/uol_dqoo8g.webp" style="width:16px;height:16px;object-fit:contain;vertical-align:middle;margin-right:4px;"/> Chat da Uol'},{id:'feed',label:'Feed da Cobranca'},
     {id:'copys',label:'Banco de Copys'},{id:'links',label:'Links de Reneg.'},{id:'escala',label:'Escala de Roteamento'},
     {id:'calc',label:'🧮 Calculadoras'},
-    {id:'planilha',label:'⚡ Automacoes Planilha'},    {sep:true,label:'CONTA'},
+    {id:'planilha',label:'⚡ Automacoes Planilha'},
+    {id:'perfis',label:'👥 Perfis'},
+    {sep:true,label:'CONTA'},
     {id:'basilisco',label:'Basilisco'},
     {id:'perfil',label:'Pagina Inicial'},
   ];
@@ -463,6 +478,7 @@ function buildNav(){
     {id:'copys',label:'Banco de Copys'},{id:'links',label:'Links de Reneg.'},{id:'escala',label:'Escala de Roteamento'},
     {id:'calc',label:'🧮 Calculadoras'},
     {id:'planilha',label:'⚡ Automacoes Planilha'},
+    {id:'perfis',label:'👥 Perfis'},
     {sep:true,label:'CONTA'},
     {id:'basilisco',label:'Basilisco'},
     {id:'perfil',label:'Pagina Inicial'},
@@ -471,7 +487,9 @@ function buildNav(){
   const viewerNavs=[
     {sep:true,label:'GERAL'},
     {id:'acido',label:'<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780767902/uol_dqoo8g.webp" style="width:16px;height:16px;object-fit:contain;vertical-align:middle;margin-right:4px;"/> Chat da Uol'},
-    {id:'feed',label:'Feed da Cobranca'},    {sep:true,label:'CONTA'},
+    {id:'feed',label:'Feed da Cobranca'},
+    {id:'perfis',label:'👥 Perfis'},
+    {sep:true,label:'CONTA'},
     {id:'basilisco',label:'Basilisco'},
     {id:'perfil',label:'Pagina Inicial'},
   ];
@@ -507,6 +525,7 @@ window.navigate=async function(page){
   if(page==='calcquit'){renderCalcQuit(mc);return;}
   if(page==='calcreneg'){renderCalcReneg(mc);return;}
   if(page==='planilha'){renderPlanilha(mc);return;}  if(page==='basilisco'){await renderBasilisco(mc);return;}
+  if(page==='perfis'){await renderPerfis(mc);return;}
   if(page==='perfil'){await renderPerfil(mc);return;}
   if(page==='acido'){await renderAcido(mc);return;}
   if(page==='feed'){
@@ -1099,6 +1118,28 @@ async function renderPerfil(mc){
       renderDisparosCard('pedro','Disparos Wati Pedro',pedro,isCoord)+
       renderDisparosCard('daniel','Disparos Wati Daniel',daniel,isCoord)+
     '</div>' : '');
+
+  // Mural preview - own wall
+  const muralSnap=await getDocs(query(collection(db,'mural',currentUser.uid,'recados'),orderBy('ts','desc'),limit(5)));
+  const muralPosts=[];muralSnap.forEach(d=>muralPosts.push({id:d.id,...d.data()}));
+  mc.innerHTML+='<div class="panel">'+
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">'+
+    '<div class="panel-title" style="margin:0;">✍️ Meu Mural</div>'+
+    '<button onclick="navigate(\'perfis\')" class="btn-ghost" style="font-size:12px;">Ver tudo</button>'+
+    '</div>'+
+    (muralPosts.length?muralPosts.map(p=>{
+      const pini=(p.autorNome||'?')[0].toUpperCase();
+      const pav=p.autorFoto?'<img src="'+p.autorFoto+'" alt=""/>':pini;
+      return'<div class="mural-post">'+
+        '<div class="mural-post-header">'+
+        '<div class="mural-post-av" style="background:'+(p.autorCor||'#1A5C2A')+';color:#fff;">'+pav+'</div>'+
+        '<div><div style="font-size:13px;font-weight:500;">'+p.autorNome+'</div>'+
+        '<div class="mural-post-date">'+p.data+'</div></div>'+
+        '</div>'+
+        '<div class="mural-post-body">'+p.texto+'</div>'+
+      '</div>';
+    }).join(''):'<div class="empty" style="padding:1rem;">Nenhum recado ainda. Veja os perfis da equipe!</div>')+
+    '</div>';
 
   window._bgTemas = TEMAS;
   window._bgSelecionado = bgAtual;
@@ -2132,7 +2173,113 @@ function show(id,display='block'){document.getElementById(id).style.display=disp
 function hide(id){document.getElementById(id).style.display='none';}
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
 
-// BASILISCO
+
+// PERFIS
+async function renderPerfis(mc){
+  const snap=await getDocs(collection(db,'usuarios'));
+  const users=[];
+  snap.forEach(d=>users.push({uid:d.id,...d.data()}));
+
+  mc.innerHTML=snakeHtml()+
+    '<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;">'+
+    '<div class="page-eyebrow">👥 Perfis</div>'+
+    '<div class="page-title">Perfis da equipe</div>'+
+    '<div class="page-sub">Clique em um membro para ver o perfil completo</div>'+
+    '</div>'+
+    '<div class="perfil-card-grid">'+
+    users.map(u=>{
+      const ini=(u.nome||'?')[0].toUpperCase();
+      const av=u.foto?'<img src="'+u.foto+'" alt=""/>':ini;
+      const capa=u.capa?'<img src="'+u.capa+'" class="perfil-card-capa"/>':'<div class="perfil-card-capa" style="background:'+(u.bgColor||'linear-gradient(135deg,#0d2e14,#1A5C2A)')+';"></div>';
+      return'<div class="perfil-card" onclick="abrirPerfil(\''+u.uid+'\')">'+
+        capa+
+        '<div class="perfil-card-info">'+
+        '<div class="perfil-card-av" style="background:'+(u.cor||'#1A5C2A')+';color:#fff;">'+av+'</div>'+
+        '<div style="font-size:13px;font-weight:500;color:var(--text);margin-top:6px;">'+u.nome+'</div>'+
+        '<div style="font-size:11px;color:var(--text-3);">'+(u.role==='coord'?'Coordenador':'Operador')+'</div>'+
+        '</div></div>';
+    }).join('')+
+    '</div>';
+}
+
+window.abrirPerfil=async function(uid){
+  const mc=document.getElementById('mainContent');
+  const snap=await getDoc(doc(db,'usuarios',uid));
+  if(!snap.exists())return;
+  const u={uid,...snap.data()};
+  const ini=(u.nome||'?')[0].toUpperCase();
+  const av=u.foto?'<img src="'+u.foto+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/>':ini;
+
+  // Load mural posts
+  const muralSnap=await getDocs(query(collection(db,'mural',uid,'recados'),orderBy('ts','desc'),limit(50)));
+  const posts=[];muralSnap.forEach(d=>posts.push({id:d.id,...d.data()}));
+
+  mc.innerHTML=snakeHtml()+
+    '<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;">'+
+    '<div style="display:flex;align-items:center;gap:8px;">'+
+    '<button onclick="navigate(\'perfis\')" style="background:none;border:none;cursor:pointer;color:var(--primary);font-size:13px;padding:0;">← Perfis</button>'+
+    '</div></div>'+
+
+    // Profile card
+    '<div class="panel" style="padding:0;overflow:hidden;margin-bottom:1.25rem;">'+
+    (u.capa?'<img src="'+u.capa+'" style="width:100%;height:200px;object-fit:cover;display:block;"/>':'<div style="width:100%;height:200px;background:linear-gradient(135deg,#0d2e14,#1A5C2A);"></div>')+
+    '<div style="display:flex;flex-direction:column;align-items:center;padding:0 1.5rem 1.5rem;margin-top:-50px;">'+
+    '<div style="width:100px;height:100px;border-radius:50%;background:'+(u.cor||'#1A5C2A')+';color:#fff;display:flex;align-items:center;justify-content:center;font-size:36px;font-weight:500;overflow:hidden;border:4px solid #fff;box-shadow:0 4px 12px rgba(0,0,0,0.15);">'+av+'</div>'+
+    '<div style="font-size:20px;font-weight:600;color:var(--text);margin-top:10px;">'+u.nome+'</div>'+
+    '<div style="font-size:12px;color:var(--text-3);">'+(u.role==='coord'?'Coordenador':'Operador')+'</div>'+
+    '</div></div>'+
+
+    // Mural
+    '<div class="panel">'+
+    '<div class="panel-title">Mural ✍️</div>'+
+    '<div style="margin-bottom:1rem;">'+
+    '<textarea class="inp" id="mural-texto-'+uid+'" rows="2" placeholder="Deixe um recado para '+u.nome+'..." style="resize:none;margin-bottom:8px;"></textarea>'+
+    '<button class="btn-blue" onclick="postarMural(\''+uid+'\')">Publicar recado</button>'+
+    '</div>'+
+    '<div id="mural-posts-'+uid+'">'+
+    (posts.length?posts.map(p=>{
+      const pini=(p.autorNome||'?')[0].toUpperCase();
+      const pav=p.autorFoto?'<img src="'+p.autorFoto+'" alt=""/>':pini;
+      const canDel=p.autorUid===currentUser.uid||userProfile.role==='coord';
+      return'<div class="mural-post">'+
+        '<div class="mural-post-header">'+
+        '<div class="mural-post-av" style="background:'+(p.autorCor||'#1A5C2A')+';color:#fff;">'+pav+'</div>'+
+        '<div><div style="font-size:13px;font-weight:500;">'+p.autorNome+'</div>'+
+        '<div class="mural-post-date">'+p.data+'</div></div>'+
+        (canDel?'<button onclick="deletarMural(\''+uid+'\',\''+p.id+'\')" style="margin-left:auto;background:none;border:none;cursor:pointer;color:var(--text-3);font-size:16px;">✕</button>':'')+
+        '</div>'+
+        '<div class="mural-post-body">'+p.texto+'</div>'+
+      '</div>';
+    }).join(''):'<div class="empty">Nenhum recado ainda. Seja o primeiro!</div>')+
+    '</div></div>';
+};
+
+window.postarMural=async function(uid){
+  const texto=document.getElementById('mural-texto-'+uid).value.trim();
+  if(!texto){showToast('Escreva algo!');return;}
+  const data=new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'short',year:'numeric'});
+  try{
+    await addDoc(collection(db,'mural',uid,'recados'),{
+      texto,
+      autorUid:currentUser.uid,
+      autorNome:userProfile.nome||'?',
+      autorFoto:userProfile.foto||null,
+      autorCor:userProfile.cor||'#1A5C2A',
+      data,
+      ts:Date.now()
+    });
+    showToast('Recado publicado!');
+    await abrirPerfil(uid);
+  }catch(e){showToast('Erro ao publicar.');}
+};
+
+window.deletarMural=async function(uid,postId){
+  if(!confirm('Excluir recado?'))return;
+  try{
+    await deleteDoc(doc(db,'mural',uid,'recados',postId));
+    await abrirPerfil(uid);
+  }catch(e){showToast('Erro ao excluir.');}
+};
 let basiliscoMsgs=[];
 let basiliscoKey='';
 let basiliscoDocs=[];
