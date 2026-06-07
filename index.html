@@ -1511,6 +1511,15 @@ async function renderAcido(mc){
   // Load messages with realtime
   const q = query(collection(db,'chat_acido'), orderBy('ts','asc'), limit(100));
   if(acidoUnsub) acidoUnsub();
+  // Cache de fotos de usuários para o chat
+  const _chatFotoCache = {};
+  async function _getChatFoto(uid){ 
+    if(_chatFotoCache[uid]!==undefined) return _chatFotoCache[uid];
+    try{ const s=await getDoc(doc(db,'usuarios',uid)); _chatFotoCache[uid]=s.exists()?(s.data().foto||''):''; }
+    catch(e){ _chatFotoCache[uid]=''; }
+    return _chatFotoCache[uid];
+  }
+
   acidoUnsub = onSnapshot(q, snap => {
     const msgsEl = document.getElementById('chat-msgs');
     if(!msgsEl) { if(acidoUnsub){acidoUnsub();acidoUnsub=null;} return; }
@@ -1523,9 +1532,18 @@ async function renderAcido(mc){
       let content = '';
       if(!mine){
         const ini=(msg.nome||'?').split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
-        const avatarHtml = msg.foto
-          ? '<img src="'+msg.foto+'" style="width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0;"/>'
-          : '<div style="width:32px;height:32px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;flex-shrink:0;">'+ini+'</div>';
+        const fotoJaConhecida = msg.foto || _chatFotoCache[msg.uid];
+        const avatarId = 'chat-av-'+d.id;
+        const avatarHtml = fotoJaConhecida
+          ? '<img id="'+avatarId+'" src="'+fotoJaConhecida+'" style="width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0;"/>'
+          : '<div id="'+avatarId+'" style="width:32px;height:32px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;flex-shrink:0;">'+ini+'</div>';
+        if(!fotoJaConhecida && msg.uid){
+          _getChatFoto(msg.uid).then(foto=>{
+            if(!foto) return;
+            const el=document.getElementById(avatarId);
+            if(el) el.outerHTML='<img id="'+avatarId+'" src="'+foto+'" style="width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0;"/>';
+          });
+        }
         content += avatarHtml + '<div style="display:flex;flex-direction:column;align-items:flex-start;"><div class="chat-msg-name">'+(msg.nome||'?')+'</div>';
       }
       if(msg.tipo==='imagem'){
