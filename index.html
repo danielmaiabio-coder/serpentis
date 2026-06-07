@@ -1089,7 +1089,9 @@ window.limparDisparos=async function(id){
     showToast('Limpo!');
     await renderPerfil(document.getElementById('mainContent'));
   }catch(e){showToast('Erro.');}
-};'https://res.cloudinary.com/dbd9hpwyb/video/upload/q_auto/f_auto/v1780718539/freesound_community-snake-hissing-6092_a1uuwb.mp3');
+};
+
+const CHOCALHO_SOM = new Audio('https://res.cloudinary.com/dbd9hpwyb/video/upload/q_auto/f_auto/v1780718539/freesound_community-snake-hissing-6092_a1uuwb.mp3');
 window.balancaChocalho=function(){
   const img=document.getElementById('chocalho-logo');
   if(!img)return;
