@@ -983,7 +983,7 @@ window.desafiarXadrez=async function(toUid,toNome){
     '<div style="font-size:20px;margin-bottom:1rem;">⏳ Aguardando '+toNome+'...</div>'+
     '<button class="btn-ghost" onclick="cancelarDesafio()">Cancelar</button></div>';
   if(xadrezUnsub)xadrezUnsub();
-  xadrezUnsub=onSnapshot(fsQuery(collection(db,'xadrez_games'),where('players','array-contains',currentUser.uid),where('status','==','active'),limit(1)),async snap=>{
+  xadrezUnsub=onSnapshot(query(collection(db,'xadrez_games'),where('players','array-contains',currentUser.uid),where('status','==','active'),limit(1)),async snap=>{
     if(!snap.empty){if(xadrezUnsub)xadrezUnsub();const mc=document.getElementById('xadrez-content');if(mc)await xadrezRenderBoard(mc,snap.docs[0].id,snap.docs[0].data());}
   });
 };
@@ -1385,6 +1385,533 @@ window.balancaChocalho=function(){
   CHOCALHO_SOM.currentTime=0;
   CHOCALHO_SOM.play().catch(()=>{});
   setTimeout(()=>img.classList.remove('shaking'),700);
+};
+
+window.toggleBgPicker=function(){
+  const el=document.getElementById('bg-picker');
+  el.style.display=el.style.display==='none'?'block':'none';
+};
+
+window.selecionarBg=function(i){
+  window._bgSelecionado=window._bgTemas[i].bg;
+  document.querySelectorAll('[id^="bg-opt-"]').forEach((el,j)=>{
+    el.style.border=j===i?'3px solid #fff':'3px solid transparent';
+    el.style.boxShadow=j===i?'0 0 0 2px var(--primary)':'0 2px 6px rgba(0,0,0,0.15)';
+  });
+};
+
+window.removerFoto=async function(){
+  if(!confirm('Remover foto de perfil?'))return;
+  try{
+    await setDoc(doc(db,'usuarios',currentUser.uid),{foto:''},{ merge:true});
+    userProfile.foto='';
+    showToast('Foto removida!');
+    await renderPerfil(document.getElementById('mainContent'));
+  }catch(e){showToast('Erro ao remover.');}
+};
+
+window.removerCapa=async function(){
+  if(!confirm('Remover foto de capa?'))return;
+  try{
+    await setDoc(doc(db,'usuarios',currentUser.uid),{capa:''},{ merge:true});
+    userProfile.capa='';
+    showToast('Capa removida!');
+    await renderPerfil(document.getElementById('mainContent'));
+  }catch(e){showToast('Erro ao remover.');}
+};
+
+window.uploadCapa=async function(e){
+  const file=e.target.files[0];if(!file)return;
+  showToast('Enviando capa...');
+  try{
+    const url=await uploadToCloudinary(file);
+    const capaPreview=document.getElementById('perfil-capa-preview');
+    if(capaPreview)capaPreview.src=url;
+    const capaImg=document.getElementById('perfil-capa-preview-img');
+    if(capaImg){capaImg.src=url;}
+    else{
+      const area=document.querySelector('.perfil-capa-placeholder');
+      if(area) area.outerHTML='<img src="'+url+'" class="perfil-capa" id="perfil-capa-preview-img"/>';
+    }
+    showToast('Capa pronta! Clique em salvar.');
+  }catch(e){showToast('Erro ao enviar capa.');}
+};
+
+window.uploadFoto=async function(e){
+  const file=e.target.files[0];if(!file)return;
+  showToast('Enviando foto...');
+  try{
+    const url=await uploadToCloudinary(file);
+    const preview=document.getElementById('perfil-foto-preview');
+    if(preview)preview.src=url;
+    const av=document.getElementById('perfil-av-preview');
+    if(av){av.innerHTML='<img src="'+url+'" alt="foto"/>';}
+    const bigImg=document.querySelector('.perfil-avatar-big img');
+    if(bigImg)bigImg.src=url;
+    showToast('Foto pronta! Clique em salvar.');
+  }catch(e){showToast('Erro ao enviar foto.');}
+};
+window.salvarPerfil=async function(){
+  const nome=document.getElementById('perfil-nome').value.trim();
+  const fotoEl=document.getElementById('perfil-foto-preview');
+  const capaEl=document.getElementById('perfil-capa-preview');
+  const fotoSrc=fotoEl?fotoEl.src:'';
+  const capaSrc=capaEl?capaEl.src:'';
+  const foto=(fotoSrc&&fotoSrc.length>10&&fotoSrc!==window.location.href&&!fotoSrc.endsWith('/'))?fotoSrc:null;
+  const capa=(capaSrc&&capaSrc.length>10&&capaSrc!==window.location.href&&!capaSrc.endsWith('/'))?capaSrc:null;
+  const bgColor=window._bgSelecionado!==undefined?window._bgSelecionado:(userProfile.bgColor||'');
+  if(!nome){showToast('Digite seu nome.');return;}
+  try{
+    const updates={nome,bgColor};
+    if(foto&&foto!==userProfile.foto) updates.foto=foto;
+    if(capa&&capa!==userProfile.capa) updates.capa=capa;
+    await setDoc(doc(db,'usuarios',currentUser.uid),updates,{merge:true});
+    userProfile.nome=nome;
+    userProfile.bgColor=bgColor;
+    if(updates.foto) userProfile.foto=updates.foto;
+    if(updates.capa) userProfile.capa=updates.capa;
+    aplicarBg(bgColor);
+    updateSidebarUser();
+    showToast('Perfil atualizado!');
+  }catch(e){showToast('Erro: '+e.message);}
+};
+
+function aplicarBg(bg){
+  const shell=document.getElementById('appShell');
+  if(bg){
+    shell.style.background=bg;
+    document.body.style.background=bg;
+  } else {
+    shell.style.background='';
+    document.body.style.background='';
+  }
+}
+
+// ACIDO CHAT
+const CLOUDINARY_CLOUD = 'dbd9hpwyb';
+const CLOUDINARY_PRESET = 'ml_default';
+
+async function uploadToCloudinary(file){
+  const fd = new FormData();
+  fd.append('file', file);
+  fd.append('upload_preset', CLOUDINARY_PRESET);
+  const res = await fetch('https://api.cloudinary.com/v1_1/'+CLOUDINARY_CLOUD+'/auto/upload', {method:'POST',body:fd});
+  const data = await res.json();
+  return data.secure_url;
+}
+
+let acidoUnsub = null;
+
+async function renderAcido(mc){
+  mc.innerHTML = snakeHtml()+
+    '<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;">'+
+    '<div class="page-eyebrow">* Chat da Uol</div>'+
+    '<div class="page-title"><img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780767902/uol_dqoo8g.webp" style="width:28px;height:28px;object-fit:contain;vertical-align:middle;margin-right:8px;"/>Chat da Uol</div>'+
+    '<div class="page-sub">Mensagens em tempo real</div>'+
+    '</div>'+
+    '<div class="page-sub">Mensagens em tempo real</div>'+
+    '<div class="chat-wrap">'+
+      '<div class="chat-messages" id="chat-msgs"><div class="empty">Carregando mensagens...</div></div>'+
+      '<div id="chat-attach-preview" style="display:none;margin-bottom:8px;"></div>'+
+      '<div class="chat-input-row">'+
+        '<label class="chat-attach-btn" title="Foto ou arquivo">'+
+          '<input type="file" id="chat-file-input" style="display:none;" onchange="chatFileSelected(event)"/>'+
+          '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>'+
+        '</label>'+
+        '<textarea id="chat-input" placeholder="Digite uma mensagem..." rows="1" onkeydown="chatKeyDown(event)"></textarea>'+
+        '<button class="chat-send-btn" onclick="enviarMensagem()">Enviar</button>'+
+      '</div>'+
+    '</div>';
+
+  // Load messages with realtime
+  const { onSnapshot, orderBy, limit, query: fsQuery } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+  const q = fsQuery(collection(db,'chat_acido'), orderBy('ts','asc'), limit(100));
+  if(acidoUnsub) acidoUnsub();
+  acidoUnsub = onSnapshot(q, snap => {
+    const msgsEl = document.getElementById('chat-msgs');
+    if(!msgsEl) { if(acidoUnsub){acidoUnsub();acidoUnsub=null;} return; }
+    msgsEl.innerHTML = '';
+    snap.forEach(d => {
+      const msg = d.data();
+      const mine = msg.uid === currentUser.uid;
+      const div = document.createElement('div');
+      div.className = 'chat-msg '+(mine?'mine':'theirs');
+      let content = '';
+      if(!mine) content += '<div class="chat-msg-name">'+(msg.nome||'?')+'</div>';
+      if(msg.tipo==='imagem'){
+        content += '<img class="chat-msg-img" src="'+msg.url+'" onclick="window.open(\''+msg.url+'\',\'_blank\')" />';
+      } else if(msg.tipo==='arquivo'){
+        content += '<a class="chat-msg-bubble chat-msg-file" href="'+msg.url+'" target="_blank" download>'+
+          '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>'+
+          (msg.nome_arquivo||'Arquivo')+'</a>';
+      } else {
+        content += '<div class="chat-msg-bubble">'+msg.texto+'</div>';
+      }
+      const h = new Date(msg.ts);
+      const canDelete = mine || userProfile.role==='coord';
+      content += '<div class="chat-msg-time">'+h.getHours().toString().padStart(2,'0')+':'+h.getMinutes().toString().padStart(2,'0')+
+        (canDelete?' &nbsp;<span onclick="deletarMsgChat(\''+d.id+'\')" style="cursor:pointer;opacity:0.4;font-size:10px;" title="Excluir">&#x2715;</span>':'')+
+        '</div>';
+      div.innerHTML = content;
+      msgsEl.appendChild(div);
+    });
+    msgsEl.scrollTop = msgsEl.scrollHeight;
+  });
+}
+
+window.chatFileSelected = function(e){
+  const file = e.target.files[0]; if(!file) return;
+  const preview = document.getElementById('chat-attach-preview');
+  if(file.type.startsWith('image/')){
+    const reader = new FileReader();
+    reader.onload = ev => {
+      preview.innerHTML = '<div style="position:relative;display:inline-block;"><img src="'+ev.target.result+'" style="max-height:80px;border-radius:8px;"/><button onclick="cancelarAnexo()" style="position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;background:#A32D2D;color:#fff;border:none;cursor:pointer;font-size:10px;display:flex;align-items:center;justify-content:center;">x</button></div>';
+      preview.style.display='block';
+    };
+    reader.readAsDataURL(file);
+  } else {
+    preview.innerHTML = '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg);border-radius:8px;font-size:12px;color:var(--text-2);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>'+file.name+'<button onclick="cancelarAnexo()" style="margin-left:auto;background:none;border:none;color:var(--text-3);cursor:pointer;">x</button></div>';
+    preview.style.display='block';
+  }
+};
+
+window.cancelarAnexo = function(){
+  document.getElementById('chat-attach-preview').style.display='none';
+  document.getElementById('chat-attach-preview').innerHTML='';
+  document.getElementById('chat-file-input').value='';
+};
+
+window.chatKeyDown = function(e){
+  if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();enviarMensagem();}
+};
+
+window.enviarMensagem = async function(){
+  const input = document.getElementById('chat-input');
+  const fileInput = document.getElementById('chat-file-input');
+  const texto = input.value.trim();
+  const file = fileInput.files[0];
+  if(!texto && !file) return;
+  const base = {uid:currentUser.uid, nome:userProfile.nome||'?', ts:Date.now()};
+  try{
+    if(file){
+      showToast('Enviando arquivo...');
+      const url = await uploadToCloudinary(file);
+      const tipo = file.type.startsWith('image/')?'imagem':'arquivo';
+      await addDoc(collection(db,'chat_acido'), {...base, tipo, url, nome_arquivo:file.name});
+      cancelarAnexo();
+    }
+    if(texto){
+      await addDoc(collection(db,'chat_acido'), {...base, tipo:'texto', texto});
+      input.value='';
+    }
+  }catch(e){showToast('Erro ao enviar.');}
+};
+
+window.deletarMsgChat=async function(msgId){
+  if(!confirm('Excluir mensagem?'))return;
+  try{await deleteDoc(doc(db,'chat_acido',msgId));} catch(e){showToast('Erro ao excluir.');}
+};
+let feedUploading = false;
+
+async function renderFeed(mc){
+  const snap = await getDocs(collection(db,'feed_posts'));
+  const posts = [];
+  snap.forEach(d => posts.push({id:d.id,...d.data()}));
+  posts.sort((a,b)=>(b.ts||0)-(a.ts||0));
+
+  let postsHtml = '';
+  for(const post of posts){
+    const commSnap = await getDocs(collection(db,'feed_posts',post.id,'comentarios'));
+    const comms = [];
+    commSnap.forEach(d => comms.push({id:d.id,...d.data()}));
+    comms.sort((a,b)=>(a.ts||0)-(b.ts||0));
+    const ini = (post.autor||'?')[0].toUpperCase();
+    const avHtml = post.autorFoto?'<img src="'+post.autorFoto+'" alt=""/>':ini;
+    const canDeletePost = post.uid===currentUser.uid || userProfile.role==='coord';
+    postsHtml += '<div class="feed-card"><div class="feed-card-inner">';
+    postsHtml += '<div class="feed-card-img-wrap">';
+    if(post.imagemUrl) postsHtml += '<img class="feed-card-img" src="'+post.imagemUrl+'" alt="post"/>';
+    postsHtml += '</div>';
+    postsHtml += '<div class="feed-card-body">';
+    postsHtml += '<div class="feed-card-header"><div class="feed-card-av">'+avHtml+'</div>'+
+      '<div style="flex:1;"><div class="feed-card-author">'+post.autor+'</div><div class="feed-card-date">'+(post.data||'')+'</div></div>'+
+      (canDeletePost?'<button class="btn-ghost" style="font-size:11px;padding:4px 10px;" onclick="deletarPost(\''+post.id+'\')">Excluir</button>':'')+
+      '</div>';
+    if(post.legenda) postsHtml += '<div class="feed-card-caption">'+post.legenda+'</div>';
+    postsHtml += '<div class="feed-comments">';
+    comms.forEach(c => {
+      const cini = (c.autor||'?')[0].toUpperCase();
+      const cavHtml = c.autorFoto?'<img src="'+c.autorFoto+'" alt=""/>':cini;
+      const canDeleteComm = c.uid===currentUser.uid || userProfile.role==='coord';
+      postsHtml += '<div class="feed-comment"><div class="feed-comment-av">'+cavHtml+'</div>'+
+        '<div class="feed-comment-body"><div class="feed-comment-name">'+c.autor+
+        (canDeleteComm?' <span onclick="deletarComentario(\''+post.id+'\',\''+c.id+'\')" style="cursor:pointer;opacity:0.4;font-size:10px;margin-left:4px;">&#x2715;</span>':'')+
+        '</div><div class="feed-comment-text">'+c.texto+'</div></div></div>';
+    });
+    postsHtml += '</div>';
+    postsHtml += '<div class="feed-comment-input"><input type="text" id="comm-input-'+post.id+'" placeholder="Comentar..." onkeydown="if(event.key===\'Enter\')comentarPost(\''+post.id+'\')"/><button onclick="comentarPost(\''+post.id+'\')">Enviar</button></div>';
+    postsHtml += '</div></div></div>';
+  }
+
+  mc.innerHTML = snakeHtml()+
+    '<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;">'+
+    '<div>'+
+    '<div class="page-eyebrow">* Feed da Cobranca</div>'+
+    '<div class="page-title">Feed da Cobranca</div>'+
+    '<div class="page-sub" style="margin-bottom:1rem;">Fotos e momentos do time</div>'+
+    '<div style="margin-bottom:1.25rem;">'+
+      '<div style="position:relative;display:inline-block;">'+
+        '<button class="postar-btn" onclick="abrirModalPost()">'+
+          '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>'+
+          'Postar'+
+        '</button>'+
+        '<svg class="postar-btn-tail" viewBox="0 0 22 10" fill="none" xmlns="http://www.w3.org/2000/svg">'+
+          '<path d="M0 5 Q6 5 10 2 Q14 -1 18 3 Q20 5 22 5" stroke="#1A5C2A" stroke-width="2" fill="none" stroke-linecap="round"/>'+
+          '<circle cx="21" cy="5" r="2" fill="#2E8B45"/>'+
+        '</svg>'+
+      '</div>'+
+    '</div>'+
+    '</div>'+
+    '</div>'+
+    '<div id="feed-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;align-items:center;justify-content:center;">'+
+      '<div style="background:var(--surface);border-radius:var(--radius-lg);padding:1.5rem;width:100%;max-width:480px;box-shadow:0 20px 60px rgba(0,0,0,0.3);">'+
+        '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;">'+
+          '<div style="font-size:15px;font-weight:500;color:var(--text);">Nova publicacao</div>'+
+          '<button onclick="fecharModalPost()" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:18px;">&#x2715;</button>'+
+        '</div>'+
+        '<label style="cursor:pointer;" onclick="document.getElementById(\'feed-file-input\').click()">'+
+          '<div class="upload-area">'+
+            '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="1.5" style="margin-bottom:8px;"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>'+
+            '<div class="upload-area-text">Clique para selecionar uma foto</div>'+
+          '</div>'+
+        '</label>'+
+        '<input type="file" id="feed-file-input" accept="image/*" style="display:none;" onchange="feedPreview(event)"/>'+
+        '<img id="feed-img-preview" class="upload-preview"/>'+
+        '<div style="margin-bottom:12px;"><label class="inp-label">Legenda</label><textarea class="inp" id="feed-legenda" rows="3" placeholder="Escreva uma legenda..." style="resize:none;"></textarea></div>'+
+        '<div style="display:flex;align-items:center;gap:10px;">'+
+          '<button class="btn-blue" onclick="publicarPost()">Publicar</button>'+
+          '<span id="feed-uploading" style="font-size:12px;color:var(--text-3);display:none;">Enviando...</span>'+
+        '</div>'+
+      '</div>'+
+    '</div>'+
+    (posts.length===0?'<div class="empty">Nenhuma publicacao ainda. Seja o primeiro!</div>':
+    '<div class="feed-grid">'+postsHtml+'</div>');
+}
+
+window.feedPreview = function(e){
+  const file = e.target.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const img = document.getElementById('feed-img-preview');
+    img.src = ev.target.result; img.style.display='block';
+  };
+  reader.readAsDataURL(file);
+};
+
+window.abrirModalPost=function(){
+  const m=document.getElementById('feed-modal');
+  if(m){m.style.display='flex';}
+};
+window.fecharModalPost=function(){
+  const m=document.getElementById('feed-modal');
+  if(m){m.style.display='none';}
+  document.getElementById('feed-img-preview').style.display='none';
+  document.getElementById('feed-img-preview').src='';
+  document.getElementById('feed-legenda').value='';
+  document.getElementById('feed-file-input').value='';
+};
+
+window.publicarPost = async function(){
+  if(feedUploading) return;
+  const fileInput = document.getElementById('feed-file-input');
+  const legenda = document.getElementById('feed-legenda').value.trim();
+  const file = fileInput.files[0];
+  if(!file && !legenda){showToast('Adicione uma foto ou legenda.');return;}
+  feedUploading = true;
+  document.getElementById('feed-uploading').style.display='inline';
+  try{
+    let imagemUrl = null;
+    if(file) imagemUrl = await uploadToCloudinary(file);
+    const data = new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'short',year:'numeric'});
+    await addDoc(collection(db,'feed_posts'),{
+      autor: userProfile.nome||'?',
+      autorFoto: userProfile.foto||null,
+      uid: currentUser.uid,
+      legenda, imagemUrl, data, ts: Date.now()
+    });
+    showToast('Publicado!');
+    fecharModalPost();
+    await renderFeed(document.getElementById('mainContent'));
+  }catch(e){showToast('Erro ao publicar.');}
+  feedUploading = false;
+};
+
+window.comentarPost = async function(postId){
+  const input = document.getElementById('comm-input-'+postId);
+  const texto = input.value.trim(); if(!texto) return;
+  try{
+    await addDoc(collection(db,'feed_posts',postId,'comentarios'),{
+      autor: userProfile.nome||'?', autorFoto: userProfile.foto||null,
+      uid: currentUser.uid, texto, ts: Date.now()
+    });
+    input.value='';
+    await renderFeed(document.getElementById('mainContent'));
+  }catch(e){showToast('Erro ao comentar.');}
+};
+
+window.deletarPost=async function(postId){
+  if(!confirm('Excluir esta publicacao?'))return;
+  try{
+    const comms=await getDocs(collection(db,'feed_posts',postId,'comentarios'));
+    for(const c of comms.docs) await deleteDoc(doc(db,'feed_posts',postId,'comentarios',c.id));
+    await deleteDoc(doc(db,'feed_posts',postId));
+    showToast('Publicacao excluida.');
+    await renderFeed(document.getElementById('mainContent'));
+  }catch(e){showToast('Erro ao excluir.');}
+};
+
+window.deletarComentario=async function(postId,commId){
+  try{
+    await deleteDoc(doc(db,'feed_posts',postId,'comentarios',commId));
+    await renderFeed(document.getElementById('mainContent'));
+  }catch(e){showToast('Erro ao excluir.');}
+};
+
+
+// ESCRITORIO
+let escritorioTab='registros';
+let escritorioOpAtual=null;
+
+async function renderEscritorio(mc){
+  const {isCoord}=getPerms();
+  if(!isCoord){mc.innerHTML=snakeHtml()+'<div class="empty">Acesso restrito ao coordenador.</div>';return;}
+  const snap=await getDocs(collection(db,'usuarios'));
+  const ops=[];
+  snap.forEach(d=>{const data=d.data();if(data.role==='op')ops.push({uid:d.id,...data});});
+  mc.innerHTML=snakeHtml()+
+    '<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;">'+
+    '<div class="page-eyebrow">🗂️ Escritorio</div>'+
+    '<div class="page-title">Escritorio</div>'+
+    '<div class="page-sub">Registros e anotacoes por operador — visivel apenas para coordenadores</div>'+
+    '</div>'+
+    ops.map(op=>{
+      const ini=(op.nome||'?').split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
+      const avHtml=op.foto?'<img src="'+op.foto+'" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/>':ini;
+      return'<div class="escritorio-card" onclick="abrirEscritorio(\''+op.uid+'\')">'+
+        '<div class="op-av" style="background:'+(op.cor||'#1A5C2A')+';color:#fff;">'+avHtml+'</div>'+
+        '<div><div class="op-nm">'+op.nome+'</div><div class="op-mt">'+(op.email||'')+'</div></div>'+
+        '<div style="margin-left:auto;font-size:12px;color:var(--primary);">Abrir →</div>'+
+      '</div>';
+    }).join('');
+}
+
+window.abrirEscritorio=async function(uid){
+  escritorioOpAtual=uid;
+  const opSnap=await getDoc(doc(db,'usuarios',uid));
+  const op=opSnap.exists()?{uid,...opSnap.data()}:{uid,nome:'Operador'};
+  await renderEscritorioOp(document.getElementById('mainContent'),op);
+};
+
+async function renderEscritorioOp(mc,op){
+  const ini=(op.nome||'?').split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
+  let html=snakeHtml()+
+    '<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;">'+
+    '<div style="display:flex;align-items:center;gap:10px;">'+
+    '<button onclick="renderEscritorio(document.getElementById(\'mainContent\'))" style="background:none;border:none;cursor:pointer;color:var(--primary);font-size:13px;padding:0;margin-right:4px;">← Voltar</button>'+
+    '<div class="op-av" style="background:'+(op.cor||'#1A5C2A')+';color:#fff;">'+(op.foto?'<img src="'+op.foto+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/>':ini)+'</div>'+
+    '<div><div class="page-eyebrow">🗂️ Escritorio</div><div class="page-title">'+op.nome+'</div></div></div></div>'+
+    '<div style="display:flex;gap:8px;margin-bottom:1.25rem;">'+
+    '<button class="escr-tab '+(escritorioTab==='registros'?'active':'')+'" onclick="setEscrTab(\'registros\')">Registros</button>'+
+    '<button class="escr-tab '+(escritorioTab==='semanal'?'active':'')+'" onclick="setEscrTab(\'semanal\')">Semanal</button>'+
+    '</div>'+
+    '<div id="escr-content"></div>';
+  mc.innerHTML=html;
+  await carregarEscrConteudo(op);
+}
+
+window.setEscrTab=async function(tab){
+  escritorioTab=tab;
+  document.querySelectorAll('.escr-tab').forEach(el=>el.classList.remove('active'));
+  document.querySelectorAll('.escr-tab').forEach(el=>{if(el.textContent.toLowerCase().includes(tab.substring(0,4)))el.classList.add('active');});
+  const opSnap=await getDoc(doc(db,'usuarios',escritorioOpAtual));
+  const op=opSnap.exists()?{uid:escritorioOpAtual,...opSnap.data()}:{uid:escritorioOpAtual,nome:'Operador'};
+  await carregarEscrConteudo(op);
+};
+
+async function carregarEscrConteudo(op){
+  const cont=document.getElementById('escr-content');
+  if(!cont)return;
+  const snap=await getDocs(collection(db,'escritorio',op.uid,escritorioTab));
+  const notas=[];snap.forEach(d=>notas.push({id:d.id,...d.data()}));
+  notas.sort((a,b)=>(b.ts||0)-(a.ts||0));
+
+  cont.innerHTML=
+    '<div class="panel" style="margin-bottom:1rem;">'+
+    '<div class="panel-title">Nova nota — '+(escritorioTab==='registros'?'Registro':'Semanal')+'</div>'+
+    '<div style="margin-bottom:10px;"><label class="inp-label">Titulo</label><input type="text" class="inp" id="escr-titulo" placeholder="Ex: Aviso verbal - 06/06/2026"/></div>'+
+    '<div style="margin-bottom:10px;"><label class="inp-label">Conteudo</label><textarea class="inp" id="escr-texto" rows="5" style="resize:vertical;" placeholder="Escreva aqui..."></textarea></div>'+
+    '<div style="margin-bottom:12px;"><label class="inp-label">Arquivo (opcional)</label>'+
+    '<label style="display:flex;align-items:center;gap:8px;padding:8px 12px;border:1px solid var(--border-md);border-radius:var(--radius);cursor:pointer;font-size:12px;color:var(--text-2);">'+
+    '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>'+
+    '<span id="escr-file-label">Selecionar arquivo</span>'+
+    '<input type="file" id="escr-file" style="display:none;" onchange="escr_previewFile(event)"/></label></div>'+
+    '<button class="btn-blue" onclick="salvarEscrNota(\''+op.uid+'\')">Salvar nota</button>'+
+    '</div>'+
+    (notas.length===0?'<div class="panel"><div class="empty">Nenhuma nota ainda.</div></div>':
+    notas.map(n=>'<div class="escr-nota">'+
+      '<div class="escr-nota-title"><span>'+n.titulo+'</span>'+
+      '<div style="display:flex;align-items:center;gap:8px;">'+
+      '<span style="font-size:11px;color:var(--text-3);">'+( n.data||'')+'</span>'+
+      '<button class="btn-ghost" onclick="deletarEscrNota(\''+op.uid+'\',\''+n.id+'\')">Excluir</button>'+
+      '</div></div>'+
+      '<div class="escr-nota-body">'+n.texto+'</div>'+
+      (n.arquivoUrl?'<a href="'+n.arquivoUrl+'" target="_blank" class="escr-arquivo" style="margin-top:10px;text-decoration:none;">'+
+        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>'+
+        '<span class="escr-arquivo-nome">'+(n.arquivoNome||'Arquivo')+'</span>'+
+        '<span style="font-size:11px;color:var(--primary);">Abrir</span></a>':'')+'</div>').join(''));
+}
+
+window.escr_previewFile=function(e){
+  const file=e.target.files[0];
+  document.getElementById('escr-file-label').textContent=file?file.name:'Selecionar arquivo';
+};
+
+window.salvarEscrNota=async function(opUid){
+  const titulo=document.getElementById('escr-titulo').value.trim();
+  const texto=document.getElementById('escr-texto').value.trim();
+  const file=document.getElementById('escr-file').files[0];
+  if(!titulo){showToast('Digite um titulo.');return;}
+  let arquivoUrl=null,arquivoNome=null;
+  if(file){
+    showToast('Enviando arquivo...');
+    try{
+      arquivoUrl=await uploadToCloudinary(file);
+      arquivoNome=file.name;
+    }catch(e){showToast('Erro ao enviar arquivo.');}
+  }
+  const data=new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'short',year:'numeric'});
+  try{
+    await addDoc(collection(db,'escritorio',opUid,escritorioTab),{titulo,texto,arquivoUrl,arquivoNome,data,ts:Date.now()});
+    showToast('Nota salva!');
+    document.getElementById('escr-titulo').value='';
+    document.getElementById('escr-texto').value='';
+    document.getElementById('escr-file').value='';
+    document.getElementById('escr-file-label').textContent='Selecionar arquivo';
+    const opSnap=await getDoc(doc(db,'usuarios',opUid));
+    const op=opSnap.exists()?{uid:opUid,...opSnap.data()}:{uid:opUid,nome:'Operador'};
+    await carregarEscrConteudo(op);
+  }catch(e){showToast('Erro ao salvar.');}
+};
+
+window.deletarEscrNota=async function(opUid,nId){
+  if(!confirm('Excluir esta nota?'))return;
+  try{
+    await deleteDoc(doc(db,'escritorio',opUid,escritorioTab,nId));
+    showToast('Nota excluida.');
+    const opSnap=await getDoc(doc(db,'usuarios',opUid));
+    const op=opSnap.exists()?{uid:opUid,...opSnap.data()}:{uid:opUid,nome:'Operador'};
+    await carregarEscrConteudo(op);
+  }catch(e){showToast('Erro ao excluir.');}
 };
 
 window.toggleBgPicker=function(){
