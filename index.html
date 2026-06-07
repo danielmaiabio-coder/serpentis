@@ -170,11 +170,11 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
 .link-card-desc{font-size:11px;color:var(--text-3);margin-top:2px;}
 .link-card-btn{padding:6px 14px;background:var(--primary);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap;text-decoration:none;display:inline-block;}
 .link-card-btn:hover{background:#0d3a19;}
-.perfil-avatar-area{position:relative;width:100%;background:var(--bg);border-radius:var(--radius-lg);margin-bottom:1.25rem;overflow:hidden;}
+.perfil-avatar-area{position:relative;width:100%;border-radius:var(--radius-lg);margin-bottom:1.25rem;overflow:hidden;line-height:0;}
 .perfil-capa{width:100%;height:380px;object-fit:cover;display:block;}
 .perfil-capa-placeholder{width:100%;height:380px;background:linear-gradient(135deg,var(--primary-light),#d4edda);display:block;}
-.perfil-capa-edit{position:absolute;top:12px;right:12px;padding:5px 12px;background:rgba(0,0,0,0.45);color:#fff;border-radius:20px;font-size:11px;cursor:pointer;border:1px solid rgba(255,255,255,0.3);backdrop-filter:blur(4px);}
-.perfil-avatar-over{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:6px;}
+.perfil-capa-edit{position:absolute;top:12px;right:12px;padding:5px 12px;background:rgba(0,0,0,0.45);color:#fff;border-radius:20px;font-size:11px;cursor:pointer;border:1px solid rgba(255,255,255,0.3);backdrop-filter:blur(4px);line-height:normal;}
+.perfil-avatar-over{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:6px;line-height:normal;}
 .perfil-avatar-big{width:120px;height:120px;border-radius:50%;background:var(--primary-light);display:flex;align-items:center;justify-content:center;font-size:40px;font-weight:500;color:var(--primary);overflow:hidden;border:4px solid #fff;box-shadow:0 4px 16px rgba(0,0,0,0.2);}
 .perfil-avatar-big img{width:100%;height:100%;object-fit:cover;}
 .reuniao-banner{display:flex;align-items:center;justify-content:space-between;background:linear-gradient(135deg,#0d2e14 0%,#1A5C2A 100%);color:#fff;border-radius:var(--radius-lg);padding:18px 24px;margin-bottom:1.25rem;gap:12px;flex-wrap:wrap;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(13,46,20,0.25);}
@@ -1001,30 +1001,26 @@ async function renderPerfil(mc){
   ];
 
   mc.innerHTML=snakeHtml()+'<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;"><div class="page-eyebrow">* Meu Perfil</div><div class="page-title">Perfil pessoal</div><div class="page-sub">Suas informacoes sao estritamente pessoais</div></div>'+
-    '<div class="panel" style="padding:0;overflow:hidden;margin-bottom:1.25rem;">'+
+    '<div class="panel" style="padding:0;overflow:hidden;margin-bottom:0.5rem;">'+
     '<div class="perfil-avatar-area">'+
-    // Cover photo
     (perfil.capa
       ?'<img src="'+perfil.capa+'" class="perfil-capa" id="perfil-capa-preview-img"/>'
       :'<div class="perfil-capa-placeholder"></div>'
     )+
-    // Alterar capa button top right
     '<label onclick="document.getElementById(\'input-capa\').click()" style="cursor:pointer;"><span class="perfil-capa-edit">✏️ Alterar capa</span></label>'+
-    // Avatar absolutely positioned over capa
     '<div class="perfil-avatar-over">'+
     (perfil.foto
       ?'<div class="perfil-avatar-big"><img src="'+perfil.foto+'" alt="foto"/></div>'
       :'<div class="perfil-avatar-big" id="perfil-av-preview">'+((perfil.nome||'?')[0].toUpperCase())+'</div>'
     )+
     '<div style="display:flex;gap:6px;">'+
-    '<label style="cursor:pointer;"><input type="file" accept="image/*" onchange="uploadFoto(event)" style="display:none;"/><span style="padding:4px 12px;background:rgba(0,0,0,0.45);color:#fff;border-radius:20px;font-size:11px;cursor:pointer;border:1px solid rgba(255,255,255,0.3);backdrop-filter:blur(4px);">Alterar foto</span></label>'+
-    '<label onclick="document.getElementById(\'input-capa\').click()" style="cursor:pointer;"><span style="padding:4px 12px;background:rgba(0,0,0,0.45);color:#fff;border-radius:20px;font-size:11px;cursor:pointer;border:1px solid rgba(255,255,255,0.3);backdrop-filter:blur(4px);">+ Capa</span></label>'+
+    '<label style="cursor:pointer;"><input type="file" accept="image/*" onchange="uploadFoto(event)" style="display:none;"/><span style="padding:4px 12px;background:rgba(0,0,0,0.45);color:#fff;border-radius:20px;font-size:11px;border:1px solid rgba(255,255,255,0.3);backdrop-filter:blur(4px);">Alterar foto</span></label>'+
+    '<label onclick="document.getElementById(\'input-capa\').click()" style="cursor:pointer;"><span style="padding:4px 12px;background:rgba(0,0,0,0.45);color:#fff;border-radius:20px;font-size:11px;border:1px solid rgba(255,255,255,0.3);backdrop-filter:blur(4px);">+ Capa</span></label>'+
     '</div></div>'+
     '<input type="file" id="input-capa" accept="image/*" style="display:none;" onchange="uploadCapa(event)"/>'+
     '<img id="perfil-capa-preview" src="'+(perfil.capa||'')+'" style="display:none;"/>'+
     '</div></div>'+
-    // Name + info below the card
-    '<div style="text-align:center;margin-bottom:1.25rem;">'+
+    '<div style="text-align:center;margin-bottom:1.25rem;padding:0.5rem 0;">'+
     '<div style="font-size:18px;font-weight:600;color:var(--text);">'+(perfil.nome||'&#8212;')+'</div>'+
     '<div style="font-size:12px;color:var(--text-3);">'+(userProfile.role==='coord'?'Coordenador':'Painel Brille')+'</div>'+
     '</div>'+
