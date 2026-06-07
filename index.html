@@ -170,11 +170,11 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
 .link-card-desc{font-size:11px;color:var(--text-3);margin-top:2px;}
 .link-card-btn{padding:6px 14px;background:var(--primary);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap;text-decoration:none;display:inline-block;}
 .link-card-btn:hover{background:#0d3a19;}
-.perfil-avatar-area{position:relative;display:flex;flex-direction:column;align-items:center;gap:12px;padding:0;background:var(--bg);border-radius:var(--radius-lg);margin-bottom:1.25rem;overflow:hidden;}
-.perfil-capa{width:100%;height:180px;object-fit:cover;display:block;}
-.perfil-capa-placeholder{width:100%;height:180px;background:linear-gradient(135deg,var(--primary-light),#d4edda);display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative;}
-.perfil-capa-edit{position:absolute;bottom:8px;right:8px;padding:5px 12px;background:rgba(0,0,0,0.4);color:#fff;border-radius:20px;font-size:11px;cursor:pointer;border:1px solid rgba(255,255,255,0.3);}
-.perfil-avatar-area-bottom{display:flex;flex-direction:column;align-items:center;gap:8px;padding:0 2rem 1.5rem;margin-top:-90px;}
+.perfil-avatar-area{position:relative;width:100%;background:var(--bg);border-radius:var(--radius-lg);margin-bottom:1.25rem;overflow:hidden;}
+.perfil-capa{width:100%;height:200px;object-fit:cover;display:block;}
+.perfil-capa-placeholder{width:100%;height:200px;background:linear-gradient(135deg,var(--primary-light),#d4edda);display:block;}
+.perfil-capa-edit{position:absolute;bottom:8px;right:12px;padding:5px 12px;background:rgba(0,0,0,0.45);color:#fff;border-radius:20px;font-size:11px;cursor:pointer;border:1px solid rgba(255,255,255,0.3);backdrop-filter:blur(4px);}
+.perfil-avatar-area-bottom{display:flex;flex-direction:column;align-items:center;gap:8px;padding:0 2rem 1.5rem;margin-top:-90px;position:relative;z-index:2;}
 .perfil-avatar-big{width:180px;height:180px;border-radius:50%;background:var(--primary-light);display:flex;align-items:center;justify-content:center;font-size:56px;font-weight:500;color:var(--primary);overflow:hidden;border:4px solid #fff;box-shadow:0 4px 16px rgba(0,0,0,0.12);}
 .perfil-avatar-big img{width:100%;height:100%;object-fit:cover;}
 .reuniao-banner{display:flex;align-items:center;justify-content:space-between;background:linear-gradient(135deg,#0d2e14 0%,#1A5C2A 100%);color:#fff;border-radius:var(--radius-lg);padding:18px 24px;margin-bottom:1.25rem;gap:12px;flex-wrap:wrap;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(13,46,20,0.25);}
@@ -1001,29 +1001,35 @@ async function renderPerfil(mc){
   ];
 
   mc.innerHTML=snakeHtml()+'<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;"><div class="page-eyebrow">* Meu Perfil</div><div class="page-title">Perfil pessoal</div><div class="page-sub">Suas informacoes sao estritamente pessoais</div></div>'+
-    '<div class="panel"><div class="perfil-avatar-area">'+
-    // Cover photo
+    '<div class="panel" style="padding:0;overflow:hidden;margin-bottom:1.25rem;">'+
+    '<div class="perfil-avatar-area">'+
+    // Cover photo area
+    '<div style="position:relative;">'+
     (perfil.capa
-      ?'<div style="position:relative;width:100%;">'+
-        '<img src="'+perfil.capa+'" class="perfil-capa" id="perfil-capa-preview-img"/>'+
-        '<label style="cursor:pointer;" onclick="document.getElementById(\'input-capa\').click()"><span class="perfil-capa-edit">✏️ Alterar capa</span></label>'+
-        '</div>'
-      :'<div class="perfil-capa-placeholder" onclick="document.getElementById(\'input-capa\').click()">'+
-        '<span style="font-size:12px;color:var(--text-3);">+ Adicionar foto de capa</span>'+
-        '</div>'
+      ?'<img src="'+perfil.capa+'" class="perfil-capa" id="perfil-capa-preview-img"/>'
+      :'<div class="perfil-capa-placeholder"></div>'
     )+
+    '<label onclick="document.getElementById(\'input-capa\').click()" style="cursor:pointer;"><span class="perfil-capa-edit">✏️ Alterar capa</span></label>'+
+    '</div>'+
     '<input type="file" id="input-capa" accept="image/*" style="display:none;" onchange="uploadCapa(event)"/>'+
     '<img id="perfil-capa-preview" src="'+(perfil.capa||'')+'" style="display:none;"/>'+
-    // Avatar + info
+    // Avatar overlapping capa
     '<div class="perfil-avatar-area-bottom">'+
     (perfil.foto
       ?'<div class="perfil-avatar-big"><img src="'+perfil.foto+'" alt="foto"/></div>'
-      :'<div class="perfil-avatar-big" id="perfil-av-preview" style="font-size:56px;font-weight:500;">'+((perfil.nome||'?')[0].toUpperCase())+'</div>'
+      :'<div class="perfil-avatar-big" id="perfil-av-preview">'+((perfil.nome||'?')[0].toUpperCase())+'</div>'
     )+
-    '<div style="text-align:center;"><div style="font-size:16px;font-weight:500;color:var(--text);">'+(perfil.nome||'&#8212;')+'</div><div style="font-size:12px;color:var(--text-3);">'+(userProfile.role==='coord'?'Coordenador':'Painel Brille')+'</div></div>'+
-    '<label style="cursor:pointer;"><input type="file" accept="image/*" onchange="uploadFoto(event)" style="display:none;"/><span class="btn-ghost">Alterar foto</span></label>'+
-    '</div></div></div>'+
-    '<div style="margin-bottom:16px;"><label class="inp-label">Meu nome</label><input type="text" class="inp" id="perfil-nome" value="'+(perfil.nome||'')+'" placeholder="Seu nome completo"/></div>'+
+    '<div style="text-align:center;"><div style="font-size:16px;font-weight:500;color:var(--text);">'+(perfil.nome||'&#8212;')+'</div>'+
+    '<div style="font-size:12px;color:var(--text-3);">'+(userProfile.role==='coord'?'Coordenador':'Painel Brille')+'</div></div>'+
+    '<label style="cursor:pointer;"><input type="file" accept="image/*" onchange="uploadFoto(event)" style="display:none;"/><span class="btn-ghost" style="font-size:12px;">Alterar foto</span></label>'+
+    '<label onclick="document.getElementById(\'input-capa\').click()" style="cursor:pointer;"><span class="btn-ghost" style="font-size:12px;">+ Foto de capa</span></label>'+
+    '</div>'+
+    '</div></div>'+
+    '<div class="panel">'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">'+
+    '<div><label class="inp-label">Meu nome</label><input type="text" class="inp" id="perfil-nome" value="'+(perfil.nome||'')+'" placeholder="Seu nome completo"/></div>'+
+    '<div></div>'+
+    '</div>'+
     '<div style="margin-bottom:16px;">'+
     '<button onclick="toggleBgPicker()" style="display:flex;align-items:center;gap:10px;padding:10px 16px;border:1px solid var(--border-md);border-radius:var(--radius);background:var(--bg);font-family:var(--font);font-size:13px;color:var(--text);cursor:pointer;width:100%;">'+
     '<div style="width:24px;height:24px;border-radius:6px;background:'+(bgAtual||'linear-gradient(135deg,#0d2e14,#1A5C2A)')+';flex-shrink:0;"></div>'+
