@@ -452,6 +452,7 @@ function buildNav(){
     {id:'copys',label:'Banco de Copys'},{id:'links',label:'Links de Reneg.'},{id:'escala',label:'Escala de Roteamento'},
     {id:'calc',label:'🧮 Calculadoras'},
     {id:'planilha',label:'⚡ Automacoes Planilha'},
+    {id:'xadrez',label:'♟️ Xadrez'},
     {sep:true,label:'CONTA'},
     {id:'basilisco',label:'Basilisco'},
     {id:'perfil',label:'Pagina Inicial'},
@@ -473,6 +474,7 @@ function buildNav(){
     {sep:true,label:'GERAL'},
     {id:'acido',label:'<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780767902/uol_dqoo8g.webp" style="width:16px;height:16px;object-fit:contain;vertical-align:middle;margin-right:4px;"/> Chat da Uol'},
     {id:'feed',label:'Feed da Cobranca'},
+    {id:'xadrez',label:'♟️ Xadrez'},
     {sep:true,label:'CONTA'},
     {id:'basilisco',label:'Basilisco'},
     {id:'perfil',label:'Pagina Inicial'},
@@ -509,6 +511,7 @@ window.navigate=async function(page){
   if(page==='calcquit'){renderCalcQuit(mc);return;}
   if(page==='calcreneg'){renderCalcReneg(mc);return;}
   if(page==='planilha'){renderPlanilha(mc);return;}
+  if(page==='xadrez'){await renderXadrez(mc);return;}
   if(page==='basilisco'){await renderBasilisco(mc);return;}
   if(page==='perfil'){await renderPerfil(mc);return;}
   if(page==='acido'){await renderAcido(mc);return;}
@@ -919,6 +922,176 @@ window.calcular=function(){
   document.getElementById('calc-detalhe').textContent=restantes+' parcelas restantes x R$ '+valorParc.toFixed(2).replace('.',',');
 };
 window.buscarCurso=function(){const val=parseFloat(document.getElementById('busca-parcela').value)||0;document.querySelectorAll('.curso-row').forEach(el=>{el.classList.toggle('highlight',val>0&&parseFloat(el.dataset.parc)===val);});};
+
+
+// XADREZ
+let xadrezUnsub=null;
+let xadrezGameUnsub=null;
+
+async function renderXadrez(mc){
+  mc.innerHTML=snakeHtml()+
+    '<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;">'+
+    '<div class="page-eyebrow">♟️ Xadrez</div>'+
+    '<div class="page-title">Xadrez</div>'+
+    '<div class="page-sub">Desafie um colega para uma partida em tempo real</div>'+
+    '</div>'+
+    '<div id="xadrez-content"></div>';
+  await xadrezCheckState(document.getElementById('xadrez-content'));
+}
+
+async function xadrezCheckState(el){
+  if(!el)return;
+  const gameSnap=await getDocs(fsQuery(collection(db,'xadrez_games'),where('status','==','active'),where('players','array-contains',currentUser.uid),limit(1)));
+  if(!gameSnap.empty){await xadrezRenderBoard(el,gameSnap.docs[0].id,gameSnap.docs[0].data());return;}
+  const invSnap=await getDocs(fsQuery(collection(db,'xadrez_invites'),where('to','==',currentUser.uid),where('status','==','pending'),limit(1)));
+  if(!invSnap.empty){
+    const inv=invSnap.docs[0].data();
+    el.innerHTML='<div class="panel" style="text-align:center;padding:2rem;">'+
+      '<div style="font-size:20px;margin-bottom:1rem;">♟️ Desafio recebido!</div>'+
+      '<div style="font-size:14px;color:var(--text-2);margin-bottom:1.5rem;"><b>'+inv.fromNome+'</b> te desafiou para xadrez!</div>'+
+      '<div style="display:flex;gap:12px;justify-content:center;">'+
+      '<button class="btn-blue" onclick="aceitarXadrez(\''+invSnap.docs[0].id+'\',\''+inv.from+'\')">Aceitar</button>'+
+      '<button class="btn-ghost" onclick="recusarXadrez(\''+invSnap.docs[0].id+'\')">Recusar</button>'+
+      '</div></div>';
+    return;
+  }
+  await xadrezRenderLobby(el);
+}
+
+async function xadrezRenderLobby(el){
+  const snap=await getDocs(collection(db,'usuarios'));
+  const users=[];snap.forEach(d=>{if(d.id!==currentUser.uid)users.push({uid:d.id,...d.data()});});
+  el.innerHTML='<div class="panel">'+
+    '<div class="panel-title">Desafiar um jogador</div>'+
+    users.map(u=>{
+      const ini=(u.nome||'?')[0].toUpperCase();
+      const av=u.foto?'<img src="'+u.foto+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/>':ini;
+      return'<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);">'+
+        '<div class="op-av" style="background:'+(u.cor||'#1A5C2A')+';color:#fff;">'+av+'</div>'+
+        '<div style="flex:1;"><div style="font-size:13px;font-weight:500;">'+u.nome+'</div></div>'+
+        '<button class="btn-blue" style="font-size:12px;padding:6px 16px;" onclick="desafiarXadrez(\''+u.uid+'\',\''+u.nome+'\')">Desafiar ♟️</button>'+
+      '</div>';
+    }).join('')+
+  '</div>';
+}
+
+window.desafiarXadrez=async function(toUid,toNome){
+  await addDoc(collection(db,'xadrez_invites'),{from:currentUser.uid,fromNome:userProfile.nome||'?',to:toUid,toNome:toNome,status:'pending',ts:Date.now()});
+  showToast('Desafio enviado para '+toNome+'!');
+  const el=document.getElementById('xadrez-content');
+  if(el)el.innerHTML='<div class="panel" style="text-align:center;padding:2rem;">'+
+    '<div style="font-size:20px;margin-bottom:1rem;">⏳ Aguardando '+toNome+'...</div>'+
+    '<button class="btn-ghost" onclick="cancelarDesafio()">Cancelar</button></div>';
+  if(xadrezUnsub)xadrezUnsub();
+  xadrezUnsub=onSnapshot(fsQuery(collection(db,'xadrez_games'),where('players','array-contains',currentUser.uid),where('status','==','active'),limit(1)),async snap=>{
+    if(!snap.empty){if(xadrezUnsub)xadrezUnsub();const mc=document.getElementById('xadrez-content');if(mc)await xadrezRenderBoard(mc,snap.docs[0].id,snap.docs[0].data());}
+  });
+};
+
+window.cancelarDesafio=async function(){
+  const snap=await getDocs(fsQuery(collection(db,'xadrez_invites'),where('from','==',currentUser.uid),where('status','==','pending'),limit(1)));
+  for(const d of snap.docs)await deleteDoc(doc(db,'xadrez_invites',d.id));
+  await xadrezCheckState(document.getElementById('xadrez-content'));
+};
+
+window.aceitarXadrez=async function(invId,fromUid){
+  await setDoc(doc(db,'xadrez_invites',invId),{status:'accepted'},{merge:true});
+  const FEN='rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+  const gameRef=await addDoc(collection(db,'xadrez_games'),{players:[fromUid,currentUser.uid],white:fromUid,black:currentUser.uid,fen:FEN,status:'active',turn:'w',moves:[],ts:Date.now()});
+  const el=document.getElementById('xadrez-content');
+  if(el)await xadrezRenderBoard(el,gameRef.id,{players:[fromUid,currentUser.uid],white:fromUid,black:currentUser.uid,fen:FEN,status:'active',turn:'w',moves:[]});
+};
+
+window.recusarXadrez=async function(invId){
+  await setDoc(doc(db,'xadrez_invites',invId),{status:'declined'},{merge:true});
+  await xadrezCheckState(document.getElementById('xadrez-content'));
+};
+
+const XP={'K':'♔','Q':'♕','R':'♖','B':'♗','N':'♘','P':'♙','k':'♚','q':'♛','r':'♜','b':'♝','n':'♞','p':'♟'};
+let xadrezSelected=null,xadrezGameId=null,xadrezMyColor=null;
+
+function fenToBoard(fen){
+  const board=Array(8).fill(null).map(()=>Array(8).fill(null));
+  const rows=fen.split(' ')[0].split('/');
+  for(let r=0;r<8;r++){let c=0;for(const ch of rows[7-r]){if(/\d/.test(ch)){c+=parseInt(ch);}else{board[r][c]=ch;c++;}}}
+  return board;
+}
+
+function boardToFen(board,turn){
+  let fen='';
+  for(let r=7;r>=0;r--){let e=0;for(let c=0;c<8;c++){if(board[r][c]){if(e){fen+=e;e=0;}fen+=board[r][c];}else e++;}if(e)fen+=e;if(r>0)fen+='/';}
+  return fen+' '+turn+' KQkq - 0 1';
+}
+
+async function xadrezRenderBoard(el,gameId,gd){
+  xadrezGameId=gameId;xadrezMyColor=gd.white===currentUser.uid?'w':'b';
+  const board=fenToBoard(gd.fen||'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1');
+  const isMyTurn=gd.turn===xadrezMyColor;
+  const rows=xadrezMyColor==='b'?[0,1,2,3,4,5,6,7]:[7,6,5,4,3,2,1,0];
+  const cols=xadrezMyColor==='b'?[7,6,5,4,3,2,1,0]:[0,1,2,3,4,5,6,7];
+  let html='<div style="display:flex;gap:1.5rem;align-items:flex-start;flex-wrap:wrap;">'+
+    '<div>'+
+    '<div style="font-size:13px;margin-bottom:8px;">Voce joga com as <b>'+(xadrezMyColor==='w'?'Brancas':'Pretas')+'</b> · '+(isMyTurn?'<span style="color:var(--primary);font-weight:500;">Sua vez!</span>':'<span style="color:var(--text-3);">Vez do oponente...</span>')+'</div>'+
+    '<div style="display:inline-block;border:3px solid #333;border-radius:6px;overflow:hidden;">';
+  for(const r of rows){
+    html+='<div style="display:flex;">';
+    for(const c of cols){
+      const light=(r+c)%2===0;const piece=board[r][c];const sq=String.fromCharCode(97+c)+(r+1);
+      html+='<div id="sq-'+sq+'" onclick="xadrezClick(\''+sq+'\')" style="width:64px;height:64px;background:'+(light?'#f0d9b5':'#b58863')+';display:flex;align-items:center;justify-content:center;font-size:44px;cursor:pointer;user-select:none;">'+
+        (piece?'<span style="text-shadow:0 1px 4px rgba(0,0,0,0.4);">'+XP[piece]+'</span>':'')+'</div>';
+    }
+    html+='</div>';
+  }
+  html+='</div>'+
+    '<div style="display:flex;gap:8px;margin-top:10px;">'+
+    '<button class="btn-ghost" onclick="abandonarXadrez()">Abandonar</button></div></div>'+
+    '<div class="panel" style="min-width:150px;max-width:200px;">'+
+    '<div class="panel-title">Lances</div>'+
+    '<div style="font-size:12px;color:var(--text-2);max-height:420px;overflow-y:auto;">'+
+    (gd.moves&&gd.moves.length?gd.moves.map((m,i)=>'<div>'+(i%2===0?Math.floor(i/2+1)+'. ':'')+m+'</div>').join(''):'<div style="color:var(--text-3);">Nenhum ainda</div>')+
+    '</div></div></div>';
+  el.innerHTML=html;xadrezSelected=null;
+  if(xadrezGameUnsub)xadrezGameUnsub();
+  xadrezGameUnsub=onSnapshot(doc(db,'xadrez_games',gameId),async snap=>{
+    if(!snap.exists())return;const data=snap.data();
+    if(data.status==='finished'){
+      el.innerHTML='<div class="panel" style="text-align:center;padding:2rem;">'+
+        '<div style="font-size:24px;margin-bottom:1rem;">🏆 Partida encerrada!</div>'+
+        '<div style="font-size:14px;color:var(--text-2);margin-bottom:1.5rem;">'+(data.winner||'Empate!')+'</div>'+
+        '<button class="btn-blue" onclick="xadrezCheckState(document.getElementById(\'xadrez-content\'))">Nova partida</button></div>';return;
+    }
+    await xadrezRenderBoard(el,gameId,data);
+  });
+}
+
+window.xadrezClick=async function(sq){
+  const gameSnap=await getDoc(doc(db,'xadrez_games',xadrezGameId));
+  if(!gameSnap.exists())return;const gd=gameSnap.data();
+  if(gd.turn!==xadrezMyColor)return;
+  const board=fenToBoard(gd.fen);
+  const c=sq.charCodeAt(0)-97,r=parseInt(sq[1])-1;
+  const piece=board[r][c];
+  document.querySelectorAll('[id^="sq-"]').forEach(el=>el.style.outline='');
+  if(!xadrezSelected){
+    if(piece&&((xadrezMyColor==='w'&&piece===piece.toUpperCase())||(xadrezMyColor==='b'&&piece===piece.toLowerCase()))){
+      xadrezSelected=sq;const el=document.getElementById('sq-'+sq);if(el)el.style.outline='3px inset #f6f669';
+    }
+  } else {
+    if(xadrezSelected===sq){xadrezSelected=null;return;}
+    const fc=xadrezSelected.charCodeAt(0)-97,fr=parseInt(xadrezSelected[1])-1;
+    const mp=board[fr][fc];if(!mp){xadrezSelected=null;return;}
+    board[r][c]=mp;board[fr][fc]=null;
+    if(mp==='P'&&r===7)board[r][c]='Q';if(mp==='p'&&r===0)board[r][c]='q';
+    const newFen=boardToFen(board,gd.turn==='w'?'b':'w');
+    await setDoc(doc(db,'xadrez_games',xadrezGameId),{fen:newFen,turn:gd.turn==='w'?'b':'w',moves:[...(gd.moves||[]),xadrezSelected+sq]},{merge:true});
+    xadrezSelected=null;
+  }
+};
+
+window.abandonarXadrez=async function(){
+  if(!confirm('Abandonar a partida?'))return;
+  await setDoc(doc(db,'xadrez_games',xadrezGameId),{status:'finished',winner:'Oponente venceu (abandono)'},{merge:true});
+};
 
 const SCRIPT_URL='https://script.google.com/macros/s/AKfycbw7CfLpq-AnDFXMSKwpMizpYLrwG0PCn7CE7rMvi1sShgfCuAtHi1spCYd4mMThLUI8WQ/exec';
 const SHEET_URL='https://docs.google.com/spreadsheets/d/1ieSfNlnql1Yg8xl_25ed_2eWj-bCg1xnJq8wcl2DDNk/edit?gid=1011935790#gid=1011935790';
