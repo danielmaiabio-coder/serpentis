@@ -2190,11 +2190,11 @@ async function renderPerfis(mc){
     users.map(u=>{
       const ini=(u.nome||'?')[0].toUpperCase();
       const av=u.foto?'<img src="'+u.foto+'" alt=""/>':ini;
-      const capa=u.capa?'<img src="'+u.capa+'" class="perfil-card-capa"/>':'<div class="perfil-card-capa" style="background:'+(u.bgColor||'linear-gradient(135deg,#0d2e14,#1A5C2A)')+';"></div>';
-      return'<div class="perfil-card" data-uid="'+u.uid+'" onclick="abrirPerfil(this.dataset.uid)">'+
+      const capa=u.capa?'<img src="'+u.capa+'" class="perfil-card-capa" style="pointer-events:none;"/>':'<div class="perfil-card-capa" style="background:'+(u.bgColor||'linear-gradient(135deg,#0d2e14,#1A5C2A)')+';pointer-events:none;"></div>';
+      return'<div class="perfil-card" data-uid="'+u.uid+'" onclick="abrirPerfil(this.dataset.uid)" style="cursor:pointer;">'+
         capa+
-        '<div class="perfil-card-info">'+
-        '<div class="perfil-card-av" style="background:'+(u.cor||'#1A5C2A')+';color:#fff;">'+av+'</div>'+
+        '<div class="perfil-card-info" style="pointer-events:none;">'+
+        '<div class="perfil-card-av" style="background:'+(u.cor||'#1A5C2A')+';color:#fff;pointer-events:none;">'+av+'</div>'+
         '<div style="font-size:13px;font-weight:500;color:var(--text);margin-top:6px;">'+u.nome+'</div>'+
         '<div style="font-size:11px;color:var(--text-3);">'+(u.role==='coord'?'Coordenador':'Operador')+'</div>'+
         '</div></div>';
