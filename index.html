@@ -1058,13 +1058,6 @@ async function renderPerfil(mc){
   const isCoord = userProfile.role==='coord';
   const isViewer = userProfile.role==='viewer';
 
-  // Viewers don't see meet or disparos
-  if(isViewer){
-    window._bgTemas = TEMAS;
-    window._bgSelecionado = bgAtual;
-    return;
-  }
-
   const cfgSnap2 = await getDoc(doc(db,'config','reuniao'));
   const reuniao = cfgSnap2.exists()? cfgSnap2.data() : {};
   const meetLink = reuniao.meet||'';
@@ -1102,12 +1095,12 @@ async function renderPerfil(mc){
   const daniel = disp.daniel && disp.daniel.length>0 ? disp.daniel : [{hora:'',data:'',plat:'WATI DANIEL'}];
 
   mc.innerHTML += 
-    mensalBanner+
-    meetBanner+
+    (!isViewer ? mensalBanner+meetBanner : '')+
+    (!isViewer ?
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.25rem;">'+
       renderDisparosCard('pedro','Disparos Wati Pedro',pedro,isCoord)+
       renderDisparosCard('daniel','Disparos Wati Daniel',daniel,isCoord)+
-    '</div>';
+    '</div>' : '');
 
   window._bgTemas = TEMAS;
   window._bgSelecionado = bgAtual;
