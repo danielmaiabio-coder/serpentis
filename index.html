@@ -2006,11 +2006,6 @@ window.salvarPerfil=async function(){
 
 // ACIDO CHAT
 
-async function uploadToCloudinary(file){
-  const fd = new FormData();
-  fd.append('file', file);
-  fd.append('upload_preset', CLOUDINARY_PRESET);
-  const res = await fetch('https://api.cloudinary.com/v1_1/'+CLOUDINARY_CLOUD+'/auto/upload', {method:'POST',body:fd});
   const data = await res.json();
   return data.secure_url;
 }
