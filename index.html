@@ -905,26 +905,52 @@ async function renderEscala(mc){
   let highFiveHtml='';
   if(escaladoAgora&&!isCoord){
     const agora=hoje;
-    const hora=agora.getHours();
+    const diaSemana=agora.getDay(); // 0=dom, 6=sab
+    const ehDiaUtil=diaSemana>=1&&diaSemana<=5;
+    const totalMin=agora.getHours()*60+agora.getMinutes();
+    // Slots liberados: 09h15, 10h15, ..., 17h15
+    const slots=[9*60+15,10*60+15,11*60+15,12*60+15,13*60+15,14*60+15,15*60+15,16*60+15,17*60+15];
     const ultimo=pontosHoje.length?pontosHoje[pontosHoje.length-1]:null;
-    const passouUmaHora=!ultimo||(Date.now()-ultimo.ts)>=3600000;
-    const dentroDoPeriodo=hora>=9&&hora<20;
-    const podeBater=passouUmaHora&&dentroDoPeriodo;
+    // Slot atual = maior slot que já chegou
+    const slotAtual=slots.filter(s=>s<=totalMin).pop();
+    // Próximo slot futuro
+    const proximoSlot=slots.find(s=>s>totalMin);
+    // Verifica se já bateu neste slot (entre slotAtual e proximoSlot)
+    const slotAtualJaBatido=slotAtual!==undefined&&pontosHoje.some(p=>{
+      const [h,m]=p.hora.split(':').map(Number);
+      const pMin=h*60+m;
+      return pMin>=slotAtual&&(proximoSlot===undefined||pMin<proximoSlot);
+    });
+    const podeBater=ehDiaUtil&&slotAtual!==undefined&&!slotAtualJaBatido;
+
+    let statusMsg='';
+    if(!ehDiaUtil){
+      statusMsg='Disponível apenas de segunda a sexta';
+    } else if(slotAtual===undefined){
+      statusMsg='Disponível a partir das 09h15';
+    } else if(slotAtualJaBatido){
+      if(proximoSlot){
+        const h=Math.floor(proximoSlot/60),m=proximoSlot%60;
+        statusMsg='Próximo High Five às '+h+'h'+(m<10?'0'+m:m);
+      } else {
+        statusMsg='Todos os High Fives do dia concluídos! 🎉';
+      }
+    }
 
     highFiveHtml='<div style="background:linear-gradient(135deg,#1e3a8a,#2563eb);border-radius:var(--radius-lg);padding:1.5rem 2rem;margin-bottom:1.5rem;color:#fff;">'+
       '<div style="font-size:11px;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">Você está escalado agora · '+escaladoAgora.wati+'</div>'+
       '<div style="display:flex;align-items:center;gap:1.5rem;flex-wrap:wrap;">'+
       '<div>'+
-      '<div style="font-size:15px;font-weight:500;margin-bottom:4px;">Pontos hoje: <b>'+pontosHoje.length+'</b></div>'+
+      '<div style="font-size:15px;font-weight:500;margin-bottom:4px;">High Fives hoje: <b>'+pontosHoje.length+'</b></div>'+
       '<div style="font-size:12px;color:rgba(255,255,255,0.6);">'+pontosHoje.map(p=>'✓ '+p.hora).join(' · ')+'</div>'+
       '</div>'+
       (podeBater?
-        '<button onclick="baterPontoRoteamento()" style="margin-left:auto;padding:16px 24px;background:rgba(255,255,255,0.15);border:2px solid rgba(255,255,255,0.3);border-radius:16px;cursor:pointer;font-size:36px;transition:all 0.15s;backdrop-filter:blur(4px);" title="Bater ponto de roteamento" onmouseover="this.style.background=\'rgba(255,255,255,0.25)\'" onmouseout="this.style.background=\'rgba(255,255,255,0.15)\'">🖐️</button>'
+        '<button onclick="baterPontoRoteamento()" style="margin-left:auto;padding:16px 24px;background:rgba(255,255,255,0.15);border:2px solid rgba(255,255,255,0.3);border-radius:16px;cursor:pointer;font-size:36px;transition:all 0.15s;backdrop-filter:blur(4px);" title="Dar High Five!" onmouseover="this.style.background=\'rgba(255,255,255,0.25)\'" onmouseout="this.style.background=\'rgba(255,255,255,0.15)\'">🖐️</button>'
         :
-        '<div style="margin-left:auto;padding:16px 24px;background:rgba(0,0,0,0.2);border:2px solid rgba(255,255,255,0.1);border-radius:16px;font-size:36px;opacity:0.4;" title="'+(hora<9?'Disponível a partir das 09h':!dentroDoPeriodo?'Fora do horário':'Aguarde 1h para o próximo ponto')+'">🖐️</div>'
+        '<div style="margin-left:auto;padding:16px 24px;background:rgba(0,0,0,0.2);border:2px solid rgba(255,255,255,0.1);border-radius:16px;font-size:36px;opacity:0.4;" title="'+statusMsg+'">🖐️</div>'
       )+
       '</div>'+
-      (!podeBater?'<div style="font-size:11px;color:rgba(255,255,255,0.5);margin-top:8px;">'+(hora<9?'Disponível a partir das 09h':!dentroDoPeriodo?'Fora do período (09h-20h)':'Próximo ponto disponível em '+(60-Math.floor((Date.now()-ultimo.ts)/60000))+'min')+'</div>':'')+
+      (statusMsg?'<div style="font-size:11px;color:rgba(255,255,255,0.5);margin-top:8px;">'+statusMsg+'</div>':'')+
       '</div>';
   }
 
@@ -969,7 +995,7 @@ window.baterPontoRoteamento=async function(){
     await addDoc(collection(db,'roteamento_pontos',currentUser.uid,'pontos'),{
       hora,dataKey,ts:Date.now(),nome:userProfile.nome||'?'
     });
-    showToast('🖐️ Ponto registrado às '+hora+'!');
+    showToast('🖐️ High Five registrado às '+hora+'!');
     await renderEscala(document.getElementById('mainContent'));
   }catch(e){showToast('Erro ao registrar ponto.');}
 };
