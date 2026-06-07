@@ -1174,6 +1174,8 @@ window.editarReuniaoMensal=async function(){
   showToast('Reuniao Mensal atualizada!');
   await renderPerfil(document.getElementById('mainContent'));
 };
+
+window.limparDisparos=async function(id){
   if(!confirm('Limpar todos os disparos de '+id+'?'))return;
   try{
     const snap=await getDoc(doc(db,'config','disparos'));
