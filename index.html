@@ -1032,7 +1032,7 @@ async function xadrezRenderBoard(el,gameId,gd){
   let html='<div style="display:flex;gap:1.5rem;align-items:flex-start;flex-wrap:wrap;">'+
     '<div>'+
     '<div style="font-size:13px;margin-bottom:8px;">Voce joga com as <b>'+(xadrezMyColor==='w'?'Brancas':'Pretas')+'</b> · '+(isMyTurn?'<span style="color:var(--primary);font-weight:500;">Sua vez!</span>':'<span style="color:var(--text-3);">Vez do oponente...</span>')+'</div>'+
-    '<div style="display:inline-block;border:3px solid #333;border-radius:6px;overflow:hidden;">';
+    '<div id="xadrez-board" data-game-id="'+gameId+'" data-my-color="'+xadrezMyColor+'" data-selected="" style="display:inline-block;border:3px solid #333;border-radius:6px;overflow:hidden;">';
   for(const r of rows){
     html+='<div style="display:flex;">';
     for(const c of cols){
@@ -1070,26 +1070,62 @@ async function xadrezRenderBoard(el,gameId,gd){
 }
 
 window.xadrezClick=async function(sq){
-  const gameSnap=await getDoc(doc(db,'xadrez_games',xadrezGameId));
-  if(!gameSnap.exists())return;const gd=gameSnap.data();
-  if(gd.turn!==xadrezMyColor)return;
+  // Get game info from DOM
+  const boardEl=document.getElementById('xadrez-board');
+  if(!boardEl)return;
+  const gameId=boardEl.dataset.gameId;
+  const myColor=boardEl.dataset.myColor;
+  if(!gameId||!myColor){console.log('No gameId or myColor');return;}
+
+  const gameSnap=await getDoc(doc(db,'xadrez_games',gameId));
+  if(!gameSnap.exists())return;
+  const gd=gameSnap.data();
+  if(gd.turn!==myColor)return;
+
   const board=fenToBoard(gd.fen);
   const c=sq.charCodeAt(0)-97,r=parseInt(sq[1])-1;
   const piece=board[r][c];
-  document.querySelectorAll('[id^="sq-"]').forEach(el=>el.style.outline='');
-  if(!xadrezSelected){
-    if(piece&&((xadrezMyColor==='w'&&piece===piece.toUpperCase())||(xadrezMyColor==='b'&&piece===piece.toLowerCase()))){
-      xadrezSelected=sq;const el=document.getElementById('sq-'+sq);if(el)el.style.outline='3px inset #f6f669';
+
+  // Clear highlights
+  document.querySelectorAll('[id^="sq-"]').forEach(el=>{
+    const isLight=(parseInt(el.id.slice(3)[1])-1+el.id.charCodeAt(3)-97)%2===0;
+    el.style.background=isLight?'#f0d9b5':'#b58863';
+  });
+
+  const selected=boardEl.dataset.selected||'';
+
+  if(!selected){
+    // Select piece
+    if(piece&&((myColor==='w'&&piece===piece.toUpperCase())||(myColor==='b'&&piece===piece.toLowerCase()))){
+      boardEl.dataset.selected=sq;
+      const el=document.getElementById('sq-'+sq);
+      if(el)el.style.background='#f6f669';
     }
   } else {
-    if(xadrezSelected===sq){xadrezSelected=null;return;}
-    const fc=xadrezSelected.charCodeAt(0)-97,fr=parseInt(xadrezSelected[1])-1;
-    const mp=board[fr][fc];if(!mp){xadrezSelected=null;return;}
-    board[r][c]=mp;board[fr][fc]=null;
-    if(mp==='P'&&r===7)board[r][c]='Q';if(mp==='p'&&r===0)board[r][c]='q';
+    boardEl.dataset.selected='';
+    if(selected===sq)return;
+
+    const fc=selected.charCodeAt(0)-97,fr=parseInt(selected[1])-1;
+    const mp=board[fr][fc];
+    if(!mp)return;
+
+    // Make move
+    board[r][c]=mp;
+    board[fr][fc]=null;
+    if(mp==='P'&&r===7)board[r][c]='Q';
+    if(mp==='p'&&r===0)board[r][c]='q';
+
     const newFen=boardToFen(board,gd.turn==='w'?'b':'w');
-    await setDoc(doc(db,'xadrez_games',xadrezGameId),{fen:newFen,turn:gd.turn==='w'?'b':'w',moves:[...(gd.moves||[]),xadrezSelected+sq]},{merge:true});
-    xadrezSelected=null;
+    const newMoves=[...(gd.moves||[]),selected+sq];
+
+    // Update board visually immediately
+    const fromEl=document.getElementById('sq-'+selected);
+    const toEl=document.getElementById('sq-'+sq);
+    if(fromEl)fromEl.innerHTML='';
+    if(toEl)toEl.innerHTML='<span style="text-shadow:0 1px 4px rgba(0,0,0,0.4);pointer-events:none;">'+XP[mp]+'</span>';
+
+    // Save to Firebase
+    await setDoc(doc(db,'xadrez_games',gameId),{fen:newFen,turn:gd.turn==='w'?'b':'w',moves:newMoves},{merge:true});
   }
 };
 
