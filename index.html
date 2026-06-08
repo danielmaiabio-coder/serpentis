@@ -3391,7 +3391,7 @@ async function renderBasilisco(mc){
       (isCoordBA?
         // Coord: full config panel
         '<div style="font-size:11px;font-weight:500;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:10px;">Configuracao</div>'+
-        '<input type="password" id="bsk-key" value="'+basiliscoKey+'" placeholder="AIza..." style="width:100%;padding:8px 12px;border:1px solid rgba(255,255,255,0.1);border-radius:var(--radius);background:rgba(255,255,255,0.05);color:#fff;font-family:var(--font);font-size:12px;margin-bottom:8px;"/>'+
+        '<input type="password" id="bsk-key" value="'+basiliscoKey+'" placeholder="gsk_..." style="width:100%;padding:8px 12px;border:1px solid rgba(255,255,255,0.1);border-radius:var(--radius);background:rgba(255,255,255,0.05);color:#fff;font-family:var(--font);font-size:12px;margin-bottom:8px;"/>'+
         '<div style="margin-bottom:8px;"><div style="font-size:10px;color:rgba(255,255,255,0.3);margin-bottom:6px;">DOCUMENTOS ('+basiliscoDocs.length+')</div>'+
         basiliscoDocs.map((d,i)=>'<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;"><span style="font-size:11px;color:rgba(255,255,255,0.5);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+d.nome+'</span><button onclick="removerDoc('+i+')" style="padding:2px 8px;border:1px solid rgba(255,255,255,0.1);border-radius:4px;background:transparent;color:rgba(255,255,255,0.3);font-size:10px;cursor:pointer;">x</button></div>').join('')+
         '<input type="text" id="bsk-doc-nome" placeholder="Nome do doc" style="width:100%;padding:6px 10px;border:1px solid rgba(255,255,255,0.1);border-radius:var(--radius);background:rgba(255,255,255,0.05);color:#fff;font-family:var(--font);font-size:11px;margin-bottom:4px;"/>'+
@@ -3509,11 +3509,10 @@ window.perguntarBasilisco=async function(){
   const contexto=basiliscoDocs.length>0?'DOCUMENTOS INTERNOS:\n\n'+basiliscoDocs.map(d=>'=== '+d.nome+' ===\n'+d.texto).join('\n\n'):'Nenhum documento carregado.';
   const systemPrompt='Voce e o Basilisco, assistente interno da equipe de Contas a Receber da Brille.\nResponda APENAS com base nos documentos internos fornecidos abaixo.\nSe a informacao nao estiver nos documentos, responda: "Nao encontrei essa informacao nos documentos internos."\nNunca invente informacoes. Nunca use conhecimento externo. Responda em portugues.\n\n'+contexto;
   try{
-    const geminiMessages = basiliscoMsgs.map(m=>({role:m.role==='assistant'?'model':'user',parts:[{text:m.content}]}));
-    const res=await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key='+basiliscoKey,{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':basiliscoKey},body:JSON.stringify({systemInstruction:{parts:[{text:systemPrompt}]},contents:[...geminiMessages,{role:'user',parts:[{text:pergunta}]}],generationConfig:{maxOutputTokens:1500,temperature:0.2}})});
+    const res=await fetch('https://api.groq.com/openai/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+basiliscoKey},body:JSON.stringify({model:'llama-3.3-70b-versatile',messages:[{role:'system',content:systemPrompt},...basiliscoMsgs,{role:'user',content:pergunta}],max_tokens:2000,temperature:0.2})});
     const data=await res.json();loading.style.display='none';
     if(data.error){showToast('Erro: '+data.error.message);return;}
-    const resposta=data.candidates?.[0]?.content?.parts?.[0]?.text||data.error?.message||'Sem resposta.';
+    const resposta=data.choices[0].message.content;
     basiliscoMsgs.push({role:'user',content:pergunta});basiliscoMsgs.push({role:'assistant',content:resposta});
     if(basiliscoMsgs.length>20)basiliscoMsgs=basiliscoMsgs.slice(-20);
     const botDiv=document.createElement('div');
