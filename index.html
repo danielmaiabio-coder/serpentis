@@ -3334,6 +3334,8 @@ async function slackLoadMessages(channel) {
   if (!msgsEl) { clearInterval(slackPollInterval); return; }
   try {
     const data = await slackCall('history', { channel });
+    // Checar se o canal ainda é o ativo após o fetch (usuário pode ter trocado)
+    if (slackActiveChannel !== channel) return;
     if (!data.messages) return;
     const msgs = [...data.messages].reverse();
     slackCheckNewMsgs(channel, msgs);
