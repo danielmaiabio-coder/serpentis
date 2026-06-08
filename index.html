@@ -743,7 +743,7 @@ window.navigate=async function(page){
   mc.style.overflow='auto';
   mc.style.backgroundImage='none';
   mc.style.background='';
-  mc.innerHTML='<div class="snake-corner"><img src="'+SNAKE_IMG+'"/></div><div class="empty">Carregando...</div>';
+  mc.innerHTML='<div class="empty">Carregando...</div>';
   if(page==='equipe'){await renderEquipe(mc);return;}
   if(page==='escritorio'){await renderEscritorio(mc);return;}
   if(page==='lancar'){
@@ -775,7 +775,7 @@ window.navigate=async function(page){
   if(!viewingOp&&userProfile.role==='coord'){await renderEquipe(mc);return;}
   const opSnap=await getDoc(doc(db,'usuarios',viewingOp));
   const op=opSnap.exists()?{uid:viewingOp,...opSnap.data()}:null;
-  if(!op){mc.innerHTML='<div class="snake-corner"><img src="'+SNAKE_IMG+'"/></div><div class="empty">Operador nao encontrado.</div>';return;}
+  if(!op){mc.innerHTML='<div class="empty">Operador nao encontrado.</div>';return;}
   if(page==='resultado')await renderResultado(mc,op);
   else if(page==='historico')await renderHistorico(mc,op);
   else if(page==='notas')await renderNotas(mc,op);
@@ -783,7 +783,7 @@ window.navigate=async function(page){
   else if(page==='feedback')await renderFeedback(mc,op);
 };
 
-function snakeHtml(){return '<div class="snake-corner"><img src="'+SNAKE_IMG+'"/></div>';}
+function snakeHtml(){return '';} // cobra fixa já está no HTML com onclick
 
 window.selectOp=async function(uid){
   viewingOp=uid;document.getElementById('sbSub').textContent='Vendo: '+(opsCache[uid]||'operador');
