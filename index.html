@@ -672,6 +672,7 @@ function buildNav(){
     {id:'resultado',label:'Resultado'},{id:'historico',label:'Historico'},{id:'notas',label:'Analise de Chat'},{id:'dashboard',label:'Dashboard'},
     {sep:true,label:'SOCIAL'},
     {id:'acido',label:'<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780767902/uol_dqoo8g.webp" style="width:16px;height:16px;object-fit:contain;vertical-align:middle;margin-right:4px;"/> Chat da Uol'},{id:'feed',label:'Feed da Cobranca'},{id:'dm',label:'💬 Mensagens'},
+    {id:'slack',label:'<img src="https://a.slack-edge.com/80588/marketing/img/nav/slack-sales-homepage-nav-logo.png" style="width:14px;height:14px;object-fit:contain;vertical-align:middle;margin-right:2px;"/> Slack'},
     {id:'perfis',label:'👥 Perfis'},
     {sep:true,label:'UTILIDADES'},
     {id:'copys',label:'Banco de Copys'},{id:'links',label:'Links de Reneg.'},{id:'escala',label:'Escala de Roteamento'},
@@ -688,6 +689,7 @@ function buildNav(){
     ...(canLancar && !isCoord ? [{id:'lancar',label:'Lancar Resultados'}] : []),
     {sep:true,label:'SOCIAL'},
     {id:'acido',label:'<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780767902/uol_dqoo8g.webp" style="width:16px;height:16px;object-fit:contain;vertical-align:middle;margin-right:4px;"/> Chat da Uol'},{id:'feed',label:'Feed da Cobranca'},{id:'dm',label:'💬 Mensagens'},
+    {id:'slack',label:'<img src="https://a.slack-edge.com/80588/marketing/img/nav/slack-sales-homepage-nav-logo.png" style="width:14px;height:14px;object-fit:contain;vertical-align:middle;margin-right:2px;"/> Slack'},
     {id:'perfis',label:'👥 Perfis'},
     {sep:true,label:'UTILIDADES'},
     {id:'copys',label:'Banco de Copys'},{id:'links',label:'Links de Reneg.'},{id:'escala',label:'Escala de Roteamento'},
@@ -703,6 +705,7 @@ function buildNav(){
   const viewerNavs=[
     {sep:true,label:'SOCIAL'},
     {id:'acido',label:'<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780767902/uol_dqoo8g.webp" style="width:16px;height:16px;object-fit:contain;vertical-align:middle;margin-right:4px;"/> Chat da Uol'},{id:'feed',label:'Feed da Cobranca'},{id:'dm',label:'💬 Mensagens'},
+    {id:'slack',label:'<img src="https://a.slack-edge.com/80588/marketing/img/nav/slack-sales-homepage-nav-logo.png" style="width:14px;height:14px;object-fit:contain;vertical-align:middle;margin-right:2px;"/> Slack'},
     {id:'perfis',label:'👥 Perfis'},
     {sep:true,label:'CONTA'},
     {id:'perfil',label:'Pagina Inicial'},
@@ -743,6 +746,7 @@ window.navigate=async function(page){
   if(page==='calcreneg'){renderCalcReneg(mc);return;}
   if(page==='relatorio_disparos'){await renderRelatDisparos(mc);return;}
   if(page==='infos'){renderInfosUteis(mc);return;}
+  if(page==='slack'){await renderSlack(mc);return;}
   if(page==='basilisco'){await renderBasilisco(mc);return;}
   if(page==='perfis'){await renderPerfis(mc);return;}
   if(page==='caderno'){await renderCaderno(mc);return;}
@@ -3052,6 +3056,141 @@ let basiliscoKey='';
 let basiliscoDocs=[];
 
 
+
+
+// ── SLACK ────────────────────────────────────────────────────────────────
+const SLACK_API = '/api/slack';
+let slackPollInterval = null;
+let slackActiveChannel = null;
+let slackUsers = {};
+let slackChannels = [];
+
+async function slackCall(action, params = {}, method = 'GET', body = null) {
+  const url = new URL(SLACK_API, location.origin);
+  url.searchParams.set('action', action);
+  Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
+  const opts = { method };
+  if (body) { opts.headers = {'Content-Type':'application/json'}; opts.body = JSON.stringify(body); }
+  const res = await fetch(url.toString(), opts);
+  return res.json();
+}
+
+async function renderSlack(mc) {
+  if (slackPollInterval) { clearInterval(slackPollInterval); slackPollInterval = null; }
+
+  mc.innerHTML = snakeHtml() +
+    '<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;">' +
+      '<div class="page-eyebrow">💬 SOCIAL</div>' +
+      '<div class="page-title"><img src="https://a.slack-edge.com/80588/marketing/img/nav/slack-sales-homepage-nav-logo.png" style="height:28px;vertical-align:middle;margin-right:8px;"/>Slack</div>' +
+      '<div class="page-sub">Canais e mensagens diretas do workspace Hashtagtreinamentos</div>' +
+    '</div>' +
+    '<div style="display:flex;gap:0;height:calc(100vh - 200px);border-radius:14px;overflow:hidden;border:1px solid var(--border);">' +
+      '<div id="slack-sidebar" style="width:240px;flex-shrink:0;background:#3f0e40;display:flex;flex-direction:column;overflow-y:auto;">' +
+        '<div style="padding:14px 16px;color:rgba(255,255,255,0.7);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;">Carregando...</div>' +
+      '</div>' +
+      '<div id="slack-main" style="flex:1;display:flex;flex-direction:column;background:var(--surface);min-width:0;">' +
+        '<div style="flex:1;display:flex;align-items:center;justify-content:center;color:var(--text-3);font-size:13px;">Selecione um canal</div>' +
+      '</div>' +
+    '</div>';
+
+  // Carregar usuários e canais
+  try {
+    const [usersData, chData] = await Promise.all([
+      slackCall('users'),
+      slackCall('channels')
+    ]);
+    if (usersData.members) {
+      usersData.members.forEach(u => { slackUsers[u.id] = u; });
+    }
+    if (chData.channels) {
+      slackChannels = chData.channels.sort((a,b) => a.name.localeCompare(b.name));
+      renderSlackSidebar();
+    }
+  } catch(e) {
+    document.getElementById('slack-sidebar').innerHTML = '<div style="padding:16px;color:rgba(255,255,255,0.6);font-size:12px;">Erro ao carregar canais.</div>';
+  }
+}
+
+function renderSlackSidebar() {
+  const sb = document.getElementById('slack-sidebar');
+  if (!sb) return;
+  const groups = { starred: [], rest: [] };
+  slackChannels.forEach(ch => groups.rest.push(ch));
+
+  sb.innerHTML =
+    '<div style="padding:12px 16px 4px;color:rgba(255,255,255,0.5);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;">Canais</div>' +
+    groups.rest.map(ch => {
+      const active = slackActiveChannel === ch.id;
+      return '<div onclick="slackOpenChannel(\''+ch.id+'\',\''+ch.name+'\')" style="display:flex;align-items:center;gap:8px;padding:5px 16px;cursor:pointer;border-radius:0;font-size:13px;color:'+(active?'#fff':'rgba(255,255,255,0.7)')+';background:'+(active?'rgba(255,255,255,0.15)':'transparent')+';transition:background 0.1s;" onmouseover="if(\''+ch.id+'\'!==\''+slackActiveChannel+'\')this.style.background=\'rgba(255,255,255,0.08)\'" onmouseout="if(\''+ch.id+'\'!==\''+slackActiveChannel+'\')this.style.background=\'transparent\'">' +
+        '<span style="opacity:0.5;">'+(ch.is_private?'🔒':'#')+'</span>' +
+        '<span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+ch.name+'</span>' +
+        (ch.unread_count_display?'<span style="background:#e01e5a;color:#fff;border-radius:10px;padding:1px 6px;font-size:10px;margin-left:auto;">'+ch.unread_count_display+'</span>':'') +
+      '</div>';
+    }).join('');
+}
+
+window.slackOpenChannel = async function(id, name) {
+  slackActiveChannel = id;
+  renderSlackSidebar();
+  if (slackPollInterval) { clearInterval(slackPollInterval); slackPollInterval = null; }
+
+  const main = document.getElementById('slack-main');
+  if (!main) return;
+  main.innerHTML =
+    '<div style="padding:12px 16px;border-bottom:1px solid var(--border);font-weight:600;font-size:14px;display:flex;align-items:center;gap:6px;">' +
+      '<span style="color:var(--text-3);">#</span>'+name+
+    '</div>' +
+    '<div id="slack-msgs" style="flex:1;overflow-y:auto;padding:1rem;display:flex;flex-direction:column;gap:2px;"><div style="color:var(--text-3);font-size:13px;">Carregando mensagens...</div></div>' +
+    '<div style="padding:12px 16px;border-top:1px solid var(--border);display:flex;gap:8px;">' +
+      '<input id="slack-input" type="text" placeholder="Mensagem para #'+name+'" style="flex:1;padding:9px 12px;border:1px solid var(--border-md);border-radius:var(--radius);background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px;" onkeydown="if(event.key===\'Enter\')slackSend()"/>' +
+      '<button onclick="slackSend()" style="padding:9px 16px;background:#4a154b;color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:13px;cursor:pointer;">Enviar</button>' +
+    '</div>';
+
+  await slackLoadMessages(id);
+  slackPollInterval = setInterval(() => slackLoadMessages(id), 5000);
+};
+
+async function slackLoadMessages(channel) {
+  const msgsEl = document.getElementById('slack-msgs');
+  if (!msgsEl) { clearInterval(slackPollInterval); return; }
+  try {
+    const data = await slackCall('history', { channel });
+    if (!data.messages) return;
+    const msgs = [...data.messages].reverse();
+    const wasAtBottom = msgsEl.scrollHeight - msgsEl.scrollTop - msgsEl.clientHeight < 60;
+    msgsEl.innerHTML = msgs.map(m => {
+      const u = slackUsers[m.user] || {};
+      const nome = u.real_name || u.name || m.username || 'Bot';
+      const avatar = u.profile?.image_48 || '';
+      const ts = new Date(parseFloat(m.ts)*1000).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+      const avHtml = avatar
+        ? '<img src="'+avatar+'" style="width:32px;height:32px;border-radius:4px;object-fit:cover;flex-shrink:0;"/>'
+        : '<div style="width:32px;height:32px;border-radius:4px;background:#4a154b;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex-shrink:0;">'+(nome[0]||'?').toUpperCase()+'</div>';
+      const text = (m.text||'').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&').replace(/<@([A-Z0-9]+)>/g,(match,uid)=>{const u2=slackUsers[uid];return u2?'<b>@'+(u2.real_name||u2.name)+'</b>':match;});
+      return '<div style="display:flex;gap:10px;padding:4px 0;align-items:flex-start;">'+
+        avHtml+
+        '<div style="flex:1;min-width:0;">'+
+          '<span style="font-weight:600;font-size:13px;">'+nome+'</span>'+
+          '<span style="font-size:11px;color:var(--text-3);margin-left:6px;">'+ts+'</span>'+
+          '<div style="font-size:13px;color:var(--text);margin-top:2px;line-height:1.4;word-break:break-word;">'+text+'</div>'+
+        '</div>'+
+      '</div>';
+    }).join('');
+    if (wasAtBottom) msgsEl.scrollTop = msgsEl.scrollHeight;
+  } catch(e) {}
+}
+
+window.slackSend = async function() {
+  const input = document.getElementById('slack-input');
+  const text = input?.value?.trim();
+  if (!text || !slackActiveChannel) return;
+  input.value = '';
+  try {
+    await slackCall('send', {}, 'POST', { channel: slackActiveChannel, text });
+    await slackLoadMessages(slackActiveChannel);
+  } catch(e) { showToast('Erro ao enviar.'); }
+};
+// ── /SLACK ───────────────────────────────────────────────────────────────
 
 // ── INFORMAÇÕES ÚTEIS ────────────────────────────────────────────────────
 function renderInfosUteis(mc){
