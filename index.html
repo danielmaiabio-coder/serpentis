@@ -1452,16 +1452,34 @@ async function renderPerfil(mc){
     const escData=escalaSnap.data();
     const nome=(userProfile.nome||'').toLowerCase();
     let escalado=null;
+    function isThisWeekPerfil(datesStr){
+      if(!datesStr)return false;
+      const matches=[...datesStr.matchAll(/(\d{2})\/(\d{2})/g)];
+      if(!matches||matches.length<1)return false;
+      const hojeP=new Date();hojeP.setHours(0,0,0,0);
+      const ano=hojeP.getFullYear();
+      const [d1,m1]=[parseInt(matches[0][1]),parseInt(matches[0][2])-1];
+      const inicio=new Date(ano,m1,d1);inicio.setHours(0,0,0,0);
+      let fim;
+      if(matches.length>=2){
+        const [d2,m2]=[parseInt(matches[1][1]),parseInt(matches[1][2])-1];
+        fim=new Date(ano,m2,d2);
+      } else {
+        fim=new Date(inicio);fim.setDate(fim.getDate()+6);
+      }
+      fim.setHours(23,59,59,999);
+      return hojeP>=inicio&&hojeP<=fim;
+    }
     // Check watiPedro weeks
     if(escData.watiPedro){
       escData.watiPedro.forEach((semana,i)=>{
-        if(semana.operador&&semana.operador.toLowerCase()===nome) escalado={wati:'WATI Pedro',semana:i+1,dates:semana.dates};
+        if(semana.operador&&semana.operador.toLowerCase()===nome&&isThisWeekPerfil(semana.dates)) escalado={wati:'WATI Pedro',semana:i+1,dates:semana.dates};
       });
     }
     // Check watiDaniel weeks
     if(escData.watiDaniel){
       escData.watiDaniel.forEach((semana,i)=>{
-        if(semana.operador&&semana.operador.toLowerCase()===nome) escalado={wati:'WATI Daniel',semana:i+1,dates:semana.dates};
+        if(semana.operador&&semana.operador.toLowerCase()===nome&&isThisWeekPerfil(semana.dates)) escalado={wati:'WATI Daniel',semana:i+1,dates:semana.dates};
       });
     }
     if(escalado){
