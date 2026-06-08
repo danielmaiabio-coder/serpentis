@@ -3094,6 +3094,7 @@ async function renderSlack(mc) {
     '</div>';
 
   // Carregar usuários e canais
+  await loadSlackHidden();
   try {
     const [usersData, chData] = await Promise.all([
       slackCall('users'),
@@ -3111,23 +3112,77 @@ async function renderSlack(mc) {
   }
 }
 
+let slackHiddenChannels = new Set();
+
+async function loadSlackHidden(){
+  try{
+    const snap = await getDoc(doc(db,'config','slack_hidden'));
+    if(snap.exists()) slackHiddenChannels = new Set(snap.data().hidden||[]);
+  }catch(e){}
+}
+
+async function saveSlackHidden(){
+  try{
+    await setDoc(doc(db,'config','slack_hidden'),{hidden:[...slackHiddenChannels]},{merge:false});
+  }catch(e){}
+}
+
 function renderSlackSidebar() {
   const sb = document.getElementById('slack-sidebar');
   if (!sb) return;
-  const groups = { starred: [], rest: [] };
-  slackChannels.forEach(ch => groups.rest.push(ch));
+  const isCoord = userProfile.role==='coord';
+  const visible = slackChannels.filter(ch => !slackHiddenChannels.has(ch.id));
 
   sb.innerHTML =
     '<div style="padding:12px 16px 4px;color:rgba(255,255,255,0.5);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;">Canais</div>' +
-    groups.rest.map(ch => {
+    visible.map(ch => {
       const active = slackActiveChannel === ch.id;
-      return '<div onclick="slackOpenChannel(\''+ch.id+'\',\''+ch.name+'\')" style="display:flex;align-items:center;gap:8px;padding:5px 16px;cursor:pointer;border-radius:0;font-size:13px;color:'+(active?'#fff':'rgba(255,255,255,0.7)')+';background:'+(active?'rgba(255,255,255,0.15)':'transparent')+';transition:background 0.1s;" onmouseover="if(\''+ch.id+'\'!==\''+slackActiveChannel+'\')this.style.background=\'rgba(255,255,255,0.08)\'" onmouseout="if(\''+ch.id+'\'!==\''+slackActiveChannel+'\')this.style.background=\'transparent\'">' +
-        '<span style="opacity:0.5;">'+(ch.is_private?'🔒':'#')+'</span>' +
-        '<span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+ch.name+'</span>' +
-        (ch.unread_count_display?'<span style="background:#e01e5a;color:#fff;border-radius:10px;padding:1px 6px;font-size:10px;margin-left:auto;">'+ch.unread_count_display+'</span>':'') +
+      return '<div style="display:flex;align-items:center;gap:8px;padding:5px 8px 5px 14px;cursor:pointer;font-size:13px;color:'+(active?'#fff':'rgba(255,255,255,0.7)')+';background:'+(active?'rgba(255,255,255,0.15)':'transparent')+';transition:background 0.1s;" '+
+        'onmouseover="this.style.background=\'rgba(255,255,255,0.08)\';var b=this.querySelector(\'.shb\');if(b)b.style.display=\'flex\'" '+
+        'onmouseout="if(\''+ch.id+'\'!==slackActiveChannel)this.style.background=\'transparent\';var b=this.querySelector(\'.shb\');if(b)b.style.display=\'none\'">' +
+        '<span style="opacity:0.5;" onclick="slackOpenChannel(\''+ch.id+'\',\''+ch.name+'\')">' +(ch.is_private?'🔒':'#')+'</span>' +
+        '<span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;" onclick="slackOpenChannel(\''+ch.id+'\',\''+ch.name+'\')">' +ch.name+'</span>' +
+        (isCoord?'<button class="shb" onclick="event.stopPropagation();slackHideChannel(\''+ch.id+'\')" style="display:none;align-items:center;justify-content:center;background:rgba(255,255,255,0.2);border:none;border-radius:4px;color:#fff;cursor:pointer;font-size:10px;padding:2px 6px;flex-shrink:0;">✕</button>':'') +
       '</div>';
-    }).join('');
+    }).join('') +
+    (isCoord && slackHiddenChannels.size>0 ?
+      '<div style="padding:8px 16px;margin-top:4px;border-top:1px solid rgba(255,255,255,0.1);">'+
+        '<button onclick="slackShowHidden()" style="background:none;border:none;color:rgba(255,255,255,0.4);font-size:11px;cursor:pointer;font-family:var(--font);">⚙️ Ocultos ('+slackHiddenChannels.size+')</button>'+
+      '</div>'
+    : '');
 }
+
+window.slackHideChannel = async function(id){
+  slackHiddenChannels.add(id);
+  await saveSlackHidden();
+  renderSlackSidebar();
+};
+
+window.slackShowHidden = function(){
+  const hidden = slackChannels.filter(ch => slackHiddenChannels.has(ch.id));
+  const modal = document.createElement('div');
+  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;';
+  modal.innerHTML='<div style="background:var(--surface);border-radius:14px;padding:1.5rem;width:320px;max-height:420px;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,0.3);">'+
+    '<div style="font-weight:600;font-size:15px;margin-bottom:12px;color:var(--text);">⚙️ Canais ocultos</div>'+
+    (hidden.length===0?'<div style="font-size:13px;color:var(--text-3);">Nenhum canal oculto.</div>':
+    hidden.map(ch=>'<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);">'+
+      '<span style="font-size:13px;color:var(--text);">'+(ch.is_private?'🔒':'#')+ch.name+'</span>'+
+      '<button onclick="slackRestoreChannel(\''+ch.id+'\')" style="padding:4px 10px;background:var(--primary);color:#fff;border:none;border-radius:6px;font-size:11px;cursor:pointer;">Mostrar</button>'+
+    '</div>').join(''))+
+    '<button onclick="this.closest(\'[style*=fixed]\').remove()" style="margin-top:12px;width:100%;padding:8px;background:var(--surface);border:1px solid var(--border-md);border-radius:8px;cursor:pointer;font-family:var(--font);color:var(--text);">Fechar</button>'+
+  '</div>';
+  document.body.appendChild(modal);
+};
+
+window.slackRestoreChannel = async function(id){
+  slackHiddenChannels.delete(id);
+  await saveSlackHidden();
+  renderSlackSidebar();
+  const modal = document.querySelector('[style*="position:fixed"][style*="inset:0"]');
+  if(modal) modal.remove();
+  if(slackHiddenChannels.size>0) slackShowHidden();
+};
+
 
 window.slackOpenChannel = async function(id, name) {
   slackActiveChannel = id;
