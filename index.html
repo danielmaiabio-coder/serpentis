@@ -2782,7 +2782,7 @@ function getWeekDays(refDate){
   const day = d.getDay(); // 0=dom
   const mon = new Date(d); mon.setDate(d.getDate()-(day===0?6:day-1));
   const days=[];
-  for(let i=0;i<7;i++){const x=new Date(mon);x.setDate(mon.getDate()+i);days.push(x);}
+  for(let i=0;i<5;i++){const x=new Date(mon);x.setDate(mon.getDate()+i);days.push(x);}
   return days;
 }
 
@@ -2818,7 +2818,7 @@ async function renderRelatDisparos(mc){
 
     // Header semana
     const semIni = weekDays[0].toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
-    const semFim = weekDays[6].toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'});
+    const semFim = weekDays[4].toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'});
 
     // Montar HTML
     let html = snakeHtml()+
@@ -2830,7 +2830,11 @@ async function renderRelatDisparos(mc){
       // Controles semana
       '<div style="display:flex;align-items:center;gap:12px;margin-bottom:1rem;flex-wrap:wrap;">'+
         '<button onclick="rdSemana(-1)" style="padding:7px 14px;border:1px solid var(--border-md);border-radius:var(--radius);background:var(--surface);cursor:pointer;font-family:var(--font);font-size:13px;">&#8592; Semana anterior</button>'+
-        '<div style="font-size:14px;font-weight:600;color:var(--text);background:#FFFF00;padding:4px 12px;border-radius:6px;">Semana '+semIni+' - '+semFim+'</div>'+
+        '<div style="display:flex;align-items:center;gap:6px;background:#FFFF00;padding:4px 12px;border-radius:6px;">'+
+          '<span style="font-size:14px;font-weight:600;color:#1a1a1a;">Semana '+semIni+' - '+semFim+'</span>'+
+          '<input type="date" id="rd-week-picker" value="'+fmtDateKey(weekDays[0])+'" title="Ir para semana" onchange="rdGoToDate(this.value)" style="width:0;height:0;opacity:0;position:absolute;pointer-events:none;" />'+
+          '<span onclick="document.getElementById(\'rd-week-picker\').showPicker?document.getElementById(\'rd-week-picker\').showPicker():document.getElementById(\'rd-week-picker\').click()" style="cursor:pointer;font-size:14px;title=\'Escolher data\'">📅</span>'+
+        '</div>'+
         '<button onclick="rdSemana(1)" style="padding:7px 14px;border:1px solid var(--border-md);border-radius:var(--radius);background:var(--surface);cursor:pointer;font-family:var(--font);font-size:13px;">Proxima semana &#8594;</button>'+
         '<button onclick="rdHoje()" style="padding:7px 14px;border:1px solid var(--border-md);border-radius:var(--radius);background:var(--surface);cursor:pointer;font-family:var(--font);font-size:13px;">Hoje</button>'+
         '<div style="margin-left:auto;display:flex;gap:8px;">'+
@@ -2896,6 +2900,12 @@ async function renderRelatDisparos(mc){
     window._rdState = {weekDays, keys, data, editMode};
   }
 
+  window.rdGoToDate = function(dateStr){
+    if(!dateStr) return;
+    weekRef = new Date(dateStr+'T12:00:00');
+    editMode=false;
+    render();
+  };
   window.rdSemana = function(dir){
     weekRef = new Date(weekRef);
     weekRef.setDate(weekRef.getDate() + dir*7);
@@ -2927,7 +2937,7 @@ async function renderRelatDisparos(mc){
   window.rdExportar = async function(){
     const {weekDays,keys,data} = window._rdState;
     const semIni = weekDays[0].toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
-    const semFim = weekDays[6].toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'});
+    const semFim = weekDays[4].toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'});
 
     // Montar CSV
     const header = ['Tipo de Mensagem',...weekDays.map(d=>fmtDateLabel(d)+' '+d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})),'Soma','Media','Concentracao'];
