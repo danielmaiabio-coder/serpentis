@@ -1324,7 +1324,10 @@ function renderDisparosCard(id, titulo, slots, isCoord){
   const watiUrl = id==='pedro'
     ? 'https://live.wati.io/5869/teamInbox'
     : 'https://live.wati.io/354531';
-  const watiLink = '<a href="'+(id===\'pedro\'?\'https://live.wati.io/5869/teamInbox\':\'https://live.wati.io/354531\')+\'" target="_blank"' style="display:inline-flex;align-items:center;gap:6px;padding:5px 12px;background:#fff;border:1px solid var(--border-md);border-radius:20px;text-decoration:none;font-size:12px;font-weight:500;color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,0.08);transition:box-shadow 0.15s;" onmouseover="this.style.boxShadow=\'0 2px 8px rgba(0,0,0,0.15)\'" onmouseout="this.style.boxShadow=\'0 1px 4px rgba(0,0,0,0.08)\'"><img src=\'https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780848930/wati_hbqyix.png\' style=\'width:16px;height:16px;object-fit:contain;vertical-align:middle;\'/>Abrir '+(id==='pedro'?'WATI Pedro':'WATI Daniel')+'</a>';
+  const watiLabel = id==='pedro'?'WATI Pedro':'WATI Daniel';
+  const watiLink = '<a href="'+watiUrl+'" target="_blank" style="display:inline-flex;align-items:center;gap:6px;padding:5px 12px;background:#fff;border:1px solid var(--border-md);border-radius:20px;text-decoration:none;font-size:12px;font-weight:500;color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,0.08);">'+
+    '<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780848930/wati_hbqyix.png" style="width:16px;height:16px;object-fit:contain;vertical-align:middle;"/>'+
+    'Abrir '+watiLabel+'</a>';
   return '<div class="panel" id="card-disp-'+id+'">'+
     '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">'+
       '<div class="panel-title" style="margin:0;">'+titulo+'</div>'+
