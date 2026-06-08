@@ -487,7 +487,7 @@ function buildNav(){
   const {isCoord, canLancar} = getPerms();
   const coordNavs=[
     {id:'equipe',label:'Minha Equipe'},{id:'lancar',label:'Lancar Resultados'},
-    {id:'escritorio',label:'🗂️ Escritorio'},
+    {id:'escritorio',label:'🗂️ Escritorio'},{id:'relatorio_disparos',label:'📊 Relatorio de Disparos'},
     {sep:true,label:'PAINEL BRILLE'},
     {id:'resultado',label:'Resultado'},{id:'historico',label:'Historico'},{id:'notas',label:'Analise de Chat'},{id:'dashboard',label:'Dashboard'},
     {sep:true,label:'SOCIAL'},
@@ -561,6 +561,7 @@ window.navigate=async function(page){
   if(page==='calc'){renderCalc(mc);return;}
   if(page==='calcquit'){renderCalcQuit(mc);return;}
   if(page==='calcreneg'){renderCalcReneg(mc);return;}
+  if(page==='relatorio_disparos'){await renderRelatDisparos(mc);return;}
   if(page==='planilha'){renderPlanilha(mc);return;}  if(page==='basilisco'){await renderBasilisco(mc);return;}
   if(page==='perfis'){await renderPerfis(mc);return;}
   if(page==='caderno'){await renderCaderno(mc);return;}
@@ -2771,6 +2772,197 @@ let basiliscoMsgs=[];
 let basiliscoKey='';
 let basiliscoDocs=[];
 
+
+// ── RELATÓRIO DE DISPAROS ─────────────────────────────────────────────────
+const DISP_TIPOS = ['API','FW1','FW2','FW3','FW4','FW5','Estrategia Adicional','Estrategia Antigos'];
+const DISP_CORES = {'API':'#92D050','FW1':'#00B0F0','FW2':'#FF0000','FW3':'#FF6600','FW4':'#FF6600','FW5':'#FF6600','Estrategia Adicional':'','Estrategia Antigos':''};
+
+function getWeekDays(refDate){
+  const d = new Date(refDate);
+  const day = d.getDay(); // 0=dom
+  const mon = new Date(d); mon.setDate(d.getDate()-(day===0?6:day-1));
+  const days=[];
+  for(let i=0;i<7;i++){const x=new Date(mon);x.setDate(mon.getDate()+i);days.push(x);}
+  return days;
+}
+
+function fmtDate(d){return d.toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit'}).replace('.','')}
+function fmtDateKey(d){return d.toISOString().split('T')[0];}
+function fmtDateLabel(d){const ds=['Segunda-Feira','Terca-Feira','Quarta-Feira','Quinta-Feira','Sexta-Feira','Sabado','Domingo'];return ds[d.getDay()===0?6:d.getDay()-1];}
+
+async function renderRelatDisparos(mc){
+  const today = new Date();
+  let weekRef = new Date(today);
+  let editMode = false;
+
+  async function loadData(weekDays){
+    const keys = weekDays.map(fmtDateKey);
+    const docs = await Promise.all(keys.map(k=>getDoc(doc(db,'relatorio_disparos',k))));
+    const data = {};
+    docs.forEach((d,i)=>{data[keys[i]]=d.exists()?d.data():{};});
+    return data;
+  }
+
+  async function render(){
+    const weekDays = getWeekDays(weekRef);
+    const data = await loadData(weekDays);
+    const keys = weekDays.map(fmtDateKey);
+
+    // Calcular totais por dia
+    const totalDia = keys.map(k=>DISP_TIPOS.reduce((s,t)=>s+(Number(data[k]?.[t])||0),0));
+    const somaGeral = totalDia.reduce((a,b)=>a+b,0);
+
+    // Calcular soma/media/concentracao por tipo
+    const somasTipo = DISP_TIPOS.map(t=>keys.reduce((s,k)=>s+(Number(data[k]?.[t])||0),0));
+    const totalGeral = somasTipo.reduce((a,b)=>a+b,0);
+
+    // Header semana
+    const semIni = weekDays[0].toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
+    const semFim = weekDays[6].toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'});
+
+    // Montar HTML
+    let html = snakeHtml()+
+      '<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;">'+
+        '<div class="page-eyebrow">📊 COORD</div>'+
+        '<div class="page-title">Relatorio de Disparos</div>'+
+        '<div class="page-sub">Registro semanal por tipo de mensagem</div>'+
+      '</div>'+
+      // Controles semana
+      '<div style="display:flex;align-items:center;gap:12px;margin-bottom:1rem;flex-wrap:wrap;">'+
+        '<button onclick="rdSemana(-1)" style="padding:7px 14px;border:1px solid var(--border-md);border-radius:var(--radius);background:var(--surface);cursor:pointer;font-family:var(--font);font-size:13px;">&#8592; Semana anterior</button>'+
+        '<div style="font-size:14px;font-weight:600;color:var(--text);background:#FFFF00;padding:4px 12px;border-radius:6px;">Semana '+semIni+' - '+semFim+'</div>'+
+        '<button onclick="rdSemana(1)" style="padding:7px 14px;border:1px solid var(--border-md);border-radius:var(--radius);background:var(--surface);cursor:pointer;font-family:var(--font);font-size:13px;">Proxima semana &#8594;</button>'+
+        '<button onclick="rdHoje()" style="padding:7px 14px;border:1px solid var(--border-md);border-radius:var(--radius);background:var(--surface);cursor:pointer;font-family:var(--font);font-size:13px;">Hoje</button>'+
+        '<div style="margin-left:auto;display:flex;gap:8px;">'+
+          (editMode?
+            '<button onclick="rdSalvar()" style="padding:7px 16px;background:var(--primary);color:#fff;border:none;border-radius:var(--radius);cursor:pointer;font-family:var(--font);font-size:13px;font-weight:500;">Salvar</button>'+
+            '<button onclick="rdCancelar()" style="padding:7px 14px;border:1px solid var(--border-md);border-radius:var(--radius);background:var(--surface);cursor:pointer;font-family:var(--font);font-size:13px;">Cancelar</button>'
+            :
+            '<button onclick="rdEditar()" style="padding:7px 14px;border:1px solid var(--primary);color:var(--primary);border-radius:var(--radius);background:var(--surface);cursor:pointer;font-family:var(--font);font-size:13px;font-weight:500;">✏️ Editar</button>'
+          )+
+          '<button onclick="rdExportar()" style="padding:7px 14px;border:1px solid #1D6F42;color:#1D6F42;border-radius:var(--radius);background:var(--surface);cursor:pointer;font-family:var(--font);font-size:13px;font-weight:500;">⬇️ Excel</button>'+
+        '</div>'+
+      '</div>'+
+      // Tabela
+      '<div style="overflow-x:auto;border-radius:10px;border:1px solid var(--border);">'+
+      '<table style="width:100%;border-collapse:collapse;font-size:12px;min-width:900px;">'+
+        '<thead>'+
+          '<tr style="background:#4472C4;color:#fff;">'+
+            '<th style="padding:8px 12px;text-align:left;font-weight:600;min-width:160px;">Tipo de Mensagem</th>'+
+            weekDays.map((d,i)=>'<th style="padding:8px 10px;text-align:center;font-weight:600;min-width:110px;">'+fmtDateLabel(d)+'<br><span style="font-weight:400;font-size:10px;">'+d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})+'</span></th>').join('')+
+            '<th style="padding:8px 10px;text-align:center;background:#1F4E79;min-width:80px;">Soma</th>'+
+            '<th style="padding:8px 10px;text-align:center;background:#1F4E79;min-width:80px;">Media</th>'+
+            '<th style="padding:8px 10px;text-align:center;background:#1F4E79;min-width:100px;">Concentracao</th>'+
+          '</tr>'+
+        '</thead>'+
+        '<tbody>'+
+        DISP_TIPOS.map((tipo,ti)=>{
+          const cor = DISP_CORES[tipo];
+          const soma = somasTipo[ti];
+          const media = keys.filter(k=>Number(data[k]?.[tipo]||0)>0).length;
+          const mediav = media>0?(soma/media).toFixed(1):0;
+          const conc = totalGeral>0?((soma/totalGeral)*100).toFixed(2)+'%':'0,00%';
+          return '<tr style="border-bottom:1px solid var(--border);">'+
+            '<td style="padding:7px 12px;font-weight:500;'+(cor?'background:'+cor+';':'')+'">'+tipo+'</td>'+
+            keys.map((k,di)=>{
+              const v = Number(data[k]?.[tipo]||0);
+              if(editMode){
+                return '<td style="padding:4px 6px;text-align:center;"><input type="number" min="0" id="rd-'+ti+'-'+di+'" value="'+v+'" style="width:90px;padding:5px;border:1px solid var(--border-md);border-radius:4px;text-align:center;font-family:var(--font);font-size:12px;background:var(--bg);"/></td>';
+              }
+              return '<td style="padding:7px 10px;text-align:center;'+(v>0?'font-weight:500;':'color:var(--text-3);')+'">'+( v||0)+'</td>';
+            }).join('')+
+            '<td style="padding:7px 10px;text-align:center;font-weight:600;background:#BDD7EE;">'+soma+'</td>'+
+            '<td style="padding:7px 10px;text-align:center;background:#DDEBF7;">'+mediav+'</td>'+
+            '<td style="padding:7px 10px;text-align:center;background:#DDEBF7;">'+conc+'</td>'+
+          '</tr>';
+        }).join('')+
+        // Total por dia
+        '<tr style="background:#9DC3E6;font-weight:700;border-top:2px solid #4472C4;">'+
+          '<td style="padding:8px 12px;">Total por dia:</td>'+
+          totalDia.map(v=>'<td style="padding:8px 10px;text-align:center;">'+v+'</td>').join('')+
+          '<td colspan="3" style="padding:8px 10px;"></td>'+
+        '</tr>'+
+        '<tr style="background:#9DC3E6;font-weight:700;">'+
+          '<td style="padding:8px 12px;">Soma geral:</td>'+
+          '<td style="padding:8px 10px;text-align:center;font-size:13px;">'+somaGeral+'</td>'+
+          '<td colspan="'+(weekDays.length-1+3)+'" style="padding:8px 10px;"></td>'+
+        '</tr>'+
+        '</tbody>'+
+      '</table></div>';
+
+    mc.innerHTML = html;
+
+    // Guardar estado para funções externas
+    window._rdState = {weekDays, keys, data, editMode};
+  }
+
+  window.rdSemana = function(dir){
+    weekRef = new Date(weekRef);
+    weekRef.setDate(weekRef.getDate() + dir*7);
+    editMode=false;
+    render();
+  };
+  window.rdHoje = function(){ weekRef=new Date(); editMode=false; render(); };
+  window.rdEditar = function(){ editMode=true; render(); };
+  window.rdCancelar = function(){ editMode=false; render(); };
+
+  window.rdSalvar = async function(){
+    const {weekDays,keys,data} = window._rdState;
+    try{
+      await Promise.all(keys.map((k,di)=>{
+        const obj={};
+        DISP_TIPOS.forEach((t,ti)=>{
+          const el=document.getElementById('rd-'+ti+'-'+di);
+          obj[t]=el?Number(el.value)||0:0;
+        });
+        obj.dataKey=k;
+        return setDoc(doc(db,'relatorio_disparos',k),obj);
+      }));
+      showToast('Relatorio salvo!');
+      editMode=false;
+      render();
+    }catch(e){showToast('Erro ao salvar.');}
+  };
+
+  window.rdExportar = async function(){
+    const {weekDays,keys,data} = window._rdState;
+    const semIni = weekDays[0].toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
+    const semFim = weekDays[6].toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'});
+
+    // Montar CSV
+    const header = ['Tipo de Mensagem',...weekDays.map(d=>fmtDateLabel(d)+' '+d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})),'Soma','Media','Concentracao'];
+    const rows = [header];
+    const somasTipo = DISP_TIPOS.map(t=>keys.reduce((s,k)=>s+(Number(data[k]?.[t])||0),0));
+    const totalGeral = somasTipo.reduce((a,b)=>a+b,0);
+
+    DISP_TIPOS.forEach((tipo,ti)=>{
+      const vals = keys.map(k=>Number(data[k]?.[tipo]||0));
+      const soma = somasTipo[ti];
+      const diasComDados = vals.filter(v=>v>0).length;
+      const media = diasComDados>0?(soma/diasComDados).toFixed(1):0;
+      const conc = totalGeral>0?((soma/totalGeral)*100).toFixed(2)+'%':'0,00%';
+      rows.push([tipo,...vals,soma,media,conc]);
+    });
+
+    const totalDia = keys.map(k=>DISP_TIPOS.reduce((s,t)=>s+(Number(data[k]?.[t])||0),0));
+    rows.push(['Total por dia:',...totalDia,'','','']);
+    rows.push(['Soma geral:',totalDia.reduce((a,b)=>a+b,0),...Array(keys.length-1+3).fill('')]);
+
+    const csvContent = 'Semana '+semIni+' - '+semFim+'\n'+
+      rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');
+
+    const blob = new Blob(['\uFEFF'+csvContent],{type:'text/csv;charset=utf-8;'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href=url; a.download='disparos_'+semIni.replace('/','_')+'_'+semFim.replace(/[\/]/g,'_')+'.csv';
+    a.click(); URL.revokeObjectURL(url);
+    showToast('Exportado como CSV (abra no Excel)!');
+  };
+
+  render();
+}
+// ── /RELATÓRIO DE DISPAROS ────────────────────────────────────────────────
+
 async function renderBasilisco(mc){
   const {isCoord, canManageIA} = getPerms();
   const isCoordBA = canManageIA;
@@ -2925,3 +3117,9 @@ window.perguntarBasilisco=async function(){
 </script>
 </body>
 </html>
+<script>
+// Injeta renderRelatDisparos no escopo global após o módulo principal carregar
+document.addEventListener('DOMContentLoaded', () => {
+  // será sobrescrito abaixo — apenas placeholder
+});
+</script>
