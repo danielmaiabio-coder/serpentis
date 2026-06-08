@@ -243,6 +243,27 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
 .dm-send-btn{padding:9px 16px;background:var(--primary);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:13px;font-weight:500;cursor:pointer;}
 .dm-send-btn:hover{background:#0d3a19;}
 
+/* DARK MODE */
+body.dark-mode{--bg:#0f1117;--surface:#1a1d27;--surface-2:#22263a;--border:rgba(255,255,255,0.08);--border-md:rgba(255,255,255,0.12);--text:#e8eaf0;--text-2:#b0b8cc;--text-3:#6b7494;}
+body.dark-mode .main{background:#0f1117;}
+body.dark-mode .panel{background:#1a1d27;border-color:rgba(255,255,255,0.08);}
+body.dark-mode .inp{background:#22263a;color:#e8eaf0;border-color:rgba(255,255,255,0.1);}
+body.dark-mode .page-title{color:#e8eaf0;}
+body.dark-mode .page-sub{color:#b0b8cc;}
+body.dark-mode table td,body.dark-mode table th{color:#e8eaf0;}
+body.dark-mode .chat-msg-bubble{background:#22263a;color:#e8eaf0;}
+body.dark-mode .chat-msg.mine .chat-msg-bubble{background:var(--primary);color:#fff;}
+body.dark-mode [style*="background:rgba(255,255,255,0.92)"]{background:rgba(26,29,39,0.95)!important;}
+body.dark-mode [style*="background:#fff"]{background:#22263a!important;}
+body.dark-mode [style*="background:var(--surface)"]{background:#1a1d27!important;}
+body.dark-mode [style*="color:var(--text)"]{color:#e8eaf0!important;}
+body.dark-mode [style*="color:var(--text-3)"]{color:#6b7494!important;}
+body.dark-mode .dm-wrap{background:#1a1d27;border-color:rgba(255,255,255,0.08);}
+body.dark-mode .dm-sidebar{background:#0f1117;}
+body.dark-mode .dm-main-header{background:#1a1d27;}
+body.dark-mode .dm-input-row textarea{background:#22263a;color:#e8eaf0;}
+
+/* DARK MODE */
 /* CHAT */
 .chat-wrap{display:flex;flex-direction:column;height:calc(100vh - 180px);}
 .chat-messages{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding:1rem;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);margin-bottom:10px;}
@@ -348,10 +369,13 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
         </div>
         <a href="https://portal.hashtagtreinamentos.com/" target="_blank" style="display:flex;align-items:center;"><img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/e_bgremoval/q_auto/f_auto/v1780845570/hash_o8megr.jpg" style="width:32px;height:32px;object-fit:contain;opacity:0.85;cursor:pointer;transition:opacity 0.15s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.85"/></a>
       </div>
-      <button class="btn-logout" onclick="doLogout()">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-        Sair
-      </button>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <button class="btn-logout" onclick="doLogout()" style="flex:1;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          Sair
+        </button>
+        <button id="btn-dark-mode" onclick="toggleDarkMode()" title="Modo noturno" style="padding:7px 10px;background:rgba(255,255,255,0.08);border:none;border-radius:var(--radius);cursor:pointer;font-size:16px;line-height:1;flex-shrink:0;transition:background 0.15s;" onmouseover="this.style.background='rgba(255,255,255,0.15)'" onmouseout="this.style.background='rgba(255,255,255,0.08)'">🌙</button>
+      </div>
     </div>
   </div>
   <div class="main" id="mainContent">
@@ -546,6 +570,22 @@ window.doVoltarLogin=function(){
 };
 // ── /2FA ─────────────────────────────────────────────────────────────────
 
+window.toggleDarkMode=function(){
+  const isDark=document.body.classList.toggle('dark-mode');
+  localStorage.setItem('serpentis_dark', isDark?'1':'0');
+  document.getElementById('btn-dark-mode').textContent=isDark?'☀️':'🌙';
+};
+// Aplicar preferência salva
+(function(){
+  if(localStorage.getItem('serpentis_dark')==='1'){
+    document.body.classList.add('dark-mode');
+    // Botão será atualizado após render
+    document.addEventListener('DOMContentLoaded',()=>{
+      const btn=document.getElementById('btn-dark-mode');
+      if(btn) btn.textContent='☀️';
+    });
+  }
+})();
 window.doLogout=async function(){
   await signOut(auth);currentUser=null;userProfile=null;viewingOp=null;
   hide('appShell');showLogin();
