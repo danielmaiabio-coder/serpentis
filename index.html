@@ -2834,6 +2834,13 @@ async function renderRelatDisparos(mc){
         '<div class="page-title">Relatorio de Disparos</div>'+
         '<div class="page-sub">Registro semanal por tipo de mensagem</div>'+
       '</div>'+
+      // Abas
+      '<div style="display:flex;gap:0;margin-bottom:1.25rem;border-bottom:2px solid var(--border);">'+
+        '<button onclick="rdSetTab(\'tabela\')" style="padding:8px 20px;border:none;border-bottom:'+(activeTab==='tabela'?'3px solid var(--primary)':'3px solid transparent')+';background:none;font-family:var(--font);font-size:13px;font-weight:'+(activeTab==='tabela'?'600':'400')+';color:'+(activeTab==='tabela'?'var(--primary)':'var(--text-3)')+';cursor:pointer;margin-bottom:-2px;">📊 Tabela</button>'+
+        '<button onclick="rdSetTab(\'historico\')" style="padding:8px 20px;border:none;border-bottom:'+(activeTab==='historico'?'3px solid var(--primary)':'3px solid transparent')+';background:none;font-family:var(--font);font-size:13px;font-weight:'+(activeTab==='historico'?'600':'400')+';color:'+(activeTab==='historico'?'var(--primary)':'var(--text-3)')+';cursor:pointer;margin-bottom:-2px;">🕒 Historico</button>'+
+      '</div>'+
+      (activeTab==='historico'?rdHistoricoHtml():
+      // Aba Tabela — controles
       '<div style="display:flex;align-items:center;gap:8px;margin-bottom:1rem;flex-wrap:wrap;">'+
         '<span style="font-size:12px;font-weight:600;color:var(--text-3);white-space:nowrap;">Datas:</span>'+
         freeDates.map((k,i)=>'<input type="date" value="'+k+'" onchange="rdChangeDate('+i+',this.value)" style="padding:5px 8px;border:1px solid var(--border-md);border-radius:var(--radius);font-family:var(--font);font-size:12px;background:var(--bg);cursor:pointer;"/>').join('')+
@@ -2893,9 +2900,9 @@ async function renderRelatDisparos(mc){
           '<td colspan="'+(weekDays.length-1+3)+'" style="padding:8px 10px;"></td>'+
         '</tr>'+
         '</tbody>'+
-      '</table></div>';
+      '</table></div>'+
+      '');  // fecha aba tabela
 
-    if(activeTab==='tabela') html += "')"; // fecha condicional
     mc.innerHTML = html;
 
     // Guardar estado para funções externas
