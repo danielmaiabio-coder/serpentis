@@ -300,6 +300,7 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
 .mute-btn{position:fixed;bottom:24px;left:24px;width:38px;height:38px;border-radius:50%;background:rgba(13,46,20,0.85);border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.7);cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:998;transition:all 0.15s;backdrop-filter:blur(4px);}
 .mute-btn:hover{background:rgba(26,92,42,0.95);color:#fff;}
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
 </head>
 <body>
 <div id="loadingScreen"><div class="loader"></div><div class="load-text">Carregando...</div></div>
@@ -313,6 +314,26 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
     <button class="btn-primary" id="btnLogin" onclick="doLogin()">Entrar</button>
     <div class="login-err" id="loginErr">E-mail ou senha incorretos.</div>
     <span class="forgot-link" onclick="esqueceuSenha()">Esqueci minha senha</span>
+  </div>
+</div>
+
+<div id="otpScreen" style="display:none;align-items:center;justify-content:center;min-height:100vh;padding:2rem;background:linear-gradient(135deg,#0d2e14 0%,#1A5C2A 60%,#2E8B45 100%);">
+  <div class="login-box" style="text-align:center;">
+    <div style="font-size:40px;margin-bottom:8px;">📧</div>
+    <div class="login-title">Verificação em 2 etapas</div>
+    <div class="login-sub" id="otpSub">Enviamos um código para seu e-mail.</div>
+    <div class="field" style="margin-top:1rem;">
+      <label>Código de 6 dígitos</label>
+      <input type="text" id="otpInput" placeholder="000000" maxlength="6" style="text-align:center;font-size:24px;letter-spacing:8px;font-weight:600;" onkeydown="if(event.key==='Enter')doVerifyOtp()"/>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:1rem;justify-content:center;">
+      <input type="checkbox" id="otpLembrar" style="width:16px;height:16px;cursor:pointer;"/>
+      <label for="otpLembrar" style="font-size:13px;color:rgba(255,255,255,0.7);cursor:pointer;">Lembrar neste dispositivo por 30 dias</label>
+    </div>
+    <button class="btn-primary" id="btnOtp" onclick="doVerifyOtp()">Verificar</button>
+    <div class="login-err" id="otpErr" style="display:none;">Código inválido ou expirado.</div>
+    <span class="forgot-link" onclick="doReenviarOtp()" style="margin-top:12px;display:block;">Reenviar código</span>
+    <span class="forgot-link" onclick="doVoltarLogin()" style="margin-top:4px;display:block;opacity:0.6;">← Voltar ao login</span>
   </div>
 </div>
 <div id="appShell">
@@ -397,14 +418,130 @@ async function loadProfile(uid){
   }catch(e){showToast('Erro ao carregar perfil.');showLogin();}
 }
 
+// ── 2FA ──────────────────────────────────────────────────────────────────
+const EMAILJS_SVC  = 'service_vqda61k';
+const EMAILJS_TPL  = 'ji7oube';
+const EMAILJS_KEY  = '0rL9rFjI7eki4QnBY';
+let _otpCode = '';
+let _otpExpiry = 0;
+let _pendingUser = null;
+
+function _2fa_deviceKey(uid){ return '2fa_trusted_'+uid; }
+function _2fa_isTrusted(uid){
+  try{
+    const raw = localStorage.getItem(_2fa_deviceKey(uid));
+    if(!raw) return false;
+    const {exp} = JSON.parse(raw);
+    return Date.now() < exp;
+  }catch(e){return false;}
+}
+function _2fa_trust(uid){
+  const exp = Date.now() + 30*24*60*60*1000; // 30 dias
+  localStorage.setItem(_2fa_deviceKey(uid), JSON.stringify({exp}));
+}
+
+async function _2fa_sendCode(email, nome){
+  _otpCode = String(Math.floor(100000 + Math.random()*900000));
+  _otpExpiry = Date.now() + 10*60*1000; // 10 min
+  emailjs.init(EMAILJS_KEY);
+  await emailjs.send(EMAILJS_SVC, EMAILJS_TPL, {
+    email: email,
+    passcode: _otpCode,
+    time: new Date(_otpExpiry).toLocaleTimeString('pt-BR'),
+    to_email: email,
+    nome: nome || email.split('@')[0],
+    code: _otpCode,
+  });
+}
+
 window.doLogin=async function(){
   const email=document.getElementById('loginEmail').value.trim();
   const pass=document.getElementById('loginPass').value;
   const err=document.getElementById('loginErr');const btn=document.getElementById('btnLogin');
   err.style.display='none';btn.disabled=true;btn.textContent='Entrando...';
-  try{await signInWithEmailAndPassword(auth,email,pass);}
-  catch(e){err.style.display='block';btn.disabled=false;btn.textContent='Entrar';}
+  try{
+    const cred = await signInWithEmailAndPassword(auth,email,pass);
+    const uid = cred.user.uid;
+    // Buscar perfil para pegar o nome
+    const profSnap = await getDoc(doc(db,'usuarios',uid));
+    const nome = profSnap.exists()?profSnap.data().nome:'';
+
+    // Verificar se dispositivo é confiável
+    if(_2fa_isTrusted(uid)){
+      // Pular 2FA
+      btn.disabled=false;btn.textContent='Entrar';
+      return;
+    }
+
+    // Guardar usuário pendente e fazer logout temporário
+    _pendingUser = {uid, email, nome};
+    await signOut(auth); // sai para não entrar direto no app
+
+    // Enviar código
+    btn.textContent='Enviando código...';
+    await _2fa_sendCode(email, nome);
+
+    // Mostrar tela OTP
+    document.getElementById('loginScreen').style.display='none';
+    const otpScr = document.getElementById('otpScreen');
+    otpScr.style.display='flex';
+    document.getElementById('otpSub').textContent='Código enviado para '+email;
+    document.getElementById('otpInput').value='';
+    document.getElementById('otpInput').focus();
+    document.getElementById('otpErr').style.display='none';
+    btn.disabled=false;btn.textContent='Entrar';
+  }
+  catch(e){
+    err.style.display='block';
+    err.textContent = e.code==='auth/invalid-credential'||e.code==='auth/wrong-password'?'E-mail ou senha incorretos.':'Erro: '+e.message;
+    btn.disabled=false;btn.textContent='Entrar';
+  }
 };
+
+window.doVerifyOtp=async function(){
+  const input=document.getElementById('otpInput').value.trim();
+  const err=document.getElementById('otpErr');
+  const btn=document.getElementById('btnOtp');
+  err.style.display='none';
+  if(!input||input.length!==6){err.textContent='Digite os 6 dígitos.';err.style.display='block';return;}
+  if(Date.now()>_otpExpiry){err.textContent='Código expirado. Reenvie.';err.style.display='block';return;}
+  if(input!==_otpCode){err.textContent='Código inválido.';err.style.display='block';return;}
+
+  // Código correto — lembrar dispositivo se marcado
+  if(document.getElementById('otpLembrar').checked){
+    _2fa_trust(_pendingUser.uid);
+  }
+
+  // Fazer login de verdade
+  btn.disabled=true;btn.textContent='Verificando...';
+  document.getElementById('otpScreen').style.display='none';
+  document.getElementById('loginScreen').style.display='flex';
+  // Re-login com as credenciais salvas no form
+  const email=document.getElementById('loginEmail').value.trim();
+  const pass=document.getElementById('loginPass').value;
+  await signInWithEmailAndPassword(auth,email,pass);
+  btn.disabled=false;btn.textContent='Verificar';
+};
+
+window.doReenviarOtp=async function(){
+  if(!_pendingUser){return;}
+  try{
+    document.getElementById('otpSub').textContent='Reenviando...';
+    await _2fa_sendCode(_pendingUser.email,_pendingUser.nome);
+    document.getElementById('otpSub').textContent='Novo código enviado para '+_pendingUser.email;
+    document.getElementById('otpErr').style.display='none';
+  }catch(e){
+    document.getElementById('otpErr').textContent='Erro ao reenviar.';
+    document.getElementById('otpErr').style.display='block';
+  }
+};
+
+window.doVoltarLogin=function(){
+  _pendingUser=null;_otpCode='';
+  document.getElementById('otpScreen').style.display='none';
+  document.getElementById('loginScreen').style.display='flex';
+};
+// ── /2FA ─────────────────────────────────────────────────────────────────
 
 window.doLogout=async function(){
   await signOut(auth);currentUser=null;userProfile=null;viewingOp=null;
