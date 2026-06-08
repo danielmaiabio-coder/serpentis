@@ -1817,7 +1817,7 @@ window.renderSlackPrefs = function(){
           '<button onclick="slackSetSound(\''+s.id+'\')" style="padding:5px 12px;border-radius:20px;font-size:12px;font-family:var(--font);cursor:pointer;border:2px solid '+(slackSoundPref===s.id?'var(--primary)':'var(--border-md)')+';background:'+(slackSoundPref===s.id?'var(--primary)':'var(--surface)')+';color:'+(slackSoundPref===s.id?'#fff':'var(--text)')+';">'+s.label+'</button>'
         ).join('')+
       '</div>'+
-      '<div style="font-size:11px;color:var(--text-3);margin-bottom:4px;font-weight:500;">🎮 Sons Deslocados</div>'+
+      '<div style="font-size:11px;color:var(--text-3);margin-bottom:4px;font-weight:500;">🎮 Sons Descolados</div>'+
       '<div style="display:flex;gap:6px;flex-wrap:wrap;">'+
         SLACK_SOUNDS.filter(s=>s.group==='deslocado').map(s=>
           '<button onclick="slackSetSound(\''+s.id+'\')" style="padding:5px 12px;border-radius:20px;font-size:12px;font-family:var(--font);cursor:pointer;border:2px solid '+(slackSoundPref===s.id?'var(--primary)':'var(--border-md)')+';background:'+(slackSoundPref===s.id?'var(--primary)':'var(--surface)')+';color:'+(slackSoundPref===s.id?'#fff':'var(--text)')+';">'+s.label+'</button>'
@@ -3176,7 +3176,6 @@ const SLACK_SOUNDS = [
   {id:'discord', label:'Discord', url:'https://res.cloudinary.com/dbd9hpwyb/video/upload/v1780959912/Discord_zxbo0y.mp3', group:'deslocado'},
   {id:'f1radio', label:'F1 Radio', url:'https://res.cloudinary.com/dbd9hpwyb/video/upload/v1780959913/F1_Radio_kcdt2x.mp3', group:'deslocado'},
   {id:'f1box', label:'F1 Box Box', url:'https://res.cloudinary.com/dbd9hpwyb/video/upload/v1780959913/F1_Radio_-_Box_box_uwohoq.mp3', group:'deslocado'},
-  {id:'facebook', label:'Facebook', url:'https://res.cloudinary.com/dbd9hpwyb/video/upload/v1780959913/F1_Radio_-_Box_box_uwohoq.mp3', group:'deslocado'},
   {id:'flashscore', label:'FlashScore', url:'https://res.cloudinary.com/dbd9hpwyb/video/upload/v1780959914/FlashScore_pmlykm.mp3', group:'deslocado'},
   {id:'gtav', label:'GTA V', url:'https://res.cloudinary.com/dbd9hpwyb/video/upload/v1780959915/GTA_V_ry0hlq.mp3', group:'deslocado'},
   {id:'steam', label:'Steam', url:'https://res.cloudinary.com/dbd9hpwyb/video/upload/v1780959927/Steam_cvowlf.mp3', group:'deslocado'},
