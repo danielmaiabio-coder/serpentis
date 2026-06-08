@@ -1811,9 +1811,16 @@ window.renderSlackPrefs = function(){
   mc2.innerHTML =
     '<div style="margin-bottom:12px;">'+
       '<label style="font-size:12px;font-weight:600;color:var(--text-2);display:block;margin-bottom:6px;">🔔 Som de notificação do Slack</label>'+
+      '<div style="font-size:11px;color:var(--text-3);margin-bottom:4px;font-weight:500;">Sons Padrão</div>'+
+      '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">'+
+        SLACK_SOUNDS.filter(s=>s.group==='padrao'||s.id==='none').map(s=>
+          '<button onclick="slackSetSound(\''+s.id+'\')" style="padding:5px 12px;border-radius:20px;font-size:12px;font-family:var(--font);cursor:pointer;border:2px solid '+(slackSoundPref===s.id?'var(--primary)':'var(--border-md)')+';background:'+(slackSoundPref===s.id?'var(--primary)':'var(--surface)')+';color:'+(slackSoundPref===s.id?'#fff':'var(--text)')+';">'+s.label+'</button>'
+        ).join('')+
+      '</div>'+
+      '<div style="font-size:11px;color:var(--text-3);margin-bottom:4px;font-weight:500;">🎮 Sons Deslocados</div>'+
       '<div style="display:flex;gap:6px;flex-wrap:wrap;">'+
-        SLACK_SOUNDS.map(s=>
-          '<button onclick="slackSetSound(\''+s.id+'\')" style="padding:6px 12px;border-radius:20px;font-size:12px;font-family:var(--font);cursor:pointer;border:2px solid '+(slackSoundPref===s.id?'var(--primary)':'var(--border-md)')+';background:'+(slackSoundPref===s.id?'var(--primary)':'var(--surface)')+';color:'+(slackSoundPref===s.id?'#fff':'var(--text)')+';">'+s.label+'</button>'
+        SLACK_SOUNDS.filter(s=>s.group==='deslocado').map(s=>
+          '<button onclick="slackSetSound(\''+s.id+'\')" style="padding:5px 12px;border-radius:20px;font-size:12px;font-family:var(--font);cursor:pointer;border:2px solid '+(slackSoundPref===s.id?'var(--primary)':'var(--border-md)')+';background:'+(slackSoundPref===s.id?'var(--primary)':'var(--surface)')+';color:'+(slackSoundPref===s.id?'#fff':'var(--text)')+';">'+s.label+'</button>'
         ).join('')+
       '</div>'+
     '</div>'+
@@ -3153,12 +3160,26 @@ function slackRenderText(text){
 
 // ── SLACK SOUNDS ─────────────────────────────────────────────────────────
 const SLACK_SOUNDS = [
-  {id:'none', label:'Sem som', url:''},
-  {id:'som1', label:'Som 1', url:'https://res.cloudinary.com/dbd9hpwyb/video/upload/v1780952143/Som_1_p3tzzb.mp3'},
-  {id:'som2', label:'Som 2', url:'https://res.cloudinary.com/dbd9hpwyb/video/upload/v1780952155/Som_2_mozrfw.mp3'},
-  {id:'som3', label:'Som 3', url:'https://res.cloudinary.com/dbd9hpwyb/video/upload/v1780952162/Som_3_owsh7h.mp3'},
-  {id:'som4', label:'Som 4', url:'https://res.cloudinary.com/dbd9hpwyb/video/upload/v1780952168/Som_4_zoch2n.mp3'},
-  {id:'som5', label:'Som Ultra Power ⚡', url:'https://res.cloudinary.com/dbd9hpwyb/video/upload/v1780952173/Som_Ultra_Power_Especial_a20r8z.mp3'},
+  {id:'none', label:'Sem som', url:'', group:'padrao'},
+  // Sons padrão
+  {id:'som1', label:'Som 1', url:'https://res.cloudinary.com/dbd9hpwyb/video/upload/v1780952143/Som_1_p3tzzb.mp3', group:'padrao'},
+  {id:'som2', label:'Som 2', url:'https://res.cloudinary.com/dbd9hpwyb/video/upload/v1780952155/Som_2_mozrfw.mp3', group:'padrao'},
+  {id:'som3', label:'Som 3', url:'https://res.cloudinary.com/dbd9hpwyb/video/upload/v1780952162/Som_3_owsh7h.mp3', group:'padrao'},
+  {id:'som4', label:'Som 4', url:'https://res.cloudinary.com/dbd9hpwyb/video/upload/v1780952168/Som_4_zoch2n.mp3', group:'padrao'},
+  {id:'som5', label:'Som 5', url:'https://res.cloudinary.com/dbd9hpwyb/video/upload/v1780959924/Som_5_pf9hcd.mp3', group:'padrao'},
+  {id:'som6', label:'Som 6', url:'https://res.cloudinary.com/dbd9hpwyb/video/upload/v1780959924/Som_6_oag2fs.mp3', group:'padrao'},
+  {id:'som7', label:'Som 7', url:'https://res.cloudinary.com/dbd9hpwyb/video/upload/v1780959925/Som_7_vn4gno.mp3', group:'padrao'},
+  {id:'som8', label:'Som 8', url:'https://res.cloudinary.com/dbd9hpwyb/video/upload/v1780959926/Som_8_vaf21a.mp3', group:'padrao'},
+  {id:'som9', label:'Som 9', url:'https://res.cloudinary.com/dbd9hpwyb/video/upload/v1780959926/Som_9_vhwdsy.mp3', group:'padrao'},
+  // Sons deslocados
+  {id:'ultra', label:'⚡ Ultra Power', url:'https://res.cloudinary.com/dbd9hpwyb/video/upload/v1780952173/Som_Ultra_Power_Especial_a20r8z.mp3', group:'deslocado'},
+  {id:'discord', label:'Discord', url:'https://res.cloudinary.com/dbd9hpwyb/video/upload/v1780959912/Discord_zxbo0y.mp3', group:'deslocado'},
+  {id:'f1radio', label:'F1 Radio', url:'https://res.cloudinary.com/dbd9hpwyb/video/upload/v1780959913/F1_Radio_kcdt2x.mp3', group:'deslocado'},
+  {id:'f1box', label:'F1 Box Box', url:'https://res.cloudinary.com/dbd9hpwyb/video/upload/v1780959913/F1_Radio_-_Box_box_uwohoq.mp3', group:'deslocado'},
+  {id:'facebook', label:'Facebook', url:'https://res.cloudinary.com/dbd9hpwyb/video/upload/v1780959913/F1_Radio_-_Box_box_uwohoq.mp3', group:'deslocado'},
+  {id:'flashscore', label:'FlashScore', url:'https://res.cloudinary.com/dbd9hpwyb/video/upload/v1780959914/FlashScore_pmlykm.mp3', group:'deslocado'},
+  {id:'gtav', label:'GTA V', url:'https://res.cloudinary.com/dbd9hpwyb/video/upload/v1780959915/GTA_V_ry0hlq.mp3', group:'deslocado'},
+  {id:'steam', label:'Steam', url:'https://res.cloudinary.com/dbd9hpwyb/video/upload/v1780959927/Steam_cvowlf.mp3', group:'deslocado'},
 ];
 
 let slackSoundPref = localStorage.getItem('slack_sound')||'som1';
