@@ -1061,15 +1061,23 @@ async function renderEscala(mc){
 
   function isThisWeek(datesStr){
     if(!datesStr)return false;
-    // Parse "02/06 a 06/06" format
-    const match=datesStr.match(/(\d{2})\/(\d{2})/);
-    if(!match)return false;
-    const day=parseInt(match[1]);
-    const month=parseInt(match[2])-1;
+    // Parse "15/06 a 19/06" — pega início E fim explicitamente
+    const matches=[...datesStr.matchAll(/(\d{2})\/(\d{2})/g)];
+    if(!matches||matches.length<1)return false;
     const ano=hoje.getFullYear();
-    const inicio=new Date(ano,month,day);
-    const fim=new Date(inicio);fim.setDate(fim.getDate()+6);
-    return hoje>=inicio&&hoje<=fim;
+    const [d1,m1]=[parseInt(matches[0][1]),parseInt(matches[0][2])-1];
+    const inicio=new Date(ano,m1,d1);
+    inicio.setHours(0,0,0,0);
+    let fim;
+    if(matches.length>=2){
+      const [d2,m2]=[parseInt(matches[1][1]),parseInt(matches[1][2])-1];
+      fim=new Date(ano,m2,d2);
+    } else {
+      fim=new Date(inicio);fim.setDate(fim.getDate()+6);
+    }
+    fim.setHours(23,59,59,999);
+    const hojeClean=new Date(hoje);hojeClean.setHours(0,0,0,0);
+    return hojeClean>=inicio&&hojeClean<=fim;
   }
 
   [...watiPedro.map((s,i)=>({...s,wati:'WATI Pedro'})),...watiDaniel.map((s,i)=>({...s,wati:'WATI Daniel'}))].forEach(s=>{
