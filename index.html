@@ -2795,8 +2795,15 @@ function fmtDateLabel(d){const ds=['Segunda-Feira','Terca-Feira','Quarta-Feira',
 
 async function renderRelatDisparos(mc){
   const today = new Date();
-  let weekRef = new Date(today);
-  let weekStartDay = 3; // 3=quarta (padrão)
+  // 5 datas livres — padrão: seg-sex da semana atual
+  function defaultDates(){
+    const d = new Date();
+    const day = d.getDay();
+    const diff = (day - 1 + 7) % 7;
+    const mon = new Date(d); mon.setDate(d.getDate() - diff);
+    return [0,1,2,3,4].map(i=>{ const x=new Date(mon); x.setDate(mon.getDate()+i); return fmtDateKey(x); });
+  }
+  let freeDates = defaultDates();
   let editMode = false;
 
   async function loadData(weekDays){
@@ -2808,19 +2815,14 @@ async function renderRelatDisparos(mc){
   }
 
   async function render(){
-    const weekDays = getWeekDays(weekRef, weekStartDay);
+    const keys = freeDates;
+    const weekDays = keys.map(k=>new Date(k+'T12:00:00'));
     const data = await loadData(weekDays);
-    const keys = weekDays.map(fmtDateKey);
 
-    // Calcular totais por dia
     const totalDia = keys.map(k=>DISP_TIPOS.reduce((s,t)=>s+(Number(data[k]?.[t])||0),0));
     const somaGeral = totalDia.reduce((a,b)=>a+b,0);
-
-    // Calcular soma/media/concentracao por tipo
     const somasTipo = DISP_TIPOS.map(t=>keys.reduce((s,k)=>s+(Number(data[k]?.[t])||0),0));
     const totalGeral = somasTipo.reduce((a,b)=>a+b,0);
-
-    // Header semana
     const semIni = weekDays[0].toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
     const semFim = weekDays[4].toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'});
 
@@ -2831,27 +2833,10 @@ async function renderRelatDisparos(mc){
         '<div class="page-title">Relatorio de Disparos</div>'+
         '<div class="page-sub">Registro semanal por tipo de mensagem</div>'+
       '</div>'+
-      // Controles semana
-      '<div style="display:flex;align-items:center;gap:12px;margin-bottom:1rem;flex-wrap:wrap;">'+
-        '<button onclick="rdSemana(-1)" style="padding:7px 14px;border:1px solid var(--border-md);border-radius:var(--radius);background:var(--surface);cursor:pointer;font-family:var(--font);font-size:13px;">&#8592; Semana anterior</button>'+
-        '<div style="display:flex;align-items:center;gap:6px;background:#FFFF00;padding:4px 12px;border-radius:6px;">'+
-          '<span style="font-size:14px;font-weight:600;color:#1a1a1a;">Semana '+semIni+' - '+semFim+'</span>'+
-          '<input type="date" id="rd-week-picker" value="'+fmtDateKey(weekDays[0])+'" title="Ir para semana" onchange="rdGoToDate(this.value)" style="width:0;height:0;opacity:0;position:absolute;pointer-events:none;" />'+
-          '<span onclick="document.getElementById(\'rd-week-picker\').showPicker?document.getElementById(\'rd-week-picker\').showPicker():document.getElementById(\'rd-week-picker\').click()" style="cursor:pointer;font-size:14px;title=\'Escolher data\'">📅</span>'+
-        '</div>'+
-        '<button onclick="rdSemana(1)" style="padding:7px 14px;border:1px solid var(--border-md);border-radius:var(--radius);background:var(--surface);cursor:pointer;font-family:var(--font);font-size:13px;">Proxima semana &#8594;</button>'+
-        '<button onclick="rdHoje()" style="padding:7px 14px;border:1px solid var(--border-md);border-radius:var(--radius);background:var(--surface);cursor:pointer;font-family:var(--font);font-size:13px;">Hoje</button>'+
-        '<div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-3);">'+
-          'Semana começa em: '+
-          '<select id="rd-start-day" onchange="rdSetStartDay(this.value)" style="padding:4px 8px;border:1px solid var(--border-md);border-radius:var(--radius);font-family:var(--font);font-size:12px;background:var(--bg);">'+
-            '<option value="0"'+(weekStartDay===0?' selected':'')+'>Domingo</option>'+
-            '<option value="1"'+(weekStartDay===1?' selected':'')+'>Segunda</option>'+
-            '<option value="2"'+(weekStartDay===2?' selected':'')+'>Terca</option>'+
-            '<option value="3"'+(weekStartDay===3?' selected':'')+'>Quarta</option>'+
-            '<option value="4"'+(weekStartDay===4?' selected':'')+'>Quinta</option>'+
-            '<option value="5"'+(weekStartDay===5?' selected':'')+'>Sexta</option>'+
-          '</select>'+
-        '</div>'+
+      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:1rem;flex-wrap:wrap;">'+
+        '<span style="font-size:12px;font-weight:600;color:var(--text-3);white-space:nowrap;">Datas:</span>'+
+        freeDates.map((k,i)=>'<input type="date" value="'+k+'" onchange="rdChangeDate('+i+',this.value)" style="padding:5px 8px;border:1px solid var(--border-md);border-radius:var(--radius);font-family:var(--font);font-size:12px;background:var(--bg);cursor:pointer;"/>').join('')+
+        '<button onclick="rdResetDatas()" style="padding:5px 10px;border:1px solid var(--border-md);border-radius:var(--radius);background:var(--surface);cursor:pointer;font-family:var(--font);font-size:11px;color:var(--text-3);">Semana atual</button>'+
         '<div style="margin-left:auto;display:flex;gap:8px;">'+
           (editMode?
             '<button onclick="rdSalvar()" style="padding:7px 16px;background:var(--primary);color:#fff;border:none;border-radius:var(--radius);cursor:pointer;font-family:var(--font);font-size:13px;font-weight:500;">Salvar</button>'+
@@ -2915,24 +2900,17 @@ async function renderRelatDisparos(mc){
     window._rdState = {weekDays, keys, data, editMode};
   }
 
-  window.rdSetStartDay = function(v){
-    weekStartDay = parseInt(v);
+  window.rdChangeDate = function(i, val){
+    if(!val) return;
+    freeDates[i] = val;
     editMode=false;
     render();
   };
-  window.rdGoToDate = function(dateStr){
-    if(!dateStr) return;
-    weekRef = new Date(dateStr+'T12:00:00');
+  window.rdResetDatas = function(){
+    freeDates = defaultDates();
     editMode=false;
     render();
   };
-  window.rdSemana = function(dir){
-    weekRef = new Date(weekRef);
-    weekRef.setDate(weekRef.getDate() + dir*7);
-    editMode=false;
-    render();
-  };
-  window.rdHoje = function(){ weekRef=new Date(); editMode=false; render(); };
   window.rdEditar = function(){ editMode=true; render(); };
   window.rdCancelar = function(){ editMode=false; render(); };
 
