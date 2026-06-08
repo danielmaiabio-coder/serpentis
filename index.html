@@ -443,14 +443,13 @@ function _2fa_trust(uid){
 async function _2fa_sendCode(email, nome){
   _otpCode = String(Math.floor(100000 + Math.random()*900000));
   _otpExpiry = Date.now() + 10*60*1000; // 10 min
-  emailjs.init(EMAILJS_KEY);
+  emailjs.init({publicKey: EMAILJS_KEY});
   await emailjs.send(EMAILJS_SVC, EMAILJS_TPL, {
     email: email,
+    to_email: email,
     passcode: _otpCode,
     time: new Date(_otpExpiry).toLocaleTimeString('pt-BR'),
-    to_email: email,
     nome: nome || email.split('@')[0],
-    code: _otpCode,
   });
 }
 
@@ -462,13 +461,11 @@ window.doLogin=async function(){
   try{
     const cred = await signInWithEmailAndPassword(auth,email,pass);
     const uid = cred.user.uid;
-    // Buscar perfil para pegar o nome
-    const profSnap = await getDoc(doc(db,'usuarios',uid));
-    const nome = profSnap.exists()?profSnap.data().nome:'';
+    const nome = email.split('@')[0]; // usa parte do email como nome, sem precisar do Firestore
 
     // Verificar se dispositivo é confiável
     if(_2fa_isTrusted(uid)){
-      // Pular 2FA
+      // Pular 2FA — deixa o onAuthStateChanged cuidar do resto
       btn.disabled=false;btn.textContent='Entrar';
       return;
     }
