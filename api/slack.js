@@ -27,19 +27,21 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
   if (req.method === 'OPTIONS') return res.status(200).end();
-
   if (!SLACK_TOKEN) return res.status(500).json({ error: 'SLACK_BOT_TOKEN not configured' });
 
   const { action } = req.query;
 
   try {
     if (action === 'channels') {
-      const data = await slackFetch('conversations.list', {
-        types: 'public_channel,private_channel',
-        exclude_archived: true,
-        limit: 200
-      });
-      return res.json(data);
+      const [pub, priv] = await Promise.all([
+        slackFetch('conversations.list', { types: 'public_channel', exclude_archived: true, limit: 200 }),
+        slackFetch('conversations.list', { types: 'private_channel', exclude_archived: true, limit: 200 })
+      ]);
+      const channels = [
+        ...(pub.channels || []),
+        ...(priv.channels || [])
+      ].sort((a, b) => a.name.localeCompare(b.name));
+      return res.json({ ok: true, channels });
     }
     if (action === 'history') {
       const { channel, cursor } = req.query;
@@ -55,10 +57,6 @@ export default async function handler(req, res) {
     if (action === 'send' && req.method === 'POST') {
       const { channel, text } = req.body;
       const data = await slackPost('chat.postMessage', { channel, text });
-      return res.json(data);
-    }
-    if (action === 'dms') {
-      const data = await slackFetch('conversations.list', { types: 'im', limit: 100 });
       return res.json(data);
     }
     return res.status(400).json({ error: 'Unknown action' });
