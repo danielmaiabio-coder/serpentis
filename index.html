@@ -420,7 +420,7 @@ async function loadProfile(uid){
 
 // ── 2FA ──────────────────────────────────────────────────────────────────
 const EMAILJS_SVC  = 'service_vqda61k';
-const EMAILJS_TPL  = 'ji7oube';
+const EMAILJS_TPL  = 'template_mcc9ohc';
 const EMAILJS_KEY  = '0rL9rFjI7eki4QnBY';
 let _otpCode = '';
 let _otpExpiry = 0;
@@ -444,13 +444,17 @@ async function _2fa_sendCode(email, nome){
   _otpCode = String(Math.floor(100000 + Math.random()*900000));
   _otpExpiry = Date.now() + 10*60*1000; // 10 min
   emailjs.init({publicKey: EMAILJS_KEY});
-  await emailjs.send(EMAILJS_SVC, EMAILJS_TPL, {
+  const resp = await emailjs.send(EMAILJS_SVC, EMAILJS_TPL, {
     email: email,
     to_email: email,
     passcode: _otpCode,
     time: new Date(_otpExpiry).toLocaleTimeString('pt-BR'),
     nome: nome || email.split('@')[0],
+  }).catch(err=>{
+    console.error('EmailJS error:', JSON.stringify(err));
+    throw new Error('EmailJS: '+(err.text||err.status||JSON.stringify(err)));
   });
+  console.log('EmailJS resp:', resp);
 }
 
 window.doLogin=async function(){
@@ -490,7 +494,11 @@ window.doLogin=async function(){
   }
   catch(e){
     err.style.display='block';
-    err.textContent = e.code==='auth/invalid-credential'||e.code==='auth/wrong-password'?'E-mail ou senha incorretos.':'Erro: '+e.message;
+    if(e.code==='auth/invalid-credential'||e.code==='auth/wrong-password'){
+      err.textContent='E-mail ou senha incorretos.';
+    } else {
+      err.textContent='Erro: '+(e.message||e.text||JSON.stringify(e));
+    }
     btn.disabled=false;btn.textContent='Entrar';
   }
 };
