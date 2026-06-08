@@ -1818,6 +1818,17 @@ window.chatKeyDown = function(e){
   if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();enviarMensagem();}
 };
 
+window.playUolVinheta=function(){
+  let audio=document.getElementById('uol-vinheta-global');
+  if(!audio){
+    audio=document.createElement('audio');
+    audio.id='uol-vinheta-global';
+    audio.src='https://res.cloudinary.com/dbd9hpwyb/video/upload/v1780877852/uol-vinheta_tuwbov.mp3';
+    document.body.appendChild(audio);
+  }
+  audio.currentTime=0;
+  audio.play().catch(e=>console.log('audio:',e));
+};
 window.enviarMensagem = async function(){
   const input = document.getElementById('chat-input');
   const fileInput = document.getElementById('chat-file-input');
