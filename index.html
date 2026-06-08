@@ -589,8 +589,15 @@ window.toggleDarkMode=function(){
 })();
 window.playSnakeSound=function(){
   let a=document.getElementById('snake-sound');
-  if(!a){a=document.createElement('audio');a.id='snake-sound';a.src='https://res.cloudinary.com/dbd9hpwyb/video/upload/v1780946525/faaah_gkucu6.mp3';document.body.appendChild(a);}
-  a.currentTime=0;a.play().catch(()=>{});
+  if(!a){
+    a=document.createElement('audio');
+    a.id='snake-sound';
+    a.src='https://res.cloudinary.com/dbd9hpwyb/video/upload/v1780946525/faaah_gkucu6.mp3';
+    a.preload='auto';
+    document.body.appendChild(a);
+  }
+  a.currentTime=0;
+  a.play().then(()=>console.log('tocou')).catch(e=>console.error('audio error:',e));
 };
 window.doLogout=async function(){
   await signOut(auth);currentUser=null;userProfile=null;viewingOp=null;
