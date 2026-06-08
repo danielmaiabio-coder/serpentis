@@ -676,7 +676,6 @@ function buildNav(){
     {sep:true,label:'UTILIDADES'},
     {id:'copys',label:'Banco de Copys'},{id:'links',label:'Links de Reneg.'},{id:'escala',label:'Escala de Roteamento'},
     {id:'calc',label:'🧮 Calculadoras'},
-    {id:'planilha',label:'⚡ Automacoes Planilha'},
     {id:'infos',label:'💡 Informacoes Uteis'},
     {sep:true,label:'CONTA'},
     {id:'perfil',label:'Pagina Inicial'},
@@ -693,7 +692,6 @@ function buildNav(){
     {sep:true,label:'UTILIDADES'},
     {id:'copys',label:'Banco de Copys'},{id:'links',label:'Links de Reneg.'},{id:'escala',label:'Escala de Roteamento'},
     {id:'calc',label:'🧮 Calculadoras'},
-    {id:'planilha',label:'⚡ Automacoes Planilha'},
     {id:'infos',label:'💡 Informacoes Uteis'},
     {sep:true,label:'CONTA'},
     {id:'perfil',label:'Pagina Inicial'},
@@ -745,7 +743,7 @@ window.navigate=async function(page){
   if(page==='calcreneg'){renderCalcReneg(mc);return;}
   if(page==='relatorio_disparos'){await renderRelatDisparos(mc);return;}
   if(page==='infos'){renderInfosUteis(mc);return;}
-  if(page==='planilha'){renderPlanilha(mc);return;}  if(page==='basilisco'){await renderBasilisco(mc);return;}
+  if(page==='basilisco'){await renderBasilisco(mc);return;}
   if(page==='perfis'){await renderPerfis(mc);return;}
   if(page==='caderno'){await renderCaderno(mc);return;}
   if(page==='perfil'){await renderPerfil(mc);return;}
