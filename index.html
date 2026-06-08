@@ -637,6 +637,7 @@ function buildNav(){
     {id:'copys',label:'Banco de Copys'},{id:'links',label:'Links de Reneg.'},{id:'escala',label:'Escala de Roteamento'},
     {id:'calc',label:'🧮 Calculadoras'},
     {id:'planilha',label:'⚡ Automacoes Planilha'},
+    {id:'infos',label:'💡 Informacoes Uteis'},
     {sep:true,label:'CONTA'},
     {id:'perfil',label:'Pagina Inicial'},
     {id:'caderno',label:'📓 Caderno'},
@@ -653,6 +654,7 @@ function buildNav(){
     {id:'copys',label:'Banco de Copys'},{id:'links',label:'Links de Reneg.'},{id:'escala',label:'Escala de Roteamento'},
     {id:'calc',label:'🧮 Calculadoras'},
     {id:'planilha',label:'⚡ Automacoes Planilha'},
+    {id:'infos',label:'💡 Informacoes Uteis'},
     {sep:true,label:'CONTA'},
     {id:'perfil',label:'Pagina Inicial'},
     {id:'caderno',label:'📓 Caderno'},
@@ -702,6 +704,7 @@ window.navigate=async function(page){
   if(page==='calcquit'){renderCalcQuit(mc);return;}
   if(page==='calcreneg'){renderCalcReneg(mc);return;}
   if(page==='relatorio_disparos'){await renderRelatDisparos(mc);return;}
+  if(page==='infos'){renderInfosUteis(mc);return;}
   if(page==='planilha'){renderPlanilha(mc);return;}  if(page==='basilisco'){await renderBasilisco(mc);return;}
   if(page==='perfis'){await renderPerfis(mc);return;}
   if(page==='caderno'){await renderCaderno(mc);return;}
@@ -2912,6 +2915,177 @@ let basiliscoMsgs=[];
 let basiliscoKey='';
 let basiliscoDocs=[];
 
+
+
+// ── INFORMAÇÕES ÚTEIS ────────────────────────────────────────────────────
+function renderInfosUteis(mc){
+  let activeTab = 'ementas';
+
+  function tabBtn(id, label, icon){
+    const active = activeTab===id;
+    return '<button onclick="iuSetTab(\''+id+'\')" style="padding:8px 18px;border:none;border-bottom:'+(active?'3px solid var(--primary)':'3px solid transparent')+';background:none;font-family:var(--font);font-size:13px;font-weight:'+(active?'600':'400')+';color:'+(active?'var(--primary)':'var(--text-3)')+';cursor:pointer;margin-bottom:-2px;">'+icon+' '+label+'</button>';
+  }
+
+  function linkRow(label, url){
+    if(!url||url.trim()==='') return '';
+    const href = url.startsWith('http')?url:'https://'+url;
+    return '<tr style="border-bottom:0.5px solid var(--border);">'+
+      '<td style="padding:8px 12px;font-size:13px;color:var(--text);font-weight:500;">'+label+'</td>'+
+      '<td style="padding:8px 12px;"><a href="'+href+'" target="_blank" style="color:var(--primary);font-size:12px;text-decoration:none;word-break:break-all;">'+url+'</a></td>'+
+      '<td style="padding:8px 8px;text-align:center;"><a href="'+href+'" target="_blank" style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:var(--primary);color:#fff;border-radius:20px;font-size:11px;text-decoration:none;font-weight:500;">Abrir →</a></td>'+
+    '</tr>';
+  }
+
+  function sectionHeader(title){
+    return '<tr><td colspan="3" style="padding:10px 12px 4px;font-size:11px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:0.07em;background:var(--surface);border-bottom:0.5px solid var(--border);">'+title+'</td></tr>';
+  }
+
+  function table(rows){
+    return '<div style="border-radius:10px;border:1px solid var(--border);overflow:hidden;margin-bottom:1rem;">'+
+      '<table style="width:100%;border-collapse:collapse;">'+
+        '<thead><tr style="background:var(--primary);color:#fff;">'+
+          '<th style="padding:8px 12px;text-align:left;font-size:12px;width:35%;">Nome</th>'+
+          '<th style="padding:8px 12px;text-align:left;font-size:12px;">Link</th>'+
+          '<th style="padding:8px 8px;text-align:center;font-size:12px;width:80px;">Ação</th>'+
+        '</tr></thead>'+
+        '<tbody>'+rows+'</tbody>'+
+      '</table></div>';
+  }
+
+  function waRow(label, url){
+    if(!url||url.trim()==='') return '';
+    const href = url.startsWith('http')?url:'https://'+url;
+    const tel = url.replace('https://wa.me/','').replace('http://wa.me/','');
+    return '<tr style="border-bottom:0.5px solid var(--border);">'+
+      '<td style="padding:8px 12px;font-size:13px;color:var(--text);font-weight:500;">'+label+'</td>'+
+      '<td style="padding:8px 12px;font-size:12px;color:var(--text-3);">'+tel+'</td>'+
+      '<td style="padding:8px 8px;text-align:center;"><a href="'+href+'" target="_blank" style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:#25D366;color:#fff;border-radius:20px;font-size:11px;text-decoration:none;font-weight:500;">WhatsApp →</a></td>'+
+    '</tr>';
+  }
+
+  function renderEmentas(){
+    return '<div style="display:flex;flex-direction:column;gap:0.5rem;">'+
+      '<p style="font-size:13px;color:var(--text-2);margin-bottom:0.5rem;">Links das ementas dos cursos completos da Hashtag Treinamentos.</p>'+
+
+      '<div style="font-size:12px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:0.07em;margin:0.5rem 0 0.25rem;">🔗 Lovable (Links diretos)</div>'+
+      table(
+        [['Análise de Dados','https://ementas.hashtagtreinamentos.com/analise-de-dados-impressionador'],
+         ['Ciência de Dados','https://ementas.hashtagtreinamentos.com/ciencia-de-dados-impressionador'],
+         ['Excel','https://ementas.hashtagtreinamentos.com/excel-impressionador'],
+         ['Power BI','https://ementas.hashtagtreinamentos.com/power-bi-impressionador'],
+         ['Full Stack','https://ementas.hashtagtreinamentos.com/full-stack-impressionador'],
+         ['HTML & CSS','https://ementas.hashtagtreinamentos.com/html-css-impressionador'],
+         ['JavaScript','https://ementas.hashtagtreinamentos.com/javascript-impressionador'],
+         ['Python','https://ementas.hashtagtreinamentos.com/python-impressionador'],
+         ['SQL','https://ementas.hashtagtreinamentos.com/sql-impressionador'],
+         ['VBA','https://ementas.hashtagtreinamentos.com/vba-impressionador'],
+         ['Agentes de IA e N8N','https://ementas.hashtagtreinamentos.com/agentes-ia-n8n-impressionador'],
+         ['APIs de IA','https://ementas.hashtagtreinamentos.com/apis-de-inteligencia-artificial'],
+         ['Bubble','https://ementas.hashtagtreinamentos.com/bubble-impressionador'],
+         ['FlutterFlow','https://ementas.hashtagtreinamentos.com/flutterflow-impressionador'],
+         ['Inteligência Artificial','https://ementas.hashtagtreinamentos.com/inteligencia-artificial-impressionador'],
+         ['Lovable','https://ementas.hashtagtreinamentos.com/lovable-impressionador'],
+         ['Make','https://ementas.hashtagtreinamentos.com/make-impressionador'],
+         ['Trilha No Code e IA','https://ementas.hashtagtreinamentos.com/nocode-e-ia-impressionador'],
+         ['Supabase','https://ementas.hashtagtreinamentos.com/supabase-impressionador'],
+         ['Power Apps','https://ementas.hashtagtreinamentos.com/power-apps'],
+         ['Power Automate','https://ementas.hashtagtreinamentos.com/power-automate-impressionador'],
+         ['PowerPoint','https://ementas.hashtagtreinamentos.com/powerpoint-impressionador'],
+         ['AWS','https://ementas.hashtagtreinamentos.com/aws-impressionador'],
+         ['Inglês','https://ementas.hashtagtreinamentos.com/ingles-impressionador'],
+         ['Figma','https://ementas.hashtagtreinamentos.com/figma'],
+         ['SoftSkills','https://ementas.hashtagtreinamentos.com/softskills'],
+         ['Claude','https://ementas.hashtagtreinamentos.com/claude-impressionador'],
+        ].map(r=>linkRow(r[0],r[1])).join('')
+      )+
+
+      '<div style="font-size:12px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:0.07em;margin:0.5rem 0 0.25rem;">🔗 TinyURL</div>'+
+      table(
+        [['Excel','https://tinyurl.com/ementa-excel'],['VBA','https://tinyurl.com/ementa-vba'],['Power BI','https://tinyurl.com/ementa-powerbi'],['Python','https://tinyurl.com/ementa-python'],['PowerPoint','https://tinyurl.com/ementa-powerpoint'],['SQL','https://tinyurl.com/ementa-sql'],['Ciência de Dados','https://tinyurl.com/ementa-cienciadedados'],['JavaScript','https://tinyurl.com/ementa-javascript'],['Análise de Dados','https://tinyurl.com/ementa-analisededados'],['Power Apps','https://tinyurl.com/ementa-powerapps'],['HTML/CSS','https://tinyurl.com/ementa-htmlcss'],['Inteligência Artificial','https://tinyurl.com/ementa-ia'],['Full Stack','https://tinyurl.com/ementa-fullstack'],['Front End','https://tinyurl.com/ementa-frontend'],['Power Automate','https://tinyurl.com/ementa-powerautomate'],['Inglês','https://tinyurl.com/ementa-ingles'],['AWS','https://tinyurl.com/ementa-aws-impressionador'],['Me poupe + Hashtag','https://tinyurl.com/ementa-do-zero-a-liberdade'],['N8N','http://tinyurl.com/ementa-n8n'],['No Code IA','https://tinyurl.com/ementa-trilha-nocode-ia'],['Make','https://tinyurl.com/ementa-make'],['FlutterFlow','https://tinyurl.com/ementa-flutterflow'],['Figma','https://tinyurl.com/ementa-figma'],['Lovable','https://tinyurl.com/ementa-lovable'],['Bubble','https://tinyurl.com/ementa-bubble'],['Supabase','https://tinyurl.com/ementa-supabase'],
+        ].map(r=>linkRow(r[0],r[1])).join('')
+      )+
+
+      '<div style="font-size:12px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:0.07em;margin:0.5rem 0 0.25rem;">🔗 Bit.ly</div>'+
+      table(
+        [['Excel','http://bit.ly/ementa-excel'],['VBA','http://bit.ly/ementa-vba'],['Power BI','http://bit.ly/ementapbi'],['Python','https://bit.ly/ementapython'],['PowerPoint','http://bit.ly/ementa-ppt'],['SQL','http://bit.ly/ementa-sql'],['Ciência de Dados','https://bit.ly/ementa-cienciadedados'],['JavaScript','http://bit.ly/ementa-javascript'],['Análise de Dados','http://bit.ly/ementa-analise-dados'],['Power Apps','http://bit.ly/ementa-powerapps'],['HTML/CSS','http://bit.ly/ementa-html-css'],['Inteligência Artificial','https://bit.ly/ementa-ia'],['Full Stack','https://bit.ly/ementa-full-stack'],['Front End','https://bit.ly/ementa-front-end'],['Inglês','https://bit.ly/ementa-ingles'],['Power Automate','https://bit.ly/ementa-powerautomate'],
+        ].map(r=>linkRow(r[0],r[1])).join('')
+      )+
+
+      '<div style="font-size:12px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:0.07em;margin:0.5rem 0 0.25rem;">🔗 Google Drive (PDFs)</div>'+
+      table(
+        [['Excel','https://drive.google.com/file/d/1liMrej1_qlNgcFzb4-oi4xayt-wzXga8/view'],['VBA','https://drive.google.com/file/d/1yZQSKE36L-zz4O2RExU-zFmRpHLS3_if/view'],['Power BI','https://drive.google.com/file/d/17wRNr6D9L3oq6CskorGQE7ObRuosueap/view'],['Python','https://drive.google.com/file/d/1fjMLxiglDaTCJ4gSavbLTdMfANg3NePA/view'],['PowerPoint','https://drive.google.com/file/d/1uWhO97E6uaeZbnvNNVSERW7DePrt7DvH/view'],['SQL','https://drive.google.com/file/d/1z4atDe26U_lC25g5mXkKgJTXqeXo8MOO/view'],['Ciência de Dados','https://drive.google.com/file/d/1HPGHhxw0yJ9lLMSfwiqbA8Nbrp-ofe5K/view'],['JavaScript','https://drive.google.com/file/d/1YQLCEX6fhY1D2g--09uYeP-N8VBoXIQZ/view'],['Análise de Dados','https://drive.google.com/file/d/1nd7QSSOxGOur3rT7fztttKoU-lG_kUP8/view'],['Power Apps','https://drive.google.com/file/d/1ZHed1-k--Id7cTSPhUceUJWCkDxxd0Gc/view'],['HTML/CSS','https://drive.google.com/file/d/1hm6rbIsesjG3UtbBMGy1ED6xJxeDSq85/view'],['Inteligência Artificial','https://drive.google.com/file/d/1nfnf3MFLQsPqmRK4mgskZvJOSokXCzHm/view'],['Full Stack','https://drive.google.com/file/d/1yLstx1h-uY2bJU1FF10Mwd21Nzr8FDBv/view'],['Front End','https://drive.google.com/file/d/1eNf_vqxHzptvzMs4UZX4ILQSlTtt8z1C/view'],['Power Automate','https://drive.google.com/file/d/1e8_OX2Z10DonQIQTX3JhpybZLbz_K--D/view'],['Inglês','https://drive.google.com/file/d/19tZsNibwzsbmJp1Foe-1ZfosiD91L48v/view'],['Figma','https://drive.google.com/file/d/1WBqDS9jCN7A3vIddiNFzgIWv1rXUQ10Y/view'],['Me poupe + Hashtag','https://drive.google.com/file/d/1f50BHG3qV7Yypjzcs6NBOyZlRrQZ5n3q/view'],
+        ].map(r=>linkRow(r[0],r[1])).join('')
+      )+
+    '</div>';
+  }
+
+  function renderContatos(){
+    return '<div>'+
+      '<p style="font-size:13px;color:var(--text-2);margin-bottom:1rem;">Contatos internos e números da equipe Hashtag.</p>'+
+      '<div style="font-size:12px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:0.25rem;">🔍 Verificador de Números</div>'+
+      table(linkRow('Hash Verificador de Números','https://dlp.hashtagtreinamentos.com/verificador-numeros'))+
+      '<div style="font-size:12px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:0.07em;margin:0.75rem 0 0.25rem;">📱 WhatsApp — Setores</div>'+
+      '<div style="border-radius:10px;border:1px solid var(--border);overflow:hidden;margin-bottom:1rem;">'+
+        '<table style="width:100%;border-collapse:collapse;">'+
+          '<thead><tr style="background:var(--primary);color:#fff;"><th style="padding:8px 12px;text-align:left;font-size:12px;">Setor</th><th style="padding:8px 12px;text-align:left;font-size:12px;">Número</th><th style="padding:8px 8px;text-align:center;font-size:12px;width:100px;">Ação</th></tr></thead>'+
+          '<tbody>'+
+          [['Suporte','https://wa.me/556193314870'],['Renovação (persona Marcus)','https://wa.me/5521971419046'],['Cobrança Ativa + Renegociação (persona Daniel)','https://wa.me/5521967760689'],['CS (persona Renan)','https://wa.me/5521972394185'],['InCompany','https://wa.me/5521995115669'],['Venda Passiva + Recuperação de Venda','https://wa.me/5521996582442'],['Cobrança Passiva (persona Pedro)','https://wa.me/5521997321507'],['Banco de Vagas/Inglês','https://wa.me/5521988665281'],['CS InCompany','https://wa.me/5521991085400'],['WhatsApp de Dúvidas (leads)','https://wa.me/+5521967218715'],['Capacitaciones','https://wa.me/+5521987571404'],['Pós (inside sales)','https://wa.me/552123913845'],['Pós (cobrança)','https://wa.me/5521923675995'],['Pós (CS)','https://wa.me/552123913961'],
+          ].map(r=>waRow(r[0],r[1])).join('')+
+          '</tbody></table></div>'+
+      '<div style="font-size:12px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:0.07em;margin:0.75rem 0 0.25rem;">👥 Comercial Ativo</div>'+
+      '<div style="border-radius:10px;border:1px solid var(--border);overflow:hidden;margin-bottom:1rem;">'+
+        '<table style="width:100%;border-collapse:collapse;">'+
+          '<thead><tr style="background:var(--primary);color:#fff;"><th style="padding:8px 12px;text-align:left;font-size:12px;">Consultor</th><th style="padding:8px 12px;text-align:left;font-size:12px;">Número</th></tr></thead>'+
+          '<tbody>'+
+          [['Micheli Lourenço','61995822607'],['Amanda Curi','21980891321'],['Amanda Curi','21972620685'],['Amanda Curi','21 971731321'],['Tiago Franco','11948848164'],['Gilliano Mello','21975637643'],['Eliel Teixeira','21979451900'],['Lucas Galvão','31998913108'],['Camila Suenaga','11985562799'],['Marcus Cavalcanti','21995084103'],['Micheli Lourenço','21974873453'],
+          ].map(r=>'<tr style="border-bottom:0.5px solid var(--border);"><td style="padding:8px 12px;font-size:13px;font-weight:500;">'+r[0]+'</td><td style="padding:8px 12px;font-size:13px;color:var(--text-3);">'+r[1]+'</td></tr>').join('')+
+          '</tbody></table></div>'+
+    '</div>';
+  }
+
+  function renderGrupos(){
+    return '<div>'+
+      '<p style="font-size:13px;color:var(--text-2);margin-bottom:1rem;">Links de convite para grupos de WhatsApp e comunidades no Facebook dos alunos.</p>'+
+      [
+        ['EXCEL',['Excel Online','https://eventoshashtag.herokuapp.com/excel-online'],['Grupo Facebook','https://www.facebook.com/groups/1945224525867908/']],
+        ['POWER BI',['PBI Online','https://eventoshashtag.herokuapp.com/pbi-online'],['Grupo Facebook','https://www.facebook.com/groups/580066976765611']],
+        ['PYTHON',['Python Online','https://eventoshashtag.herokuapp.com/python-online'],['Grupo Facebook','https://www.facebook.com/groups/344824740817273']],
+        ['SQL',['SQL Online','https://eventoshashtag.herokuapp.com/sql-online'],['Grupo Facebook','https://www.facebook.com/groups/1161456458113361/']],
+        ['VBA',['VBA Online','https://eventoshashtag.herokuapp.com/vba-online'],['Grupo Facebook','https://www.facebook.com/groups/2948866975414505']],
+        ['POWERPOINT',['PPT Online','https://eventoshashtag.herokuapp.com/ppt-online'],['Grupo Facebook','https://www.facebook.com/groups/651724696687876/']],
+        ['CIÊNCIA DE DADOS',['Ciência de Dados Online','https://eventoshashtag.herokuapp.com/ciencia-de-dados-online'],['Grupo Facebook','https://www.facebook.com/groups/516376017010446/']],
+        ['COMUNIDADE IMPRESSIONADORA',['Comunidade','http://eventoshashtag.herokuapp.com/comunidade-hashtag']],
+        ['JAVASCRIPT / HTML / FULL STACK',['Grupo Facebook','https://www.facebook.com/groups/615963560411896/']],
+        ['ASSINATURA VITALÍCIA',['Alunos Vi Online','http://eventoshashtag.herokuapp.com/alunos-vitalicio']],
+        ['INGLÊS IMPRESSIONADOR',['WhatsApp','https://eventoshashtag.herokuapp.com/ingles-online'],['Grupo Facebook','https://www.facebook.com/groups/inglesimpressionador']],
+      ].map(group=>{
+        const title = group[0];
+        const links = group.slice(1);
+        return '<div style="font-size:12px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:0.07em;margin:0.75rem 0 0.25rem;">'+title+'</div>'+
+          table(links.map(l=>linkRow(l[0],l[1])).join(''));
+      }).join('')+
+    '</div>';
+  }
+
+  function build(){
+    mc.innerHTML = snakeHtml()+
+      '<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;">'+
+        '<div class="page-eyebrow">💡 GERAL</div>'+
+        '<div class="page-title">Informacoes Uteis</div>'+
+        '<div class="page-sub">Ementas, contatos e grupos da equipe Hashtag</div>'+
+      '</div>'+
+      '<div style="display:flex;gap:0;margin-bottom:1.5rem;border-bottom:2px solid var(--border);">'+
+        tabBtn('ementas','Ementas','📄')+
+        tabBtn('contatos','Contatos','📱')+
+        tabBtn('grupos','Grupos WhatsApp/Facebook','👥')+
+      '</div>'+
+      (activeTab==='ementas'?renderEmentas():activeTab==='contatos'?renderContatos():renderGrupos());
+  }
+
+  window.iuSetTab = function(tab){ activeTab=tab; build(); };
+  build();
+}
+// ── /INFORMAÇÕES ÚTEIS ────────────────────────────────────────────────────
 
 // ── RELATÓRIO DE DISPAROS ─────────────────────────────────────────────────
 const DISP_TIPOS = ['API','FW1','FW2','FW3','FW4','FW5','Estrategia Adicional','Estrategia Antigos'];
