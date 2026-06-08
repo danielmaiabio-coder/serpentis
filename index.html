@@ -2795,6 +2795,7 @@ function fmtDateLabel(d){const ds=['Segunda-Feira','Terca-Feira','Quarta-Feira',
 
 async function renderRelatDisparos(mc){
   const today = new Date();
+  let activeTab = 'tabela'; // 'tabela' | 'historico'
   // 5 datas livres — padrão: seg-sex da semana atual
   function defaultDates(){
     const d = new Date();
@@ -2894,10 +2895,87 @@ async function renderRelatDisparos(mc){
         '</tbody>'+
       '</table></div>';
 
+    if(activeTab==='tabela') html += "')"; // fecha condicional
     mc.innerHTML = html;
 
     // Guardar estado para funções externas
     window._rdState = {weekDays, keys, data, editMode};
+  }
+
+  window.rdSetTab = function(tab){ activeTab=tab; editMode=false; render(); };
+
+  function rdHistoricoHtml(){
+    return '<div id="rd-hist-wrap"><div style="display:flex;align-items:center;gap:12px;margin-bottom:1rem;flex-wrap:wrap;">'+
+      '<span style="font-size:13px;font-weight:600;color:var(--text);">Exportar periodo:</span>'+
+      '<div style="display:flex;align-items:center;gap:6px;font-size:12px;">'+
+        '<span style="color:var(--text-3);">De</span>'+
+        '<input type="date" id="rd-hist-de" style="padding:5px 8px;border:1px solid var(--border-md);border-radius:var(--radius);font-family:var(--font);font-size:12px;background:var(--bg);"/>'+
+        '<span style="color:var(--text-3);">ate</span>'+
+        '<input type="date" id="rd-hist-ate" style="padding:5px 8px;border:1px solid var(--border-md);border-radius:var(--border-md);font-family:var(--font);font-size:12px;background:var(--bg);"/>'+
+      '</div>'+
+      '<button onclick="rdExportarPeriodo()" style="padding:7px 14px;border:1px solid #1D6F42;color:#1D6F42;border-radius:var(--radius);background:var(--surface);cursor:pointer;font-family:var(--font);font-size:13px;font-weight:500;">⬇️ Exportar Excel</button>'+
+      '<button onclick="rdExportarSemanaAtual()" style="padding:7px 14px;border:1px solid var(--primary);color:var(--primary);border-radius:var(--radius);background:var(--surface);cursor:pointer;font-family:var(--font);font-size:13px;font-weight:500;">⬇️ Semana atual</button>'+
+    '</div>'+
+    '<div id="rd-hist-preview" style="margin-top:0.5rem;font-size:12px;color:var(--text-3);">Selecione um periodo e clique em Exportar.</div>'+
+    '</div>';
+  }
+
+  window.rdExportarSemanaAtual = async function(){
+    const {weekDays, keys, data} = window._rdState;
+    await _rdGerarExcel(keys, weekDays, data, 'semana_atual');
+  };
+
+  window.rdExportarPeriodo = async function(){
+    const de = document.getElementById('rd-hist-de')?.value;
+    const ate = document.getElementById('rd-hist-ate')?.value;
+    if(!de || !ate){ showToast('Selecione o periodo completo.'); return; }
+    if(de > ate){ showToast('Data inicial deve ser antes da final.'); return; }
+
+    // Gerar todos os dias do período
+    const preview = document.getElementById('rd-hist-preview');
+    if(preview) preview.textContent = 'Carregando dados...';
+
+    const days = [];
+    const cur = new Date(de+'T12:00:00');
+    const end = new Date(ate+'T12:00:00');
+    while(cur <= end){ days.push(new Date(cur)); cur.setDate(cur.getDate()+1); }
+
+    const keys = days.map(fmtDateKey);
+    const docs = await Promise.all(keys.map(k=>getDoc(doc(db,'relatorio_disparos',k))));
+    const data = {};
+    docs.forEach((d,i)=>{ data[keys[i]]=d.exists()?d.data():{}; });
+
+    if(preview) preview.textContent = days.length+' dias carregados.';
+    await _rdGerarExcel(keys, days, data, 'periodo_'+de+'_'+ate);
+  };
+
+  async function _rdGerarExcel(keys, days, data, filename){
+    // Gerar CSV estruturado igual à tabela do sistema
+    const header = ['Tipo de Mensagem', ...days.map(d=>d.toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit'})), 'Soma', 'Media', 'Concentracao'];
+    const rows = [header];
+    const somasTipo = DISP_TIPOS.map(t=>keys.reduce((s,k)=>s+(Number(data[k]?.[t])||0),0));
+    const totalGeral = somasTipo.reduce((a,b)=>a+b,0);
+
+    DISP_TIPOS.forEach((tipo,ti)=>{
+      const vals = keys.map(k=>Number(data[k]?.[tipo]||0));
+      const soma = somasTipo[ti];
+      const diasComDados = vals.filter(v=>v>0).length;
+      const media = diasComDados>0?(soma/diasComDados).toFixed(1):0;
+      const conc = totalGeral>0?((soma/totalGeral)*100).toFixed(2)+'%':'0,00%';
+      rows.push([tipo,...vals,soma,media,conc]);
+    });
+
+    const totalDia = keys.map(k=>DISP_TIPOS.reduce((s,t)=>s+(Number(data[k]?.[t])||0),0));
+    rows.push(['Total por dia:',...totalDia,'','','']);
+    rows.push(['Soma geral:',totalDia.reduce((a,b)=>a+b,0),...Array(keys.length-1+3).fill('')]);
+
+    const csvContent = rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');
+    const blob = new Blob(['\uFEFF'+csvContent],{type:'text/csv;charset=utf-8;'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href=url; a.download='disparos_'+filename+'.csv';
+    a.click(); URL.revokeObjectURL(url);
+    showToast('Exportado! Abra no Excel.');
   }
 
   window.rdChangeDate = function(i, val){
