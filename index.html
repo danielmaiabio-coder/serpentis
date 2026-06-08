@@ -1594,6 +1594,13 @@ async function renderPerfil(mc){
   // Mural preview - own wall
   const muralSnap=await getDocs(query(collection(db,'mural',currentUser.uid,'recados'),orderBy('ts','desc'),limit(5)));
   const muralPosts=[];muralSnap.forEach(d=>muralPosts.push({id:d.id,...d.data()}));
+  // Slack prefs
+  mc.innerHTML+='<div class="panel" style="margin-bottom:1rem;">'+
+    '<div class="panel-title" style="margin-bottom:12px;">🔔 Notificações Slack</div>'+
+    '<div id="slack-prefs-container"><div style="font-size:12px;color:var(--text-3);">Acesse a aba Slack primeiro para carregar os canais.</div></div>'+
+  '</div>';
+  setTimeout(renderSlackPrefs, 100);
+
   mc.innerHTML+='<div class="panel">'+
     '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">'+
     '<div class="panel-title" style="margin:0;">✍️ Meu Mural</div>'+
@@ -1797,6 +1804,47 @@ window.uploadFoto=async function(e){
     showToast('Foto pronta! Clique em salvar.');
   }catch(e){showToast('Erro ao enviar foto.');}
 };
+window.renderSlackPrefs = function(){
+  const mc2 = document.getElementById('slack-prefs-container');
+  if(!mc2) return;
+  const mutedArr = [...slackMutedChannels];
+  mc2.innerHTML =
+    '<div style="margin-bottom:12px;">'+
+      '<label style="font-size:12px;font-weight:600;color:var(--text-2);display:block;margin-bottom:6px;">🔔 Som de notificação do Slack</label>'+
+      '<div style="display:flex;gap:6px;flex-wrap:wrap;">'+
+        SLACK_SOUNDS.map(s=>
+          '<button onclick="slackSetSound(\''+s.id+'\')" style="padding:6px 12px;border-radius:20px;font-size:12px;font-family:var(--font);cursor:pointer;border:2px solid '+(slackSoundPref===s.id?'var(--primary)':'var(--border-md)')+';background:'+(slackSoundPref===s.id?'var(--primary)':'var(--surface)')+';color:'+(slackSoundPref===s.id?'#fff':'var(--text)')+';">'+s.label+'</button>'
+        ).join('')+
+      '</div>'+
+    '</div>'+
+    '<div>'+
+      '<label style="font-size:12px;font-weight:600;color:var(--text-2);display:block;margin-bottom:6px;">🔕 Canais silenciados</label>'+
+      (slackChannels.length===0?'<div style="font-size:12px;color:var(--text-3);">Acesse o Slack primeiro para carregar os canais.</div>':
+        '<div style="display:flex;gap:6px;flex-wrap:wrap;">'+
+          slackChannels.map(ch=>{
+            const muted = slackMutedChannels.has(ch.id);
+            return '<button onclick="slackToggleMute(\''+ch.id+'\')" style="padding:5px 10px;border-radius:20px;font-size:11px;font-family:var(--font);cursor:pointer;border:1px solid '+(muted?'#e01e5a':'var(--border-md)')+';background:'+(muted?'#ffeef2':'var(--surface)')+';color:'+(muted?'#e01e5a':'var(--text-3)')+';">'+(muted?'🔕 ':'🔔 ')+ch.name+'</button>';
+          }).join('')+
+        '</div>'
+      )+
+    '</div>';
+};
+
+window.slackSetSound = function(id){
+  slackSoundPref = id;
+  localStorage.setItem('slack_sound', id);
+  const s = SLACK_SOUNDS.find(x=>x.id===id);
+  if(s&&s.url) try{new Audio(s.url).play();}catch(e){}
+  renderSlackPrefs();
+};
+
+window.slackToggleMute = function(id){
+  if(slackMutedChannels.has(id)) slackMutedChannels.delete(id);
+  else slackMutedChannels.add(id);
+  localStorage.setItem('slack_muted', JSON.stringify([...slackMutedChannels]));
+  renderSlackPrefs();
+};
+
 window.salvarPerfil=async function(){
   const nome=document.getElementById('perfil-nome').value.trim();
   const fotoEl=document.getElementById('perfil-foto-preview');
@@ -3071,6 +3119,69 @@ let basiliscoDocs=[];
 
 
 
+
+// ── SLACK EMOJI MAP ──────────────────────────────────────────────────────
+const SLACK_EMOJI = {
+  'smile':' 😊','grinning':'😀','laughing':'😆','joy':'😂','rofl':'🤣','smiley':'😃','wink':'😉','blush':'😊','heart_eyes':'😍','kissing_heart':'😘','stuck_out_tongue':'😛','sunglasses':'😎','thinking_face':'🤔','raised_eyebrow':'🤨','neutral_face':'😐','expressionless':'😑','unamused':'😒','roll_eyes':'🙄','grimacing':'😬','lying_face':'🤥','relieved':'😌','pensive':'😔','worried':'😟','confused':'😕','slightly_frowning_face':'🙁','frowning_face':'☹️','persevere':'😣','confounded':'😖','tired_face':'😫','weary':'😩','cry':'😢','sob':'😭','fearful':'😨','cold_sweat':'😰','disappointed_relieved':'😥','sweat':'😓','hushed':'😯','astonished':'😲','flushed':'😳','dizzy_face':'😵','exploding_head':'🤯','face_with_thermometer':'🤒','sleeping':'😴','zzz':'💤','poop':'💩','smiling_imp':'😈','skull':'💀','ghost':'👻','alien':'👽','robot':'🤖','wave':'👋','raised_hands':'🙌','clap':'👏','pray':'🙏','handshake':'🤝','thumbsup':'👍','+1':'👍','thumbsdown':'👎','point_up':'☝️','point_right':'👉','point_left':'👈','point_down':'👇','raised_hand':'✋','ok_hand':'👌','muscle':'💪','heart':'❤️','orange_heart':'🧡','yellow_heart':'💛','green_heart':'💚','blue_heart':'💙','purple_heart':'💜','black_heart':'🖤','broken_heart':'💔','fire':'🔥','star':'⭐','star2':'🌟','sparkles':'✨','zap':'⚡','boom':'💥','tada':'🎉','confetti_ball':'🎊','trophy':'🏆','medal_sports':'🏅','rocket':'🚀','eyes':'👀','100':'💯','white_check_mark':'✅','x':'❌','warning':'⚠️','rotating_light':'🚨','bell':'🔔','no_bell':'🔕','mega':'📣','loudspeaker':'📢','speech_balloon':'💬','thought_balloon':'💭','bulb':'💡','mag':'🔍','lock':'🔒','unlock':'🔓','link':'🔗','pushpin':'📌','paperclip':'📎','pencil':'✏️','memo':'📝','calendar':'📅','clock1':'🕐','hourglass':'⏳','check':'✔️','information_source':'ℹ️','question':'❓','exclamation':'❗','recycle':'♻️','sparkle':'❇️','heart_hands':'🫶','saluting_face':'🫡','melting_face':'🫠','face_holding_back_tears':'🥹','people_hugging':'🫂','mouse_trap':'🪤','birthday':'🎂','cake':'🎂','pizza':'🍕','beer':'🍺','coffee':'☕','tea':'🍵','dog':'🐶','cat':'🐱','snake':'🐍','party_blob':'🎉','party_parrot':'🦜','blob':'🫧','slow_mo_parrot':'🦜','3805_ultrafastparrot':'🦜','man_lifting_weights':'🏋️','skin-tone-2':'','skin-tone-3':'','skin-tone-4':'','skin-tone-5':'','skin-tone-6':''
+};
+
+function slackRenderText(text){
+  if(!text) return '';
+  return text
+    .replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&')
+    // Mentions
+    .replace(/<@([A-Z0-9]+)>/g,(m,uid)=>{const u=slackUsers[uid];return u?'<b style="color:#1264a3;">@'+(u.real_name||u.name)+'</b>':m;})
+    // Channel links
+    .replace(/<#[A-Z0-9]+\|([^>]+)>/g,'<b>#$1</b>')
+    // URLs
+    .replace(/<(https?:[^|>]+)\|([^>]+)>/g,'<a href="$1" target="_blank" style="color:#1264a3;text-decoration:underline;">$2</a>')
+    .replace(/<(https?:[^>]+)>/g,'<a href="$1" target="_blank" style="color:#1264a3;text-decoration:underline;">$1</a>')
+    // Bold *text*
+    .replace(/\*([^*]+)\*/g,'<b>$1</b>')
+    // Italic _text_
+    .replace(/_([^_]+)_/g,'<i>$1</i>')
+    // Strikethrough ~text~
+    .replace(/~([^~]+)~/g,'<s>$1</s>')
+    // Code `text`
+    .replace(/`([^`]+)`/g,'<code style="background:rgba(0,0,0,0.08);padding:1px 4px;border-radius:3px;font-size:12px;">$1</code>')
+    // Emojis :name: ou :name::skin-tone-X:
+    .replace(/:([a-z0-9_+\-]+)(?::skin-tone-\d)?:/gi,(m,name)=>{
+      const base = name.replace(/-/g,'_').toLowerCase();
+      return SLACK_EMOJI[base]||SLACK_EMOJI[name]||m;
+    });
+}
+
+// ── SLACK SOUNDS ─────────────────────────────────────────────────────────
+const SLACK_SOUNDS = [
+  {id:'none', label:'Sem som', url:''},
+  {id:'som1', label:'Som 1', url:'https://res.cloudinary.com/dbd9hpwyb/video/upload/v1780952143/Som_1_p3tzzb.mp3'},
+  {id:'som2', label:'Som 2', url:'https://res.cloudinary.com/dbd9hpwyb/video/upload/v1780952155/Som_2_mozrfw.mp3'},
+  {id:'som3', label:'Som 3', url:'https://res.cloudinary.com/dbd9hpwyb/video/upload/v1780952162/Som_3_owsh7h.mp3'},
+  {id:'som4', label:'Som 4', url:'https://res.cloudinary.com/dbd9hpwyb/video/upload/v1780952168/Som_4_zoch2n.mp3'},
+  {id:'som5', label:'Som Ultra Power ⚡', url:'https://res.cloudinary.com/dbd9hpwyb/video/upload/v1780952173/Som_Ultra_Power_Especial_a20r8z.mp3'},
+];
+
+let slackSoundPref = localStorage.getItem('slack_sound')||'som1';
+let slackMutedChannels = new Set(JSON.parse(localStorage.getItem('slack_muted')||'[]'));
+let slackLastMsgTs = {};
+
+function playSlackSound(){
+  const s = SLACK_SOUNDS.find(x=>x.id===slackSoundPref);
+  if(!s||!s.url) return;
+  try{ new Audio(s.url).play(); }catch(e){}
+}
+
+function slackCheckNewMsgs(channel, msgs){
+  if(!msgs.length) return;
+  if(slackMutedChannels.has(channel)) return;
+  const latest = msgs[msgs.length-1];
+  const prev = slackLastMsgTs[channel];
+  if(prev && parseFloat(latest.ts) > parseFloat(prev)){
+    playSlackSound();
+  }
+  slackLastMsgTs[channel] = latest.ts;
+}
+
 // ── SLACK ────────────────────────────────────────────────────────────────
 const SLACK_API = '/api/slack';
 let slackPollInterval = null;
@@ -3225,6 +3336,7 @@ async function slackLoadMessages(channel) {
     const data = await slackCall('history', { channel });
     if (!data.messages) return;
     const msgs = [...data.messages].reverse();
+    slackCheckNewMsgs(channel, msgs);
     const wasAtBottom = msgsEl.scrollHeight - msgsEl.scrollTop - msgsEl.clientHeight < 60;
     msgsEl.innerHTML = msgs.map(m => {
       const u = slackUsers[m.user] || {};
@@ -3234,19 +3346,68 @@ async function slackLoadMessages(channel) {
       const avHtml = avatar
         ? '<img src="'+avatar+'" style="width:32px;height:32px;border-radius:4px;object-fit:cover;flex-shrink:0;"/>'
         : '<div style="width:32px;height:32px;border-radius:4px;background:#4a154b;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex-shrink:0;">'+(nome[0]||'?').toUpperCase()+'</div>';
-      const text = (m.text||'').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&').replace(/<@([A-Z0-9]+)>/g,(match,uid)=>{const u2=slackUsers[uid];return u2?'<b>@'+(u2.real_name||u2.name)+'</b>':match;});
-      return '<div style="display:flex;gap:10px;padding:4px 0;align-items:flex-start;">'+
+      const text = slackRenderText(m.text||'');
+      // Reactions
+      const reactHtml = m.reactions&&m.reactions.length
+        ? '<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px;">'+
+            m.reactions.map(r=>{
+              const emoji = SLACK_EMOJI[r.name.replace(/-/g,'_')]||(':'+r.name+':');
+              return '<span style="background:rgba(0,0,0,0.06);border:1px solid rgba(0,0,0,0.1);border-radius:12px;padding:2px 7px;font-size:12px;cursor:default;" title="'+r.users.length+'">'+emoji+' '+r.count+'</span>';
+            }).join('')+
+          '</div>'
+        : '';
+      // Thread
+      const threadHtml = m.reply_count
+        ? '<div style="margin-top:4px;font-size:12px;color:#1264a3;cursor:pointer;" onclick="slackOpenThread(\''+channel+'\',\''+m.ts+'\',\''+nome+'\')">'+
+            '💬 '+m.reply_count+' resposta'+(m.reply_count>1?'s':'')+' →'+
+          '</div>'
+        : '';
+      return '<div style="display:flex;gap:10px;padding:6px 0;align-items:flex-start;border-bottom:0.5px solid rgba(0,0,0,0.04);">'+
         avHtml+
         '<div style="flex:1;min-width:0;">'+
           '<span style="font-weight:600;font-size:13px;">'+nome+'</span>'+
           '<span style="font-size:11px;color:var(--text-3);margin-left:6px;">'+ts+'</span>'+
-          '<div style="font-size:13px;color:var(--text);margin-top:2px;line-height:1.4;word-break:break-word;">'+text+'</div>'+
+          '<div style="font-size:13px;color:var(--text);margin-top:2px;line-height:1.5;word-break:break-word;">'+text+'</div>'+
+          reactHtml+
+          threadHtml+
         '</div>'+
       '</div>';
     }).join('');
     if (wasAtBottom) msgsEl.scrollTop = msgsEl.scrollHeight;
   } catch(e) {}
 }
+
+window.slackOpenThread = async function(channel, ts, parentNome){
+  try{
+    const data = await slackCall('replies', {channel, ts});
+    if(!data.messages) return;
+    const replies = data.messages.slice(1); // pula a msg original
+    const modal = document.createElement('div');
+    modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:flex-start;justify-content:flex-end;padding:1rem;';
+    let html = '<div style="background:var(--surface);border-radius:14px;width:420px;max-width:95vw;height:calc(100vh - 2rem);display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,0.3);">'+
+      '<div style="padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">'+
+        '<span style="font-weight:600;font-size:14px;">💬 Thread</span>'+
+        '<button onclick="this.closest(\'[style*=fixed]\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-3);">×</button>'+
+      '</div>'+
+      '<div style="flex:1;overflow-y:auto;padding:12px 16px;display:flex;flex-direction:column;gap:8px;">';
+    replies.forEach(m=>{
+      const u = slackUsers[m.user]||{};
+      const nome = u.real_name||u.name||'Bot';
+      const av = u.profile?.image_48||'';
+      const ts2 = new Date(parseFloat(m.ts)*1000).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+      const avHtml = av
+        ? '<img src="'+av+'" style="width:28px;height:28px;border-radius:4px;object-fit:cover;flex-shrink:0;"/>'
+        : '<div style="width:28px;height:28px;border-radius:4px;background:#4a154b;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;flex-shrink:0;">'+(nome[0]||'?').toUpperCase()+'</div>';
+      html += '<div style="display:flex;gap:8px;align-items:flex-start;">'+avHtml+
+        '<div><span style="font-weight:600;font-size:12px;">'+nome+'</span>'+
+        '<span style="font-size:10px;color:var(--text-3);margin-left:4px;">'+ts2+'</span>'+
+        '<div style="font-size:13px;margin-top:2px;line-height:1.4;">'+slackRenderText(m.text||'')+'</div></div></div>';
+    });
+    html += '</div></div>';
+    modal.innerHTML = html;
+    document.body.appendChild(modal);
+  }catch(e){showToast('Erro ao carregar thread.');}
+};
 
 window.slackSend = async function() {
   const input = document.getElementById('slack-input');
