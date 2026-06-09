@@ -385,9 +385,9 @@ body.dark-mode .dm-input-row textarea{background:#22263a;color:#e8eaf0;}
     </div>
   </div>
   <div class="main" id="mainContent">
-    <div class="snake-corner" onclick="playSnakeSound()" title="Ssss..."><img id="snakeCorner" src="" onclick="playSnakeSound()" style="pointer-events:all;"/></div>
   </div>
 </div>
+<div class="snake-corner" onclick="playSnakeSound()" title="Ssss..."><img id="snakeCorner" src="" style="pointer-events:none;"/></div>
 <button class="mute-btn" id="muteBtn" onclick="toggleMute()" title="Som">
   <svg id="muteIcon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
 </button>
@@ -745,7 +745,7 @@ window.navigate=async function(page){
   mc.style.overflow='auto';
   mc.style.backgroundImage='none';
   mc.style.background='';
-  mc.innerHTML='<div class="snake-corner"><img src="'+SNAKE_IMG+'"/></div><div class="empty">Carregando...</div>';
+  mc.innerHTML='<div class="empty">Carregando...</div>';
   if(page==='equipe'){await renderEquipe(mc);return;}
   if(page==='escritorio'){await renderEscritorio(mc);return;}
   if(page==='lancar'){
@@ -776,7 +776,7 @@ window.navigate=async function(page){
   if(!viewingOp&&userProfile.role==='coord'){await renderEquipe(mc);return;}
   const opSnap=await getDoc(doc(db,'usuarios',viewingOp));
   const op=opSnap.exists()?{uid:viewingOp,...opSnap.data()}:null;
-  if(!op){mc.innerHTML='<div class="snake-corner"><img src="'+SNAKE_IMG+'"/></div><div class="empty">Operador nao encontrado.</div>';return;}
+  if(!op){mc.innerHTML='<div class="empty">Operador nao encontrado.</div>';return;}
   if(page==='resultado')await renderResultado(mc,op);
   else if(page==='historico')await renderHistorico(mc,op);
   else if(page==='notas')await renderNotas(mc,op);
@@ -784,7 +784,7 @@ window.navigate=async function(page){
   else if(page==='feedback')await renderFeedback(mc,op);
 };
 
-function snakeHtml(){return '<div class="snake-corner"><img src="'+SNAKE_IMG+'"/></div>';}
+function snakeHtml(){return '';}
 
 window.selectOp=async function(uid){
   viewingOp=uid;document.getElementById('sbSub').textContent='Vendo: '+(opsCache[uid]||'operador');
