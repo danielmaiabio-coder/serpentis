@@ -3,7 +3,6 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <link rel="icon" type="image/png" href="https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780709517/snake_jet3mt.png"/>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=UnifrakturMaguntia&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
@@ -75,7 +74,7 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
 .btn-logout{width:100%;padding:7px;border:1px solid rgba(255,255,255,0.15);border-radius:var(--radius);background:transparent;color:rgba(255,255,255,0.6);font-family:var(--font);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;}
 .btn-logout:hover{background:rgba(255,255,255,0.08);color:#fff;}
 .main{flex:1;overflow-y:auto;padding:2rem;position:relative;}
-.snake-corner{position:fixed;top:16px;right:20px;width:52px;height:52px;z-index:999;pointer-events:all;opacity:0.92;cursor:pointer;transition:transform 0.15s;}.snake-corner:hover{transform:scale(1.1);}
+.snake-corner{position:fixed;top:16px;right:20px;width:52px;height:52px;z-index:999;pointer-events:none;opacity:0.92;}
 .snake-corner img{width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 2px 6px rgba(0,0,0,0.25));}
 .page-eyebrow{font-size:11px;font-weight:500;color:var(--primary-mid);letter-spacing:0.07em;text-transform:uppercase;margin-bottom:4px;}
 .page-title{font-size:24px;font-weight:500;color:var(--text);margin-bottom:3px;}
@@ -249,6 +248,11 @@ body.dark-mode{--bg:#0f1117;--surface:#1a1d27;--surface-2:#22263a;--border:rgba(
 body.dark-mode .main{background:#0f1117;}
 body.dark-mode .panel{background:#1a1d27;border-color:rgba(255,255,255,0.08);}
 body.dark-mode .inp{background:#22263a;color:#e8eaf0;border-color:rgba(255,255,255,0.1);}
+body.dark-mode input[style*="background:var(--bg)"]{color:#e8eaf0 !important;}
+body.dark-mode input{color:#e8eaf0;}
+body.dark-mode input::placeholder{color:rgba(255,255,255,0.35);}
+body.dark-mode textarea{color:#e8eaf0;}
+body.dark-mode select{background:#22263a;color:#e8eaf0;border-color:rgba(255,255,255,0.1);}
 body.dark-mode .page-title{color:#e8eaf0;}
 body.dark-mode .page-sub{color:#b0b8cc;}
 body.dark-mode table td,body.dark-mode table th{color:#e8eaf0;}
@@ -380,9 +384,9 @@ body.dark-mode .dm-input-row textarea{background:#22263a;color:#e8eaf0;}
     </div>
   </div>
   <div class="main" id="mainContent">
+    <div class="snake-corner"><img id="snakeCorner" src=""/></div>
   </div>
 </div>
-<div class="snake-corner" onclick="playSnakeSound()" title="Ssss..."><img id="snakeCorner" src=""/></div>
 <button class="mute-btn" id="muteBtn" onclick="toggleMute()" title="Som">
   <svg id="muteIcon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
 </button>
@@ -587,18 +591,6 @@ window.toggleDarkMode=function(){
     });
   }
 })();
-window.playSnakeSound=function(){
-  let a=document.getElementById('snake-sound');
-  if(!a){
-    a=document.createElement('audio');
-    a.id='snake-sound';
-    a.src='https://res.cloudinary.com/dbd9hpwyb/video/upload/v1780946525/faaah_gkucu6.mp3';
-    a.preload='auto';
-    document.body.appendChild(a);
-  }
-  a.currentTime=0;
-  a.play().then(()=>console.log('tocou')).catch(e=>console.error('audio error:',e));
-};
 window.doLogout=async function(){
   await signOut(auth);currentUser=null;userProfile=null;viewingOp=null;
   hide('appShell');showLogin();
@@ -685,7 +677,6 @@ function buildNav(){
     {id:'resultado',label:'Resultado'},{id:'historico',label:'Historico'},{id:'notas',label:'Analise de Chat'},{id:'dashboard',label:'Dashboard'},
     {sep:true,label:'SOCIAL'},
     {id:'acido',label:'<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780767902/uol_dqoo8g.webp" style="width:16px;height:16px;object-fit:contain;vertical-align:middle;margin-right:4px;"/> Chat da Uol'},{id:'feed',label:'Feed da Cobranca'},{id:'dm',label:'💬 Mensagens'},
-    {id:'slack',label:'<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780945202/slack_z3jpfx.png" style="width:14px;height:14px;object-fit:contain;vertical-align:middle;margin-right:2px;"/> Slack'},
     {id:'perfis',label:'👥 Perfis'},
     {sep:true,label:'UTILIDADES'},
     {id:'copys',label:'Banco de Copys'},{id:'links',label:'Links de Reneg.'},{id:'escala',label:'Escala de Roteamento'},
@@ -702,7 +693,6 @@ function buildNav(){
     ...(canLancar && !isCoord ? [{id:'lancar',label:'Lancar Resultados'}] : []),
     {sep:true,label:'SOCIAL'},
     {id:'acido',label:'<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780767902/uol_dqoo8g.webp" style="width:16px;height:16px;object-fit:contain;vertical-align:middle;margin-right:4px;"/> Chat da Uol'},{id:'feed',label:'Feed da Cobranca'},{id:'dm',label:'💬 Mensagens'},
-    {id:'slack',label:'<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780945202/slack_z3jpfx.png" style="width:14px;height:14px;object-fit:contain;vertical-align:middle;margin-right:2px;"/> Slack'},
     {id:'perfis',label:'👥 Perfis'},
     {sep:true,label:'UTILIDADES'},
     {id:'copys',label:'Banco de Copys'},{id:'links',label:'Links de Reneg.'},{id:'escala',label:'Escala de Roteamento'},
@@ -718,7 +708,6 @@ function buildNav(){
   const viewerNavs=[
     {sep:true,label:'SOCIAL'},
     {id:'acido',label:'<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780767902/uol_dqoo8g.webp" style="width:16px;height:16px;object-fit:contain;vertical-align:middle;margin-right:4px;"/> Chat da Uol'},{id:'feed',label:'Feed da Cobranca'},{id:'dm',label:'💬 Mensagens'},
-    {id:'slack',label:'<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780945202/slack_z3jpfx.png" style="width:14px;height:14px;object-fit:contain;vertical-align:middle;margin-right:2px;"/> Slack'},
     {id:'perfis',label:'👥 Perfis'},
     {sep:true,label:'CONTA'},
     {id:'perfil',label:'Pagina Inicial'},
@@ -743,7 +732,7 @@ window.navigate=async function(page){
   mc.style.overflow='auto';
   mc.style.backgroundImage='none';
   mc.style.background='';
-  mc.innerHTML='<div class="empty">Carregando...</div>';
+  mc.innerHTML='<div class="snake-corner"><img src="'+SNAKE_IMG+'"/></div><div class="empty">Carregando...</div>';
   if(page==='equipe'){await renderEquipe(mc);return;}
   if(page==='escritorio'){await renderEscritorio(mc);return;}
   if(page==='lancar'){
@@ -759,7 +748,6 @@ window.navigate=async function(page){
   if(page==='calcreneg'){renderCalcReneg(mc);return;}
   if(page==='relatorio_disparos'){await renderRelatDisparos(mc);return;}
   if(page==='infos'){renderInfosUteis(mc);return;}
-  if(page==='slack'){await renderSlack(mc);return;}
   if(page==='basilisco'){await renderBasilisco(mc);return;}
   if(page==='perfis'){await renderPerfis(mc);return;}
   if(page==='caderno'){await renderCaderno(mc);return;}
@@ -775,7 +763,7 @@ window.navigate=async function(page){
   if(!viewingOp&&userProfile.role==='coord'){await renderEquipe(mc);return;}
   const opSnap=await getDoc(doc(db,'usuarios',viewingOp));
   const op=opSnap.exists()?{uid:viewingOp,...opSnap.data()}:null;
-  if(!op){mc.innerHTML='<div class="empty">Operador nao encontrado.</div>';return;}
+  if(!op){mc.innerHTML='<div class="snake-corner"><img src="'+SNAKE_IMG+'"/></div><div class="empty">Operador nao encontrado.</div>';return;}
   if(page==='resultado')await renderResultado(mc,op);
   else if(page==='historico')await renderHistorico(mc,op);
   else if(page==='notas')await renderNotas(mc,op);
@@ -783,7 +771,7 @@ window.navigate=async function(page){
   else if(page==='feedback')await renderFeedback(mc,op);
 };
 
-function snakeHtml(){return '';}
+function snakeHtml(){return '<div class="snake-corner"><img src="'+SNAKE_IMG+'"/></div>';}
 
 window.selectOp=async function(uid){
   viewingOp=uid;document.getElementById('sbSub').textContent='Vendo: '+(opsCache[uid]||'operador');
@@ -1594,13 +1582,6 @@ async function renderPerfil(mc){
   // Mural preview - own wall
   const muralSnap=await getDocs(query(collection(db,'mural',currentUser.uid,'recados'),orderBy('ts','desc'),limit(5)));
   const muralPosts=[];muralSnap.forEach(d=>muralPosts.push({id:d.id,...d.data()}));
-  // Slack prefs
-  mc.innerHTML+='<div class="panel" style="margin-bottom:1rem;">'+
-    '<div class="panel-title" style="margin-bottom:12px;">🔔 Notificações Slack</div>'+
-    '<div id="slack-prefs-container"><div style="font-size:12px;color:var(--text-3);">Acesse a aba Slack primeiro para carregar os canais.</div></div>'+
-  '</div>';
-  setTimeout(renderSlackPrefs, 100);
-
   mc.innerHTML+='<div class="panel">'+
     '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">'+
     '<div class="panel-title" style="margin:0;">✍️ Meu Mural</div>'+
@@ -1804,54 +1785,6 @@ window.uploadFoto=async function(e){
     showToast('Foto pronta! Clique em salvar.');
   }catch(e){showToast('Erro ao enviar foto.');}
 };
-window.renderSlackPrefs = function(){
-  const mc2 = document.getElementById('slack-prefs-container');
-  if(!mc2) return;
-  const mutedArr = [...slackMutedChannels];
-  mc2.innerHTML =
-    '<div style="margin-bottom:12px;">'+
-      '<label style="font-size:12px;font-weight:600;color:var(--text-2);display:block;margin-bottom:6px;">🔔 Som de notificação do Slack</label>'+
-      '<div style="font-size:11px;color:var(--text-3);margin-bottom:4px;font-weight:500;">Sons Padrão</div>'+
-      '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">'+
-        SLACK_SOUNDS.filter(s=>s.group==='padrao'||s.id==='none').map(s=>
-          '<button onclick="slackSetSound(\''+s.id+'\')" style="padding:5px 12px;border-radius:20px;font-size:12px;font-family:var(--font);cursor:pointer;border:2px solid '+(slackSoundPref===s.id?'var(--primary)':'var(--border-md)')+';background:'+(slackSoundPref===s.id?'var(--primary)':'var(--surface)')+';color:'+(slackSoundPref===s.id?'#fff':'var(--text)')+';">'+s.label+'</button>'
-        ).join('')+
-      '</div>'+
-      '<div style="font-size:11px;color:var(--text-3);margin-bottom:4px;font-weight:500;">🎮 Sons Descolados</div>'+
-      '<div style="display:flex;gap:6px;flex-wrap:wrap;">'+
-        SLACK_SOUNDS.filter(s=>s.group==='deslocado').map(s=>
-          '<button onclick="slackSetSound(\''+s.id+'\')" style="padding:5px 12px;border-radius:20px;font-size:12px;font-family:var(--font);cursor:pointer;border:2px solid '+(slackSoundPref===s.id?'var(--primary)':'var(--border-md)')+';background:'+(slackSoundPref===s.id?'var(--primary)':'var(--surface)')+';color:'+(slackSoundPref===s.id?'#fff':'var(--text)')+';">'+s.label+'</button>'
-        ).join('')+
-      '</div>'+
-    '</div>'+
-    '<div>'+
-      '<label style="font-size:12px;font-weight:600;color:var(--text-2);display:block;margin-bottom:6px;">🔕 Canais silenciados</label>'+
-      (slackChannels.length===0?'<div style="font-size:12px;color:var(--text-3);">Acesse o Slack primeiro para carregar os canais.</div>':
-        '<div style="display:flex;gap:6px;flex-wrap:wrap;">'+
-          slackChannels.map(ch=>{
-            const muted = slackMutedChannels.has(ch.id);
-            return '<button onclick="slackToggleMute(\''+ch.id+'\')" style="padding:5px 10px;border-radius:20px;font-size:11px;font-family:var(--font);cursor:pointer;border:1px solid '+(muted?'#e01e5a':'var(--border-md)')+';background:'+(muted?'#ffeef2':'var(--surface)')+';color:'+(muted?'#e01e5a':'var(--text-3)')+';">'+(muted?'🔕 ':'🔔 ')+ch.name+'</button>';
-          }).join('')+
-        '</div>'
-      )+
-    '</div>';
-};
-
-window.slackSetSound = function(id){
-  slackSoundPref = id;
-  localStorage.setItem('slack_sound', id);
-  const s = SLACK_SOUNDS.find(x=>x.id===id);
-  if(s&&s.url) try{new Audio(s.url).play();}catch(e){}
-  renderSlackPrefs();
-};
-
-window.slackToggleMute = function(id){
-  if(slackMutedChannels.has(id)) slackMutedChannels.delete(id);
-  else slackMutedChannels.add(id);
-  localStorage.setItem('slack_muted', JSON.stringify([...slackMutedChannels]));
-  renderSlackPrefs();
-};
-
 window.salvarPerfil=async function(){
   const nome=document.getElementById('perfil-nome').value.trim();
   const fotoEl=document.getElementById('perfil-foto-preview');
@@ -3124,324 +3057,6 @@ let basiliscoKey='';
 let basiliscoDocs=[];
 
 
-
-
-
-// ── SLACK EMOJI MAP ──────────────────────────────────────────────────────
-const SLACK_EMOJI = {
-  'smile':' 😊','grinning':'😀','laughing':'😆','joy':'😂','rofl':'🤣','smiley':'😃','wink':'😉','blush':'😊','heart_eyes':'😍','kissing_heart':'😘','stuck_out_tongue':'😛','sunglasses':'😎','thinking_face':'🤔','raised_eyebrow':'🤨','neutral_face':'😐','expressionless':'😑','unamused':'😒','roll_eyes':'🙄','grimacing':'😬','lying_face':'🤥','relieved':'😌','pensive':'😔','worried':'😟','confused':'😕','slightly_frowning_face':'🙁','frowning_face':'☹️','persevere':'😣','confounded':'😖','tired_face':'😫','weary':'😩','cry':'😢','sob':'😭','fearful':'😨','cold_sweat':'😰','disappointed_relieved':'😥','sweat':'😓','hushed':'😯','astonished':'😲','flushed':'😳','dizzy_face':'😵','exploding_head':'🤯','face_with_thermometer':'🤒','sleeping':'😴','zzz':'💤','poop':'💩','smiling_imp':'😈','skull':'💀','ghost':'👻','alien':'👽','robot':'🤖','wave':'👋','raised_hands':'🙌','clap':'👏','pray':'🙏','handshake':'🤝','thumbsup':'👍','+1':'👍','thumbsdown':'👎','point_up':'☝️','point_right':'👉','point_left':'👈','point_down':'👇','raised_hand':'✋','ok_hand':'👌','muscle':'💪','heart':'❤️','orange_heart':'🧡','yellow_heart':'💛','green_heart':'💚','blue_heart':'💙','purple_heart':'💜','black_heart':'🖤','broken_heart':'💔','fire':'🔥','star':'⭐','star2':'🌟','sparkles':'✨','zap':'⚡','boom':'💥','tada':'🎉','confetti_ball':'🎊','trophy':'🏆','medal_sports':'🏅','rocket':'🚀','eyes':'👀','100':'💯','white_check_mark':'✅','x':'❌','warning':'⚠️','rotating_light':'🚨','bell':'🔔','no_bell':'🔕','mega':'📣','loudspeaker':'📢','speech_balloon':'💬','thought_balloon':'💭','bulb':'💡','mag':'🔍','lock':'🔒','unlock':'🔓','link':'🔗','pushpin':'📌','paperclip':'📎','pencil':'✏️','memo':'📝','calendar':'📅','clock1':'🕐','hourglass':'⏳','check':'✔️','information_source':'ℹ️','question':'❓','exclamation':'❗','recycle':'♻️','sparkle':'❇️','heart_hands':'🫶','saluting_face':'🫡','melting_face':'🫠','face_holding_back_tears':'🥹','people_hugging':'🫂','mouse_trap':'🪤','birthday':'🎂','cake':'🎂','pizza':'🍕','beer':'🍺','coffee':'☕','tea':'🍵','dog':'🐶','cat':'🐱','snake':'🐍','party_blob':'🎉','party_parrot':'🦜','blob':'🫧','slow_mo_parrot':'🦜','3805_ultrafastparrot':'🦜','man_lifting_weights':'🏋️','skin-tone-2':'','skin-tone-3':'','skin-tone-4':'','skin-tone-5':'','skin-tone-6':''
-};
-
-function slackRenderText(text){
-  if(!text) return '';
-  return text
-    .replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&')
-    // Mentions
-    .replace(/<@([A-Z0-9]+)>/g,(m,uid)=>{const u=slackUsers[uid];return u?'<b style="color:#1264a3;">@'+(u.real_name||u.name)+'</b>':m;})
-    // Channel links
-    .replace(/<#[A-Z0-9]+\|([^>]+)>/g,'<b>#$1</b>')
-    // URLs
-    .replace(/<(https?:[^|>]+)\|([^>]+)>/g,'<a href="$1" target="_blank" style="color:#1264a3;text-decoration:underline;">$2</a>')
-    .replace(/<(https?:[^>]+)>/g,'<a href="$1" target="_blank" style="color:#1264a3;text-decoration:underline;">$1</a>')
-    // Bold *text*
-    .replace(/\*([^*]+)\*/g,'<b>$1</b>')
-    // Italic _text_
-    .replace(/_([^_]+)_/g,'<i>$1</i>')
-    // Strikethrough ~text~
-    .replace(/~([^~]+)~/g,'<s>$1</s>')
-    // Code `text`
-    .replace(/`([^`]+)`/g,'<code style="background:rgba(0,0,0,0.08);padding:1px 4px;border-radius:3px;font-size:12px;">$1</code>')
-    // Emojis :name: ou :name::skin-tone-X:
-    .replace(/:([a-z0-9_+\-]+)(?::skin-tone-\d)?:/gi,(m,name)=>{
-      const base = name.replace(/-/g,'_').toLowerCase();
-      return SLACK_EMOJI[base]||SLACK_EMOJI[name]||m;
-    });
-}
-
-// ── SLACK SOUNDS ─────────────────────────────────────────────────────────
-const SLACK_SOUNDS = [
-  {id:'none', label:'Sem som', url:'', group:'padrao'},
-  // Sons padrão
-  {id:'som1', label:'Som 1', url:'https://res.cloudinary.com/dbd9hpwyb/video/upload/v1780952143/Som_1_p3tzzb.mp3', group:'padrao'},
-  {id:'som2', label:'Som 2', url:'https://res.cloudinary.com/dbd9hpwyb/video/upload/v1780952155/Som_2_mozrfw.mp3', group:'padrao'},
-  {id:'som3', label:'Som 3', url:'https://res.cloudinary.com/dbd9hpwyb/video/upload/v1780952162/Som_3_owsh7h.mp3', group:'padrao'},
-  {id:'som4', label:'Som 4', url:'https://res.cloudinary.com/dbd9hpwyb/video/upload/v1780952168/Som_4_zoch2n.mp3', group:'padrao'},
-  {id:'som5', label:'Som 5', url:'https://res.cloudinary.com/dbd9hpwyb/video/upload/v1780959924/Som_5_pf9hcd.mp3', group:'padrao'},
-  {id:'som6', label:'Som 6', url:'https://res.cloudinary.com/dbd9hpwyb/video/upload/v1780959924/Som_6_oag2fs.mp3', group:'padrao'},
-  {id:'som7', label:'Som 7', url:'https://res.cloudinary.com/dbd9hpwyb/video/upload/v1780959925/Som_7_vn4gno.mp3', group:'padrao'},
-  {id:'som8', label:'Som 8', url:'https://res.cloudinary.com/dbd9hpwyb/video/upload/v1780959926/Som_8_vaf21a.mp3', group:'padrao'},
-  {id:'som9', label:'Som 9', url:'https://res.cloudinary.com/dbd9hpwyb/video/upload/v1780959926/Som_9_vhwdsy.mp3', group:'padrao'},
-  // Sons deslocados
-  {id:'ultra', label:'⚡ Ultra Power', url:'https://res.cloudinary.com/dbd9hpwyb/video/upload/v1780952173/Som_Ultra_Power_Especial_a20r8z.mp3', group:'deslocado'},
-  {id:'discord', label:'Discord', url:'https://res.cloudinary.com/dbd9hpwyb/video/upload/v1780959912/Discord_zxbo0y.mp3', group:'deslocado'},
-  {id:'f1radio', label:'F1 Radio', url:'https://res.cloudinary.com/dbd9hpwyb/video/upload/v1780959913/F1_Radio_kcdt2x.mp3', group:'deslocado'},
-  {id:'f1box', label:'F1 Box Box', url:'https://res.cloudinary.com/dbd9hpwyb/video/upload/v1780959913/F1_Radio_-_Box_box_uwohoq.mp3', group:'deslocado'},
-  {id:'flashscore', label:'FlashScore', url:'https://res.cloudinary.com/dbd9hpwyb/video/upload/v1780959914/FlashScore_pmlykm.mp3', group:'deslocado'},
-  {id:'gtav', label:'GTA V', url:'https://res.cloudinary.com/dbd9hpwyb/video/upload/v1780959915/GTA_V_ry0hlq.mp3', group:'deslocado'},
-  {id:'steam', label:'Steam', url:'https://res.cloudinary.com/dbd9hpwyb/video/upload/v1780959927/Steam_cvowlf.mp3', group:'deslocado'},
-];
-
-let slackSoundPref = localStorage.getItem('slack_sound')||'som1';
-let slackMutedChannels = new Set(JSON.parse(localStorage.getItem('slack_muted')||'[]'));
-let slackLastMsgTs = {};
-
-function playSlackSound(){
-  const s = SLACK_SOUNDS.find(x=>x.id===slackSoundPref);
-  if(!s||!s.url) return;
-  try{ new Audio(s.url).play(); }catch(e){}
-}
-
-function slackCheckNewMsgs(channel, msgs){
-  if(!msgs.length) return;
-  if(slackMutedChannels.has(channel)) return;
-  const latest = msgs[msgs.length-1];
-  const prev = slackLastMsgTs[channel];
-  if(prev && parseFloat(latest.ts) > parseFloat(prev)){
-    playSlackSound();
-  }
-  slackLastMsgTs[channel] = latest.ts;
-}
-
-// ── SLACK ────────────────────────────────────────────────────────────────
-const SLACK_API = '/api/slack';
-let slackPollInterval = null;
-let slackActiveChannel = null;
-let slackUsers = {};
-let slackChannels = [];
-
-async function slackCall(action, params = {}, method = 'GET', body = null) {
-  const url = new URL(SLACK_API, location.origin);
-  url.searchParams.set('action', action);
-  Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
-  const opts = { method };
-  if (body) { opts.headers = {'Content-Type':'application/json'}; opts.body = JSON.stringify(body); }
-  const res = await fetch(url.toString(), opts);
-  return res.json();
-}
-
-async function renderSlack(mc) {
-  if (slackPollInterval) { clearInterval(slackPollInterval); slackPollInterval = null; }
-
-  mc.innerHTML = snakeHtml() +
-    '<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;">' +
-      '<div class="page-eyebrow">💬 SOCIAL</div>' +
-      '<div class="page-title"><img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780945202/slack_z3jpfx.png" style="height:28px;vertical-align:middle;margin-right:8px;"/>Slack</div>' +
-      '<div class="page-sub">Canais e mensagens diretas do workspace Hashtagtreinamentos</div>' +
-    '</div>' +
-    '<div style="display:flex;gap:0;height:calc(100vh - 200px);border-radius:14px;overflow:hidden;border:1px solid var(--border);">' +
-      '<div id="slack-sidebar" style="width:240px;flex-shrink:0;background:#3f0e40;display:flex;flex-direction:column;overflow-y:auto;">' +
-        '<div style="padding:14px 16px;color:rgba(255,255,255,0.7);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;">Carregando...</div>' +
-      '</div>' +
-      '<div id="slack-main" style="flex:1;display:flex;flex-direction:column;background:var(--surface);min-width:0;">' +
-        '<div style="flex:1;display:flex;align-items:center;justify-content:center;color:var(--text-3);font-size:13px;">Selecione um canal</div>' +
-      '</div>' +
-    '</div>';
-
-  // Carregar usuários e canais
-  await loadSlackHidden();
-  try {
-    const [usersData, chData] = await Promise.all([
-      slackCall('users'),
-      slackCall('channels')
-    ]);
-    if (usersData.members) {
-      usersData.members.forEach(u => { slackUsers[u.id] = u; });
-    }
-    if (chData.channels) {
-      slackChannels = chData.channels.sort((a,b) => a.name.localeCompare(b.name));
-      renderSlackSidebar();
-    }
-  } catch(e) {
-    document.getElementById('slack-sidebar').innerHTML = '<div style="padding:16px;color:rgba(255,255,255,0.6);font-size:12px;">Erro ao carregar canais.</div>';
-  }
-}
-
-let slackHiddenChannels = new Set();
-
-async function loadSlackHidden(){
-  try{
-    const snap = await getDoc(doc(db,'config','slack_hidden'));
-    if(snap.exists()) slackHiddenChannels = new Set(snap.data().hidden||[]);
-  }catch(e){}
-}
-
-async function saveSlackHidden(){
-  try{
-    await setDoc(doc(db,'config','slack_hidden'),{hidden:[...slackHiddenChannels]},{merge:false});
-  }catch(e){}
-}
-
-function renderSlackSidebar() {
-  const sb = document.getElementById('slack-sidebar');
-  if (!sb) return;
-  const isCoord = userProfile.role==='coord';
-  const visible = slackChannels.filter(ch => !slackHiddenChannels.has(ch.id));
-
-  sb.innerHTML =
-    '<div style="padding:12px 16px 4px;color:rgba(255,255,255,0.5);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;">Canais</div>' +
-    visible.map(ch => {
-      const active = slackActiveChannel === ch.id;
-      return '<div style="display:flex;align-items:center;gap:8px;padding:5px 8px 5px 14px;cursor:pointer;font-size:13px;color:'+(active?'#fff':'rgba(255,255,255,0.7)')+';background:'+(active?'rgba(255,255,255,0.15)':'transparent')+';transition:background 0.1s;" '+
-        'onmouseover="this.style.background=\'rgba(255,255,255,0.08)\';var b=this.querySelector(\'.shb\');if(b)b.style.display=\'flex\'" '+
-        'onmouseout="if(\''+ch.id+'\'!==slackActiveChannel)this.style.background=\'transparent\';var b=this.querySelector(\'.shb\');if(b)b.style.display=\'none\'">' +
-        '<span style="opacity:0.5;" onclick="slackOpenChannel(\''+ch.id+'\',\''+ch.name+'\')">' +(ch.is_private?'🔒':'#')+'</span>' +
-        '<span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;" onclick="slackOpenChannel(\''+ch.id+'\',\''+ch.name+'\')">' +ch.name+'</span>' +
-        (isCoord?'<button class="shb" onclick="event.stopPropagation();slackHideChannel(\''+ch.id+'\')" style="display:none;align-items:center;justify-content:center;background:rgba(255,255,255,0.2);border:none;border-radius:4px;color:#fff;cursor:pointer;font-size:10px;padding:2px 6px;flex-shrink:0;">✕</button>':'') +
-      '</div>';
-    }).join('') +
-    (isCoord && slackHiddenChannels.size>0 ?
-      '<div style="padding:8px 16px;margin-top:4px;border-top:1px solid rgba(255,255,255,0.1);">'+
-        '<button onclick="slackShowHidden()" style="background:none;border:none;color:rgba(255,255,255,0.4);font-size:11px;cursor:pointer;font-family:var(--font);">⚙️ Ocultos ('+slackHiddenChannels.size+')</button>'+
-      '</div>'
-    : '');
-}
-
-window.slackHideChannel = async function(id){
-  slackHiddenChannels.add(id);
-  await saveSlackHidden();
-  renderSlackSidebar();
-};
-
-window.slackShowHidden = function(){
-  const hidden = slackChannels.filter(ch => slackHiddenChannels.has(ch.id));
-  const modal = document.createElement('div');
-  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;';
-  modal.innerHTML='<div style="background:var(--surface);border-radius:14px;padding:1.5rem;width:320px;max-height:420px;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,0.3);">'+
-    '<div style="font-weight:600;font-size:15px;margin-bottom:12px;color:var(--text);">⚙️ Canais ocultos</div>'+
-    (hidden.length===0?'<div style="font-size:13px;color:var(--text-3);">Nenhum canal oculto.</div>':
-    hidden.map(ch=>'<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);">'+
-      '<span style="font-size:13px;color:var(--text);">'+(ch.is_private?'🔒':'#')+ch.name+'</span>'+
-      '<button onclick="slackRestoreChannel(\''+ch.id+'\')" style="padding:4px 10px;background:var(--primary);color:#fff;border:none;border-radius:6px;font-size:11px;cursor:pointer;">Mostrar</button>'+
-    '</div>').join(''))+
-    '<button onclick="this.closest(\'[style*=fixed]\').remove()" style="margin-top:12px;width:100%;padding:8px;background:var(--surface);border:1px solid var(--border-md);border-radius:8px;cursor:pointer;font-family:var(--font);color:var(--text);">Fechar</button>'+
-  '</div>';
-  document.body.appendChild(modal);
-};
-
-window.slackRestoreChannel = async function(id){
-  slackHiddenChannels.delete(id);
-  await saveSlackHidden();
-  renderSlackSidebar();
-  const modal = document.querySelector('[style*="position:fixed"][style*="inset:0"]');
-  if(modal) modal.remove();
-  if(slackHiddenChannels.size>0) slackShowHidden();
-};
-
-
-window.slackOpenChannel = async function(id, name) {
-  slackActiveChannel = id;
-  renderSlackSidebar();
-  if (slackPollInterval) { clearInterval(slackPollInterval); slackPollInterval = null; }
-
-  const main = document.getElementById('slack-main');
-  if (!main) return;
-  main.innerHTML =
-    '<div style="padding:12px 16px;border-bottom:1px solid var(--border);font-weight:600;font-size:14px;display:flex;align-items:center;gap:6px;">' +
-      '<span style="color:var(--text-3);">#</span>'+name+
-    '</div>' +
-    '<div id="slack-msgs" style="flex:1;overflow-y:auto;padding:1rem;display:flex;flex-direction:column;gap:2px;"><div style="color:var(--text-3);font-size:13px;">Carregando mensagens...</div></div>' +
-    '<div style="padding:12px 16px;border-top:1px solid var(--border);display:flex;gap:8px;">' +
-      '<input id="slack-input" type="text" placeholder="Mensagem para #'+name+'" style="flex:1;padding:9px 12px;border:1px solid var(--border-md);border-radius:var(--radius);background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px;" onkeydown="if(event.key===\'Enter\')slackSend()"/>' +
-      '<button onclick="slackSend()" style="padding:9px 16px;background:#4a154b;color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:13px;cursor:pointer;">Enviar</button>' +
-    '</div>';
-
-  await slackLoadMessages(id);
-  slackPollInterval = setInterval(() => slackLoadMessages(id), 5000);
-};
-
-async function slackLoadMessages(channel) {
-  const msgsEl = document.getElementById('slack-msgs');
-  if (!msgsEl) { clearInterval(slackPollInterval); return; }
-  try {
-    const data = await slackCall('history', { channel });
-    // Checar se o canal ainda é o ativo após o fetch (usuário pode ter trocado)
-    if (slackActiveChannel !== channel) return;
-    if (!data.messages) return;
-    const msgs = [...data.messages].reverse();
-    slackCheckNewMsgs(channel, msgs);
-    const wasAtBottom = msgsEl.scrollHeight - msgsEl.scrollTop - msgsEl.clientHeight < 60;
-    msgsEl.innerHTML = msgs.map(m => {
-      const u = slackUsers[m.user] || {};
-      const nome = u.real_name || u.name || m.username || 'Bot';
-      const avatar = u.profile?.image_48 || '';
-      const ts = new Date(parseFloat(m.ts)*1000).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-      const avHtml = avatar
-        ? '<img src="'+avatar+'" style="width:32px;height:32px;border-radius:4px;object-fit:cover;flex-shrink:0;"/>'
-        : '<div style="width:32px;height:32px;border-radius:4px;background:#4a154b;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex-shrink:0;">'+(nome[0]||'?').toUpperCase()+'</div>';
-      const text = slackRenderText(m.text||'');
-      // Reactions
-      const reactHtml = m.reactions&&m.reactions.length
-        ? '<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px;">'+
-            m.reactions.map(r=>{
-              const emoji = SLACK_EMOJI[r.name.replace(/-/g,'_')]||(':'+r.name+':');
-              return '<span style="background:rgba(0,0,0,0.06);border:1px solid rgba(0,0,0,0.1);border-radius:12px;padding:2px 7px;font-size:12px;cursor:default;" title="'+r.users.length+'">'+emoji+' '+r.count+'</span>';
-            }).join('')+
-          '</div>'
-        : '';
-      // Thread
-      const threadHtml = m.reply_count
-        ? '<div style="margin-top:4px;font-size:12px;color:#1264a3;cursor:pointer;" onclick="slackOpenThread(\''+channel+'\',\''+m.ts+'\',\''+nome+'\')">'+
-            '💬 '+m.reply_count+' resposta'+(m.reply_count>1?'s':'')+' →'+
-          '</div>'
-        : '';
-      return '<div style="display:flex;gap:10px;padding:6px 0;align-items:flex-start;border-bottom:0.5px solid rgba(0,0,0,0.04);">'+
-        avHtml+
-        '<div style="flex:1;min-width:0;">'+
-          '<span style="font-weight:600;font-size:13px;">'+nome+'</span>'+
-          '<span style="font-size:11px;color:var(--text-3);margin-left:6px;">'+ts+'</span>'+
-          '<div style="font-size:13px;color:var(--text);margin-top:2px;line-height:1.5;word-break:break-word;">'+text+'</div>'+
-          reactHtml+
-          threadHtml+
-        '</div>'+
-      '</div>';
-    }).join('');
-    if (wasAtBottom) msgsEl.scrollTop = msgsEl.scrollHeight;
-  } catch(e) {}
-}
-
-window.slackOpenThread = async function(channel, ts, parentNome){
-  try{
-    const data = await slackCall('replies', {channel, ts});
-    if(!data.messages) return;
-    const replies = data.messages.slice(1); // pula a msg original
-    const modal = document.createElement('div');
-    modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:flex-start;justify-content:flex-end;padding:1rem;';
-    let html = '<div style="background:var(--surface);border-radius:14px;width:420px;max-width:95vw;height:calc(100vh - 2rem);display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,0.3);">'+
-      '<div style="padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">'+
-        '<span style="font-weight:600;font-size:14px;">💬 Thread</span>'+
-        '<button onclick="this.closest(\'[style*=fixed]\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-3);">×</button>'+
-      '</div>'+
-      '<div style="flex:1;overflow-y:auto;padding:12px 16px;display:flex;flex-direction:column;gap:8px;">';
-    replies.forEach(m=>{
-      const u = slackUsers[m.user]||{};
-      const nome = u.real_name||u.name||'Bot';
-      const av = u.profile?.image_48||'';
-      const ts2 = new Date(parseFloat(m.ts)*1000).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-      const avHtml = av
-        ? '<img src="'+av+'" style="width:28px;height:28px;border-radius:4px;object-fit:cover;flex-shrink:0;"/>'
-        : '<div style="width:28px;height:28px;border-radius:4px;background:#4a154b;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;flex-shrink:0;">'+(nome[0]||'?').toUpperCase()+'</div>';
-      html += '<div style="display:flex;gap:8px;align-items:flex-start;">'+avHtml+
-        '<div><span style="font-weight:600;font-size:12px;">'+nome+'</span>'+
-        '<span style="font-size:10px;color:var(--text-3);margin-left:4px;">'+ts2+'</span>'+
-        '<div style="font-size:13px;margin-top:2px;line-height:1.4;">'+slackRenderText(m.text||'')+'</div></div></div>';
-    });
-    html += '</div></div>';
-    modal.innerHTML = html;
-    document.body.appendChild(modal);
-  }catch(e){showToast('Erro ao carregar thread.');}
-};
-
-window.slackSend = async function() {
-  const input = document.getElementById('slack-input');
-  const text = input?.value?.trim();
-  if (!text || !slackActiveChannel) return;
-  input.value = '';
-  try {
-    await slackCall('send', {}, 'POST', { channel: slackActiveChannel, text });
-    await slackLoadMessages(slackActiveChannel);
-  } catch(e) { showToast('Erro ao enviar.'); }
-};
-// ── /SLACK ───────────────────────────────────────────────────────────────
 
 // ── INFORMAÇÕES ÚTEIS ────────────────────────────────────────────────────
 function renderInfosUteis(mc){
