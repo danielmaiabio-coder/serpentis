@@ -609,10 +609,7 @@ window.playSnakeSound=function(){
   a.currentTime=0;
   a.play().catch(e=>console.log('snake sound error:',e));
 };
-window.playSnakeSound=function(){
-  const a=document.getElementById('snake-sound-fx');
-  if(a){a.currentTime=0;a.play().catch(e=>console.error('sound:',e));}
-};
+
 window.doLogout=async function(){
   await signOut(auth);currentUser=null;userProfile=null;viewingOp=null;
   hide('appShell');showLogin();
