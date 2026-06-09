@@ -3889,56 +3889,91 @@ async function renderRelatDisparos(mc){
 // ── /RELATÓRIO DE DISPAROS ────────────────────────────────────────────────
 
 async function renderBasilisco(mc){
+  const {isCoord, canManageIA} = getPerms();
+  const isCoordBA = canManageIA;
+  // Load config from Firebase
+  const cfgSnap=await getDoc(doc(db,'config','basilisco'));
+  if(cfgSnap.exists()){
+    basiliscoKey=cfgSnap.data().key||'';
+    basiliscoDocs=cfgSnap.data().docs||[];
+  }
+  const temChave=!!basiliscoKey;
   mc.style.padding='0';
   mc.style.overflow='hidden';
   mc.innerHTML=
     '<div style="position:relative;width:100%;height:100vh;background:url(https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780761816/foto_snake_rswhrg.png) center/cover no-repeat;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;">'+
     snakeHtml()+
 
-    // Overlay escuro para contrastar com o iframe
-    '<div style="position:absolute;inset:0;background:rgba(0,0,0,0.45);z-index:0;"></div>'+
+    // Config panel (coord only) — top right
+    '<div id="basilisco-config" style="position:absolute;top:0;right:0;width:300px;background:rgba(0,0,0,0.7);backdrop-filter:blur(12px);border-left:1px solid rgba(255,255,255,0.08);border-bottom:1px solid rgba(255,255,255,0.08);border-bottom-left-radius:var(--radius-lg);padding:1.25rem;z-index:10;">'+
+      (isCoordBA?
+        '<div style="font-size:11px;font-weight:500;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:10px;">Configuracao</div>'+
+        '<input type="password" id="bsk-key" value="'+basiliscoKey+'" placeholder="gsk_..." style="width:100%;padding:8px 12px;border:1px solid rgba(255,255,255,0.1);border-radius:var(--radius);background:rgba(255,255,255,0.05);color:#fff;font-family:var(--font);font-size:12px;margin-bottom:8px;"/>'+
+        '<div style="margin-bottom:8px;"><div style="font-size:10px;color:rgba(255,255,255,0.3);margin-bottom:6px;">DOCUMENTOS ('+basiliscoDocs.length+')</div>'+
+        basiliscoDocs.map((d,i)=>'<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;"><span style="font-size:11px;color:rgba(255,255,255,0.5);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+d.nome+'</span><button onclick="removerDoc('+i+')" style="padding:2px 8px;border:1px solid rgba(255,255,255,0.1);border-radius:4px;background:transparent;color:rgba(255,255,255,0.3);font-size:10px;cursor:pointer;">x</button></div>').join('')+
+        '<input type="text" id="bsk-doc-nome" placeholder="Nome do doc" style="width:100%;padding:6px 10px;border:1px solid rgba(255,255,255,0.1);border-radius:var(--radius);background:rgba(255,255,255,0.05);color:#fff;font-family:var(--font);font-size:11px;margin-bottom:4px;"/>'+
+        '<textarea id="bsk-doc-texto" rows="2" placeholder="Cole o conteudo ou faca upload do PDF abaixo..." style="width:100%;padding:6px 10px;border:1px solid rgba(255,255,255,0.1);border-radius:var(--radius);background:rgba(255,255,255,0.05);color:#fff;font-family:var(--font);font-size:11px;resize:none;margin-bottom:6px;"></textarea>'+
+        '<label style="display:flex;align-items:center;gap:6px;padding:5px 8px;border:1px solid rgba(255,255,255,0.15);border-radius:var(--radius);cursor:pointer;margin-bottom:6px;color:rgba(255,255,255,0.5);font-size:11px;">'+
+          '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>'+
+          '<span id="bsk-pdf-label">Upload PDF</span>'+
+          '<input type="file" id="bsk-pdf-input" accept=".pdf" style="display:none;" onchange="carregarPDF(event)"/>'+
+        '</label>'+
+        '<div style="display:flex;gap:6px;">'+
+          '<button onclick="adicionarDoc()" style="flex:1;padding:5px;border:1px solid rgba(255,255,255,0.15);border-radius:var(--radius);background:transparent;color:rgba(255,255,255,0.5);font-family:var(--font);font-size:11px;cursor:pointer;">+ Adicionar</button>'+
+        '</div></div>'+
+        '<button onclick="salvarConfigBasilisco()" style="width:100%;padding:8px;background:linear-gradient(135deg,#0d2e14,#1A5C2A);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:12px;font-weight:500;cursor:pointer;">Salvar</button>'
+      :
+        '<div style="font-size:11px;font-weight:500;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px;">Basilisco</div>'+
+        '<div style="display:flex;align-items:center;gap:8px;">'+
+          '<div style="width:8px;height:8px;border-radius:50%;background:'+(temChave?'#4CAF6A':'#A32D2D')+';box-shadow:0 0 6px '+(temChave?'#4CAF6A':'#A32D2D')+';"></div>'+
+          '<div style="font-size:12px;color:rgba(255,255,255,0.6);">'+(temChave?'Ativo · '+basiliscoDocs.length+' documento(s)':'Aguardando configuracao do coordenador')+'</div>'+
+        '</div>'
+      )+
+    '</div>'+
 
-    // Container do iframe centralizado sobre o fundo
-    '<div style="position:relative;z-index:1;width:calc(100% - 48px);max-width:1200px;height:calc(100vh - 48px);border-radius:16px;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,0.7);border:1px solid rgba(255,255,255,0.1);">'+
-      '<iframe '+
-        'src="https://notebooklm.google.com/notebook/81ffca10-3dc2-4af1-971c-6af6959bc4e0" '+
-        'style="width:100%;height:100%;border:none;display:block;" '+
-        'allow="clipboard-read; clipboard-write" '+
-        'id="notebooklm-frame">'+
-      '</iframe>'+
+    // Center content
+    '<div style="width:100%;max-width:700px;padding:0 2rem;display:flex;flex-direction:column;align-items:center;gap:16px;">'+
 
-      // Fallback — exibido se o iframe for bloqueado pelo Google
-      '<div id="nlm-fallback" style="display:none;position:absolute;inset:0;background:rgba(13,20,15,0.95);backdrop-filter:blur(12px);flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:2rem;text-align:center;">'+
-        '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 9h6M9 12h6M9 15h4"/></svg>'+
-        '<div style="font-size:15px;font-weight:500;color:rgba(255,255,255,0.8);">O NotebookLM não pôde ser carregado aqui</div>'+
-        '<div style="font-size:13px;color:rgba(255,255,255,0.4);max-width:360px;line-height:1.6;">O Google bloqueia a exibição do NotebookLM dentro de outros sites. Clique abaixo para abrir diretamente.</div>'+
-        '<a href="https://notebooklm.google.com/notebook/81ffca10-3dc2-4af1-971c-6af6959bc4e0" target="_blank" style="display:inline-flex;align-items:center;gap:8px;padding:10px 20px;background:linear-gradient(135deg,#0d2e14,#1A5C2A);color:#fff;border-radius:40px;text-decoration:none;font-size:13px;font-weight:500;box-shadow:0 4px 16px rgba(0,0,0,0.4);">'+
-          '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>'+
-          'Abrir NotebookLM'+
-        '</a>'+
+      // ── NotebookLM button ──
+      '<a href="https://notebooklm.google.com/notebook/81ffca10-3dc2-4af1-971c-6af6959bc4e0" target="_blank" '+
+        'style="display:inline-flex;align-items:center;gap:10px;padding:13px 28px;'+
+        'background:rgba(20,20,20,0.75);backdrop-filter:blur(16px);'+
+        'border:1px solid rgba(255,255,255,0.12);border-radius:40px;'+
+        'color:#fff;text-decoration:none;font-family:var(--font);font-size:14px;font-weight:500;'+
+        'box-shadow:0 8px 32px rgba(0,0,0,0.5);transition:background 0.15s;'+
+        'white-space:nowrap;" '+
+        'onmouseover="this.style.background=\'rgba(46,139,69,0.35)\'" '+
+        'onmouseout="this.style.background=\'rgba(20,20,20,0.75)\'">'+
+        // Google "N" icon
+        '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">'+
+          '<rect width="24" height="24" rx="5" fill="rgba(255,255,255,0.08)"/>'+
+          '<path d="M7 17V7l10 10V7" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'+
+        '</svg>'+
+        'Abrir NotebookLM'+
+        '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>'+
+      '</a>'+
+
+      // ── Divider ──
+      '<div style="display:flex;align-items:center;gap:12px;width:100%;opacity:0.3;">'+
+        '<div style="flex:1;height:1px;background:rgba(255,255,255,0.3);"></div>'+
+        '<span style="font-size:11px;color:#fff;letter-spacing:0.08em;text-transform:uppercase;">ou pergunte ao Basilisco</span>'+
+        '<div style="flex:1;height:1px;background:rgba(255,255,255,0.3);"></div>'+
       '</div>'+
+
+      // ── Search bar ──
+      '<div style="width:100%;display:flex;align-items:center;background:rgba(20,20,20,0.8);backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,0.1);border-radius:40px;padding:14px 20px;gap:12px;box-shadow:0 8px 32px rgba(0,0,0,0.5);">'+
+        '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>'+
+        '<input id="bsk-input" type="text" placeholder="Pergunte alguma coisa..." style="flex:1;background:transparent;border:none;outline:none;color:#fff;font-family:var(--font);font-size:15px;" onkeydown="if(event.key===\'Enter\')perguntarBasilisco()"/>'+
+        '<button onclick="perguntarBasilisco()" style="width:36px;height:36px;border-radius:50%;background:rgba(46,139,69,0.3);border:1px solid rgba(46,139,69,0.4);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">'+
+          '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>'+
+      '</div>'+
+
+      // ── Responses ──
+      '<div id="bsk-loading" style="display:none;font-size:12px;color:rgba(255,255,255,0.4);">Basilisco esta pensando...</div>'+
+      '<div id="bsk-msgs" style="width:100%;max-height:40vh;overflow-y:auto;display:flex;flex-direction:column;gap:10px;"></div>'+
+
     '</div>'+
     '</div>';
-
-  // Detecta se o iframe foi bloqueado após 3s e exibe o fallback
-  setTimeout(()=>{
-    const frame=document.getElementById('notebooklm-frame');
-    const fallback=document.getElementById('nlm-fallback');
-    if(!frame||!fallback)return;
-    try{
-      // Se o contentDocument estiver inacessível por CORS, o frame carregou mas com restrição
-      // Se estiver null ou lançar erro, o frame foi bloqueado
-      const doc=frame.contentDocument;
-      if(doc===null){
-        fallback.style.display='flex';
-        frame.style.display='none';
-      }
-    }catch(e){
-      // X-Frame-Options bloqueou — mostra fallback
-      fallback.style.display='flex';
-      frame.style.display='none';
-    }
-  },3000);
 }
 
 
