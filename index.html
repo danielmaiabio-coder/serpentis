@@ -695,7 +695,7 @@ function buildNav(){
     {sep:true,label:'PAINEL BRILLE'},
     {id:'resultado',label:'Resultado'},{id:'historico',label:'Historico'},{id:'notas',label:'Analise de Chat'},{id:'dashboard',label:'Dashboard'},
     {sep:true,label:'SOCIAL'},
-    {id:'acido',label:'<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780767902/uol_dqoo8g.webp" style="width:16px;height:16px;object-fit:contain;vertical-align:middle;margin-right:4px;"/> Chat da Uol'},{id:'feed',label:'Feed da Cobranca'},{id:'dm',label:'💬 Mensagens'},
+    {id:'acido',label:'<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780767902/uol_dqoo8g.webp" style="width:16px;height:16px;object-fit:contain;vertical-align:middle;margin-right:4px;"/> Chat da Uol'},{id:'feed',label:'Feed da Cobranca'},
     {id:'slack',label:'<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780945202/slack_z3jpfx.png" style="width:14px;height:14px;object-fit:contain;vertical-align:middle;margin-right:2px;"/> Slack'},
     {id:'perfis',label:'👥 Perfis'},
     {sep:true,label:'UTILIDADES'},
@@ -712,7 +712,7 @@ function buildNav(){
     {id:'resultado',label:'Resultado'},{id:'historico',label:'Historico'},{id:'notas',label:'Analise de Chat'},{id:'dashboard',label:'Dashboard'},
     ...(canLancar && !isCoord ? [{id:'lancar',label:'Lancar Resultados'}] : []),
     {sep:true,label:'SOCIAL'},
-    {id:'acido',label:'<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780767902/uol_dqoo8g.webp" style="width:16px;height:16px;object-fit:contain;vertical-align:middle;margin-right:4px;"/> Chat da Uol'},{id:'feed',label:'Feed da Cobranca'},{id:'dm',label:'💬 Mensagens'},
+    {id:'acido',label:'<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780767902/uol_dqoo8g.webp" style="width:16px;height:16px;object-fit:contain;vertical-align:middle;margin-right:4px;"/> Chat da Uol'},{id:'feed',label:'Feed da Cobranca'},
     {id:'slack',label:'<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780945202/slack_z3jpfx.png" style="width:14px;height:14px;object-fit:contain;vertical-align:middle;margin-right:2px;"/> Slack'},
     {id:'perfis',label:'👥 Perfis'},
     {sep:true,label:'UTILIDADES'},
@@ -728,7 +728,7 @@ function buildNav(){
   const isViewer=userProfile.role==='viewer';
   const viewerNavs=[
     {sep:true,label:'SOCIAL'},
-    {id:'acido',label:'<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780767902/uol_dqoo8g.webp" style="width:16px;height:16px;object-fit:contain;vertical-align:middle;margin-right:4px;"/> Chat da Uol'},{id:'feed',label:'Feed da Cobranca'},{id:'dm',label:'💬 Mensagens'},
+    {id:'acido',label:'<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780767902/uol_dqoo8g.webp" style="width:16px;height:16px;object-fit:contain;vertical-align:middle;margin-right:4px;"/> Chat da Uol'},{id:'feed',label:'Feed da Cobranca'},
     {id:'perfis',label:'👥 Perfis'},
     {sep:true,label:'CONTA'},
     {id:'perfil',label:'Pagina Inicial'},
@@ -774,7 +774,7 @@ window.navigate=async function(page){
   if(page==='perfis'){await renderPerfis(mc);return;}
   if(page==='caderno'){await renderCaderno(mc);return;}
   if(page==='perfil'){await renderPerfil(mc);return;}
-  if(page==='dm'){await renderDM(mc);return;}
+
   if(page==='acido'){await renderAcido(mc);return;}
   if(page==='feed'){
     mc.style.backgroundImage='url(https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780774424/fundo-cinza-solido_jeyxuj.jpg)';
@@ -1867,168 +1867,8 @@ let acidoUnsub = null;
 
 
 // ── DM ────────────────────────────────────────────────────────
-let dmUnsub = null;
-let dmActivePeer = null; // {uid, nome, foto}
 
-async function renderDM(mc){
-  if(dmUnsub){dmUnsub();dmUnsub=null;}
-  dmActivePeer = null;
 
-  // Buscar todos os usuários exceto o próprio
-  const snap = await getDocs(collection(db,'usuarios'));
-  const users = [];
-  snap.forEach(d=>{ if(d.id!==currentUser.uid) users.push({uid:d.id,...d.data()}); });
-  users.sort((a,b)=>(a.nome||'').localeCompare(b.nome||''));
-
-  mc.innerHTML = snakeHtml() +
-    '<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;">' +
-      '<div class="page-eyebrow">💬 MENSAGENS</div>' +
-      '<div class="page-title">Mensagens Diretas</div>' +
-      '<div class="page-sub">Conversas privadas com a equipe</div>' +
-    '</div>' +
-    '<div class="dm-wrap">' +
-      '<div class="dm-sidebar">' +
-        '<div class="dm-sidebar-header">Equipe</div>' +
-        '<div id="dm-contacts"></div>' +
-      '</div>' +
-      '<div class="dm-main" id="dm-main">' +
-        '<div class="dm-empty">' +
-          '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.3"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>' +
-          '<span>Selecione uma conversa</span>' +
-        '</div>' +
-      '</div>' +
-    '</div>';
-
-  // Montar lista de contatos com preview da última msg
-  const contactsEl = document.getElementById('dm-contacts');
-  for(const u of users){
-    const convId = [currentUser.uid, u.uid].sort().join('_');
-    const div = document.createElement('div');
-    div.className = 'dm-contact';
-    div.id = 'dm-contact-'+u.uid;
-    const ini = (u.nome||'?').split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
-    const avHtml = u.foto
-      ? '<div class="dm-contact-av"><img src="'+u.foto+'"/></div>'
-      : '<div class="dm-contact-av">'+ini+'</div>';
-    div.innerHTML = avHtml +
-      '<div class="dm-contact-info">' +
-        '<div class="dm-contact-name">'+u.nome+'</div>' +
-        '<div class="dm-contact-preview" id="dm-prev-'+u.uid+'">...</div>' +
-      '</div>' +
-      '<div class="dm-contact-unread" id="dm-unread-'+u.uid+'" style="display:none;"></div>';
-    div.onclick = ()=>openDMConv(u, convId);
-    contactsEl.appendChild(div);
-
-    // Preview da última mensagem + badge não lida
-    const prevQ = query(collection(db,'dm_msgs'), where('convId','==',convId), orderBy('ts','desc'), limit(1));
-    onSnapshot(prevQ, s=>{
-      const prevEl = document.getElementById('dm-prev-'+u.uid);
-      const unreadEl = document.getElementById('dm-unread-'+u.uid);
-      if(!s.empty){
-        const m = s.docs[0].data();
-        if(prevEl) prevEl.textContent = (m.fromUid===currentUser.uid?'Você: ':'')+m.texto;
-        if(unreadEl && m.fromUid!==currentUser.uid && m.ts>(lastSeen['dm_'+u.uid]||0)){
-          unreadEl.style.display='block';
-        } else if(unreadEl){
-          unreadEl.style.display='none';
-        }
-      } else {
-        if(prevEl) prevEl.textContent = 'Nenhuma mensagem';
-      }
-    });
-  }
-}
-
-async function openDMConv(peer, convId){
-  if(dmUnsub){dmUnsub();dmUnsub=null;}
-  dmActivePeer = peer;
-  lastSeen['dm_'+peer.uid] = Date.now();
-  localStorage.setItem('lastSeen', JSON.stringify(lastSeen));
-  const unreadEl = document.getElementById('dm-unread-'+peer.uid);
-  if(unreadEl) unreadEl.style.display='none';
-
-  // Marcar contato ativo
-  document.querySelectorAll('.dm-contact').forEach(el=>el.classList.remove('active'));
-  const cc = document.getElementById('dm-contact-'+peer.uid);
-  if(cc) cc.classList.add('active');
-
-  const ini = (peer.nome||'?').split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
-  const avHtml = peer.foto
-    ? '<div class="dm-main-header-av"><img src="'+peer.foto+'"/></div>'
-    : '<div class="dm-main-header-av">'+ini+'</div>';
-
-  const mainEl = document.getElementById('dm-main');
-  mainEl.innerHTML =
-    '<div class="dm-main-header">'+avHtml+'<span style="font-size:13px;font-weight:600;color:var(--text);">'+peer.nome+'</span></div>' +
-    '<div class="dm-messages" id="dm-msgs"></div>' +
-    '<div class="dm-input-row">' +
-      '<textarea id="dm-input" placeholder="Mensagem para '+peer.nome+'..." rows="1" onkeydown="dmKeyDown(event)"></textarea>' +
-      '<button class="dm-send-btn" onclick="enviarDM()">Enviar</button>' +
-    '</div>';
-
-  // Listener em tempo real
-  const q = query(collection(db,'dm_msgs'), where('convId','==',convId), orderBy('ts','asc'), limit(100));
-  dmUnsub = onSnapshot(q, snap=>{
-    const msgsEl = document.getElementById('dm-msgs');
-    if(!msgsEl){if(dmUnsub){dmUnsub();dmUnsub=null;}return;}
-    msgsEl.innerHTML='';
-    snap.forEach(d=>{
-      const m = d.data();
-      const mine = m.fromUid === currentUser.uid;
-      const bubble = document.createElement('div');
-      bubble.className = 'chat-msg '+(mine?'mine':'theirs');
-      const h = new Date(m.ts);
-      const time = h.getHours().toString().padStart(2,'0')+':'+h.getMinutes().toString().padStart(2,'0');
-      const canDel = mine || userProfile.role==='coord';
-      if(!mine){
-        const pIni = (peer.nome||'?').split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
-        const pAv = peer.foto
-          ? '<img src="'+peer.foto+'" style="width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0;"/>'
-          : '<div style="width:32px;height:32px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;flex-shrink:0;">'+pIni+'</div>';
-        bubble.innerHTML = pAv + '<div style="display:flex;flex-direction:column;align-items:flex-start;">'+
-          '<div class="chat-msg-name">'+peer.nome+'</div>'+
-          '<div class="chat-msg-bubble">'+m.texto+'</div>'+
-          '<div class="chat-msg-time">'+time+(canDel?' &nbsp;<span onclick="deletarDM(\''+d.id+'\')" style="cursor:pointer;opacity:0.4;font-size:10px;" title="Excluir">&#x2715;</span>':'')+'</div>'+
-          '</div>';
-      } else {
-        bubble.innerHTML =
-          '<div class="chat-msg-bubble">'+m.texto+'</div>'+
-          '<div class="chat-msg-time">'+time+(canDel?' &nbsp;<span onclick="deletarDM(\''+d.id+'\')" style="cursor:pointer;opacity:0.4;font-size:10px;" title="Excluir">&#x2715;</span>':'')+'</div>';
-      }
-      msgsEl.appendChild(bubble);
-    });
-    msgsEl.scrollTop = msgsEl.scrollHeight;
-    // Marcar como lido
-    lastSeen['dm_'+peer.uid] = Date.now();
-    localStorage.setItem('lastSeen', JSON.stringify(lastSeen));
-  });
-}
-
-window.enviarDM = async function(){
-  if(!dmActivePeer) return;
-  const input = document.getElementById('dm-input');
-  const texto = input.value.trim();
-  if(!texto) return;
-  const convId = [currentUser.uid, dmActivePeer.uid].sort().join('_');
-  try{
-    await addDoc(collection(db,'dm_msgs'),{
-      convId, fromUid:currentUser.uid, toUid:dmActivePeer.uid,
-      nome:userProfile.nome||'?', foto:userProfile.foto||'',
-      texto, ts:Date.now()
-    });
-    input.value='';
-  }catch(e){showToast('Erro ao enviar.');}
-};
-
-window.dmKeyDown = function(e){
-  if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();enviarDM();}
-};
-
-window.deletarDM = async function(id){
-  if(!confirm('Excluir mensagem?'))return;
-  try{await deleteDoc(doc(db,'dm_msgs',id));}catch(e){showToast('Erro ao excluir.');}
-};
-// ── /DM ───────────────────────────────────────────────────────
 
 async function renderAcido(mc){
   mc.innerHTML = snakeHtml()+
@@ -2774,7 +2614,7 @@ window.deletarEscrNota=async function(opUid,nId){
 };
 
 // NOTIFICATION SYSTEM
-const BADGES = ['resultado','feedback','acido','feed','escala','perfil','dm'];
+const BADGES = ['resultado','feedback','acido','feed','escala','perfil'];
 let lastSeen = JSON.parse(localStorage.getItem('lastSeen')||'{}');
 let unsubBadges = [];
 
@@ -2841,15 +2681,6 @@ async function setupBadges(){
   });
   unsubBadges.push(u5);
 
-  // DMs - mensagens privadas não lidas
-  const dmQ=query(collection(db,'dm_msgs'),where('toUid','==',currentUser.uid),orderBy('ts','desc'),limit(1));
-  const uDM=onSnapshot(dmQ,snap=>{
-    if(!snap.empty){
-      const m=snap.docs[0].data();
-      if(m.ts>(lastSeen.dm||0)){showBadge('dm');}
-    }
-  });
-  unsubBadges.push(uDM);
 
   // Disparos (perfil) - coordenador salva disparos → badge pulsante vermelho para todos
   const u6=onSnapshot(doc(db,'config','disparos'),snap=>{
