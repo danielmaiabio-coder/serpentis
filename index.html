@@ -1790,6 +1790,20 @@ window.editarReuniaoMensal=async function(){
   await renderPerfil(document.getElementById('mainContent'));
 };
 
+window.editarReuniaoAdicional=async function(){
+  const snap=await getDoc(doc(db,'config','reuniao_adicional'));
+  const r=snap.exists()?snap.data():{};
+  const horario=prompt('Horario (ex: 14:00)',r.horario||'');
+  if(horario===null) return;
+  const data=prompt('Data (ex: 20/06)',r.data||'');
+  if(data===null) return;
+  const meet=prompt('Link do Meet',r.meet||'');
+  if(meet===null) return;
+  await setDoc(doc(db,'config','reuniao_adicional'),{horario,data,meet},{merge:true});
+  showToast('Reuniões Adicionais atualizada!');
+  if(activePage==='agenda') await navigate('agenda');
+};
+
 window.limparDisparos=async function(id){
   if(!confirm('Limpar todos os disparos de '+id+'?'))return;
   try{
@@ -3934,14 +3948,16 @@ async function renderAgenda(mc){
   let agendaOpacity = parseFloat(localStorage.getItem('agenda_opacity') || '0.72');
 
   async function loadAgenda(){
-    const [semanSnap, mensalSnap, pessoalSnap] = await Promise.all([
+    const [semanSnap, mensalSnap, adicSnap, pessoalSnap] = await Promise.all([
       getDoc(doc(db,'config','reuniao')),
       getDoc(doc(db,'config','reuniao_mensal')),
+      getDoc(doc(db,'config','reuniao_adicional')),
       getDocs(query(collection(db,'agenda_pessoal'), where('uid','==',currentUser.uid), orderBy('ts','asc')))
     ]);
     return {
-      semanal: semanSnap.exists() ? semanSnap.data() : {},
-      mensal:  mensalSnap.exists() ? mensalSnap.data() : {},
+      semanal:  semanSnap.exists()  ? semanSnap.data()  : {},
+      mensal:   mensalSnap.exists() ? mensalSnap.data() : {},
+      adicional: adicSnap.exists()  ? adicSnap.data()   : {},
       pessoal: pessoalSnap.docs.map(d=>({id:d.id,...d.data()}))
     };
   }
@@ -3962,7 +3978,7 @@ async function renderAgenda(mc){
     if(viewYear === undefined) viewYear = now.getFullYear();
     if(viewMonth === undefined) viewMonth = now.getMonth();
 
-    const {semanal, mensal, pessoal} = await loadAgenda();
+    const {semanal, mensal, adicional, pessoal} = await loadAgenda();
 
     // Build event map: key = "day-month-year" → array of events
     const evMap = {};
@@ -3993,6 +4009,9 @@ async function renderAgenda(mc){
 
     // Mensal — marca o dia específico
     if(mensal.data) addEv(mensal.data, {tipo:'mensal',label:'Reunião Mensal',horario:mensal.horario||'',meet:mensal.meet||''});
+
+    // Adicional — marca o dia específico
+    if(adicional.data) addEv(adicional.data, {tipo:'adicional',label:'Reuniões Adicionais',horario:adicional.horario||'',meet:adicional.meet||''});
 
     // Pessoal
     pessoal.forEach(r => addEv(r.data, {tipo:'pessoal',label:r.titulo,horario:r.horario||'',meet:r.meet||'',id:r.id}));
@@ -4026,8 +4045,8 @@ async function renderAgenda(mc){
       const isToday = (d===now.getDate() && viewMonth===now.getMonth() && viewYear===now.getFullYear());
       const key = d+'-'+viewMonth+'-'+viewYear;
       const evs = evMap[key]||[];
-      const dotColors = {semanal:'#22c55e', mensal:'#ef4444', pessoal:'#3b82f6', gcal:'#a855f7'};
-      const dotShadows = {semanal:'0 0 5px #22c55e', mensal:'0 0 5px #ef4444', pessoal:'0 0 5px #3b82f6', gcal:'0 0 5px #a855f7'};
+      const dotColors = {semanal:'#22c55e', mensal:'#ef4444', adicional:'#9333ea', pessoal:'#3b82f6', gcal:'#a855f7'};
+      const dotShadows = {semanal:'0 0 5px #22c55e', mensal:'0 0 5px #ef4444', adicional:'0 0 5px #9333ea', pessoal:'0 0 5px #3b82f6', gcal:'0 0 5px #a855f7'};
       const dots = evs.map(e=>'<span style="width:6px;height:6px;border-radius:50%;background:'+(dotColors[e.tipo]||'#fff')+';box-shadow:'+(dotShadows[e.tipo]||'none')+';display:inline-block;margin:0 1px;"></span>').join('');
       const todayBg = isToday?'rgba(76,175,106,0.35)':'transparent';
       calCells += '<div onclick="agendaSelectDay('+d+','+viewMonth+','+viewYear+')" oncontextmenu="agendaContextMenu(event,'+d+','+viewMonth+','+viewYear+')" data-today="'+(isToday?'1':'0')+'" style="cursor:pointer;border-radius:8px;padding:4px 2px;text-align:center;background:'+todayBg+';border:'+(isToday?'1px solid rgba(76,175,106,0.6)':'1px solid transparent')+';transition:background 0.12s;" onmouseover="this.style.background=\'rgba(255,255,255,0.08)\'" onmouseout="this.style.background=(this.dataset.today===\'1\'?\'rgba(76,175,106,0.35)\':\'transparent\')">'+
@@ -4068,10 +4087,15 @@ async function renderAgenda(mc){
       // Content wrapper with padding
       '<div style="position:relative;z-index:1;padding:1.5rem;min-height:100%;display:flex;flex-direction:column;gap:14px;">'+
 
-        // ── Banners row ──
-        '<div style="display:flex;gap:10px;flex-wrap:wrap;">'+
-          makeBanner('Reunião Semanal', semanal, 'linear-gradient(135deg,rgba(13,46,20,0.92),rgba(26,92,42,0.92))', 'editarReuniao')+
+        // ── Banners: mensal full width, semanal + adicional side by side ──
+        '<div style="display:flex;flex-direction:column;gap:8px;">'+
+          // Mensal — full width
           makeBanner('Reunião Mensal', mensal, 'linear-gradient(135deg,rgba(127,29,29,0.92),rgba(185,28,28,0.92))', 'editarReuniaoMensal')+
+          // Semanal + Adicional — half width each
+          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">'+
+            makeBanner('Reunião Semanal', semanal, 'linear-gradient(135deg,rgba(13,46,20,0.92),rgba(26,92,42,0.92))', 'editarReuniao')+
+            makeBanner('Reuniões Adicionais', adicional, 'linear-gradient(135deg,rgba(88,28,135,0.92),rgba(126,34,206,0.92))', 'editarReuniaoAdicional')+
+          '</div>'+
         '</div>'+
 
         // ── Calendar + Day detail ──
@@ -4095,6 +4119,7 @@ async function renderAgenda(mc){
             '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.08);">'+
               '<div style="display:flex;align-items:center;gap:5px;font-size:11px;color:rgba(255,255,255,0.6);"><span style="width:8px;height:8px;border-radius:50%;background:#22c55e;box-shadow:0 0 6px #22c55e;display:inline-block;"></span>Semanal</div>'+
               '<div style="display:flex;align-items:center;gap:5px;font-size:11px;color:rgba(255,255,255,0.6);"><span style="width:8px;height:8px;border-radius:50%;background:#ef4444;box-shadow:0 0 6px #ef4444;display:inline-block;"></span>Mensal</div>'+
+              '<div style="display:flex;align-items:center;gap:5px;font-size:11px;color:rgba(255,255,255,0.6);"><span style="width:8px;height:8px;border-radius:50%;background:#9333ea;box-shadow:0 0 6px #9333ea;display:inline-block;"></span>Adicionais</div>'+
               '<div style="display:flex;align-items:center;gap:5px;font-size:11px;color:rgba(255,255,255,0.6);"><span style="width:8px;height:8px;border-radius:50%;background:#3b82f6;box-shadow:0 0 6px #3b82f6;display:inline-block;"></span>Pessoal</div>'+
               '<div style="display:flex;align-items:center;gap:5px;font-size:11px;color:rgba(255,255,255,0.6);"><span style="width:8px;height:8px;border-radius:50%;background:#a855f7;box-shadow:0 0 6px #a855f7;display:inline-block;"></span>Google</div>'+
             '</div>'+
@@ -4187,7 +4212,7 @@ async function renderAgenda(mc){
       list.innerHTML='<div style="font-size:12px;color:rgba(255,255,255,0.3);padding:8px 0;">Nenhum evento neste dia.</div>';
       return;
     }
-    const colors = {semanal:'#22c55e', mensal:'#ef4444', pessoal:'#3b82f6', gcal:'#a855f7'};
+    const colors = {semanal:'#22c55e', mensal:'#ef4444', adicional:'#9333ea', pessoal:'#3b82f6', gcal:'#a855f7'};
     const meetBtn = (url) => url
       ? '<a href="'+url+'" target="_blank" style="display:inline-flex;align-items:center;gap:4px;margin-top:6px;padding:4px 10px;background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.5);border-radius:20px;color:#4ade80;text-decoration:none;font-size:11px;font-weight:600;text-shadow:0 0 8px rgba(74,222,128,0.6);letter-spacing:0.01em;"><span style="width:5px;height:5px;border-radius:50%;background:#22c55e;box-shadow:0 0 5px #22c55e;display:inline-block;"></span>Entrar no Meet</a>'
       : '';
@@ -4197,8 +4222,8 @@ async function renderAgenda(mc){
       if(e.tipo==='pessoal' && e.id){
         actionBtn = '<button onclick="excluirReuniaoP(this.dataset.id)" data-id="'+e.id+'" style="margin-top:8px;padding:4px 10px;border:1px solid rgba(239,68,68,0.3);border-radius:6px;background:rgba(239,68,68,0.08);color:rgba(239,68,68,0.7);font-size:10px;cursor:pointer;font-family:var(--font);display:inline-flex;align-items:center;gap:4px;">'+
           '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>Remover</button>';
-      } else if((e.tipo==='semanal'||e.tipo==='mensal') && isCoord){
-        actionBtn = '<button onclick="'+(e.tipo==='semanal'?'editarReuniao':'editarReuniaoMensal')+'()" style="margin-top:8px;padding:4px 10px;border:1px solid rgba(255,255,255,0.15);border-radius:6px;background:transparent;color:rgba(255,255,255,0.45);font-size:10px;cursor:pointer;font-family:var(--font);display:inline-flex;align-items:center;gap:4px;">'+
+      } else if((e.tipo==='semanal'||e.tipo==='mensal'||e.tipo==='adicional') && isCoord){
+        actionBtn = '<button onclick="'+(e.tipo==='semanal'?'editarReuniao':e.tipo==='adicional'?'editarReuniaoAdicional':'editarReuniaoMensal')+'()" style="margin-top:8px;padding:4px 10px;border:1px solid rgba(255,255,255,0.15);border-radius:6px;background:transparent;color:rgba(255,255,255,0.45);font-size:10px;cursor:pointer;font-family:var(--font);display:inline-flex;align-items:center;gap:4px;">'+
           '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Editar</button>';
       }
       return '<div style="background:rgba(255,255,255,0.06);border-radius:10px;padding:10px 12px;border-left:3px solid '+(colors[e.tipo]||'#fff')+';">'+
@@ -4219,10 +4244,11 @@ async function renderAgenda(mc){
 
     const key = d+'-'+m+'-'+y;
     const evs = (mc._agendaEvMap && mc._agendaEvMap[key]) || [];
-    // Only show menu if there are removable events (pessoal) or coord on semanal/mensal
+    // removable: pessoal/gcal by anyone; semanal/mensal/adicional by coord only (edit, not delete)
     const removable = evs.filter(ev =>
       (ev.tipo==='pessoal' && ev.id) ||
-      ((ev.tipo==='semanal'||ev.tipo==='mensal') && isCoord)
+      ev.tipo==='gcal' ||
+      ((ev.tipo==='semanal'||ev.tipo==='mensal'||ev.tipo==='adicional') && isCoord)
     );
     if(removable.length === 0) return;
 
@@ -4246,10 +4272,15 @@ async function renderAgenda(mc){
       item.onmouseout  = ()=>{ item.style.background=''; item.style.color='rgba(255,255,255,0.75)'; };
 
       const dotColor = {semanal:'#22c55e',mensal:'#ef4444',pessoal:'#3b82f6',gcal:'#a855f7'}[ev.tipo]||'#fff';
+      const isEditable = ev.tipo==='semanal'||ev.tipo==='mensal'||ev.tipo==='adicional';
+      const isGcal = ev.tipo==='gcal';
       item.innerHTML =
         '<span style="width:6px;height:6px;border-radius:50%;background:'+dotColor+';flex-shrink:0;display:inline-block;"></span>'+
-        '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+ev.label+'</span>'+
-        '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="flex-shrink:0;opacity:0.5;"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>';
+        '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+(isEditable?'Editar: ':isGcal?'ℹ️ ':'')+ev.label+'</span>'+
+        (isEditable
+          ? '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="flex-shrink:0;opacity:0.5;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>'
+          : '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="flex-shrink:0;opacity:0.5;"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>'
+        );
 
       item.onclick = async ()=>{
         menu.remove();
@@ -4259,10 +4290,14 @@ async function renderAgenda(mc){
             await deleteDoc(doc(db,'agenda_pessoal',ev.id));
             await renderPage(mc._agendaYear, mc._agendaMonth);
           }catch(err){showToast('Erro ao remover.');}
+        } else if(ev.tipo==='gcal'){
+          showToast('Acesse o Google Agenda para remover eventos do Google.');
         } else if(ev.tipo==='semanal'){
           editarReuniao();
         } else if(ev.tipo==='mensal'){
           editarReuniaoMensal();
+        } else if(ev.tipo==='adicional'){
+          editarReuniaoAdicional();
         }
       };
       menu.appendChild(item);
