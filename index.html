@@ -4024,8 +4024,9 @@ async function renderAgenda(mc){
       const isToday = (d===now.getDate() && viewMonth===now.getMonth() && viewYear===now.getFullYear());
       const key = d+'-'+viewMonth+'-'+viewYear;
       const evs = evMap[key]||[];
-      const dotColors = {semanal:'#4CAF6A', mensal:'#f87171', pessoal:'#60a5fa'};
-      const dots = evs.map(e=>'<span style="width:5px;height:5px;border-radius:50%;background:'+dotColors[e.tipo]+';display:inline-block;margin:0 1px;"></span>').join('');
+      const dotColors = {semanal:'#22c55e', mensal:'#ef4444', pessoal:'#3b82f6', gcal:'#a855f7'};
+      const dotShadows = {semanal:'0 0 5px #22c55e', mensal:'0 0 5px #ef4444', pessoal:'0 0 5px #3b82f6', gcal:'0 0 5px #a855f7'};
+      const dots = evs.map(e=>'<span style="width:6px;height:6px;border-radius:50%;background:'+(dotColors[e.tipo]||'#fff')+';box-shadow:'+(dotShadows[e.tipo]||'none')+';display:inline-block;margin:0 1px;"></span>').join('');
       const todayBg = isToday?'rgba(76,175,106,0.35)':'transparent';
       calCells += '<div onclick="agendaSelectDay('+d+','+viewMonth+','+viewYear+')" data-today="'+(isToday?'1':'0')+'" style="cursor:pointer;border-radius:8px;padding:4px 2px;text-align:center;background:'+todayBg+';border:'+(isToday?'1px solid rgba(76,175,106,0.6)':'1px solid transparent')+';transition:background 0.12s;" onmouseover="this.style.background=\'rgba(255,255,255,0.08)\'" onmouseout="this.style.background=(this.dataset.today===\'1\'?\'rgba(76,175,106,0.35)\':\'transparent\')">'+
         '<div style="font-size:13px;font-weight:'+(isToday?'600':'400')+';color:'+(isToday?'#fff':'rgba(255,255,255,0.85)')+';">'+d+'</div>'+
@@ -4090,10 +4091,10 @@ async function renderAgenda(mc){
             '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;">'+calCells+'</div>'+
             // Legend
             '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.08);">'+
-              '<div style="display:flex;align-items:center;gap:5px;font-size:11px;color:rgba(255,255,255,0.5);"><span style="width:7px;height:7px;border-radius:50%;background:#4CAF6A;display:inline-block;"></span>Semanal</div>'+
-              '<div style="display:flex;align-items:center;gap:5px;font-size:11px;color:rgba(255,255,255,0.5);"><span style="width:7px;height:7px;border-radius:50%;background:#f87171;display:inline-block;"></span>Mensal</div>'+
-              '<div style="display:flex;align-items:center;gap:5px;font-size:11px;color:rgba(255,255,255,0.5);"><span style="width:7px;height:7px;border-radius:50%;background:#60a5fa;display:inline-block;"></span>Pessoal</div>'+
-              '<div style="display:flex;align-items:center;gap:5px;font-size:11px;color:rgba(255,255,255,0.5);"><span style="width:7px;height:7px;border-radius:50%;background:#a78bfa;display:inline-block;"></span>Google</div>'+
+              '<div style="display:flex;align-items:center;gap:5px;font-size:11px;color:rgba(255,255,255,0.6);"><span style="width:8px;height:8px;border-radius:50%;background:#22c55e;box-shadow:0 0 6px #22c55e;display:inline-block;"></span>Semanal</div>'+
+              '<div style="display:flex;align-items:center;gap:5px;font-size:11px;color:rgba(255,255,255,0.6);"><span style="width:8px;height:8px;border-radius:50%;background:#ef4444;box-shadow:0 0 6px #ef4444;display:inline-block;"></span>Mensal</div>'+
+              '<div style="display:flex;align-items:center;gap:5px;font-size:11px;color:rgba(255,255,255,0.6);"><span style="width:8px;height:8px;border-radius:50%;background:#3b82f6;box-shadow:0 0 6px #3b82f6;display:inline-block;"></span>Pessoal</div>'+
+              '<div style="display:flex;align-items:center;gap:5px;font-size:11px;color:rgba(255,255,255,0.6);"><span style="width:8px;height:8px;border-radius:50%;background:#a855f7;box-shadow:0 0 6px #a855f7;display:inline-block;"></span>Google</div>'+
             '</div>'+
           '</div>'+
 
@@ -4184,7 +4185,7 @@ async function renderAgenda(mc){
       list.innerHTML='<div style="font-size:12px;color:rgba(255,255,255,0.3);padding:8px 0;">Nenhum evento neste dia.</div>';
       return;
     }
-    const colors = {semanal:'#4CAF6A', mensal:'#f87171', pessoal:'#60a5fa', gcal:'#a78bfa'};
+    const colors = {semanal:'#22c55e', mensal:'#ef4444', pessoal:'#3b82f6', gcal:'#a855f7'};
     list.innerHTML = evs.map(e=>{
       // Regras de permissão:
       // semanal/mensal → só coord pode remover/editar
