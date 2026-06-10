@@ -2754,6 +2754,136 @@ async function setupBadges(){
     }
   });
   unsubBadges.push(u6);
+
+  // ── NOTIFICAÇÕES PROATIVAS ────────────────────────────────────────────────
+
+  // 1) Escala atualizada → notifica todos (exceto coord)
+  if(userProfile.role!=='coord'){
+    const escalaNotifKey = 'notif_escala_ts';
+    onSnapshot(doc(db,'config','escala'),snap=>{
+      if(!snap.exists()) return;
+      const ts = snap.data().ts||0;
+      const lastNotif = parseInt(localStorage.getItem(escalaNotifKey)||'0');
+      if(ts > lastNotif && ts > Date.now()-86400000){ // só se mudou nas últimas 24h
+        localStorage.setItem(escalaNotifKey, ts);
+        notificarBrowser('📋 Escala atualizada', 'O coordenador publicou uma nova escala de roteamento. Confira!');
+      }
+    });
+  }
+
+  // 2) High Five — avisa 1 min antes de cada slot (09:15, 10:15 ... 17:15)
+  // Só para quem está escalado nesta semana
+  (async()=>{
+    const escSnap = await getDoc(doc(db,'config','escala'));
+    if(!escSnap.exists()||userProfile.role==='coord') return;
+    const escData = escSnap.data();
+    const nome = (userProfile.nome||'').toLowerCase();
+    function isThisWeekHF(datesStr){
+      if(!datesStr) return false;
+      const matches=[...datesStr.matchAll(/(\d{2})\/(\d{2})/g)];
+      if(!matches||matches.length<1) return false;
+      const hoje=new Date(); hoje.setHours(0,0,0,0);
+      const ano=hoje.getFullYear();
+      const [d1,m1]=[parseInt(matches[0][1]),parseInt(matches[0][2])-1];
+      const inicio=new Date(ano,m1,d1); inicio.setHours(0,0,0,0);
+      let fim;
+      if(matches.length>=2){const [d2,m2]=[parseInt(matches[1][1]),parseInt(matches[1][2])-1];fim=new Date(ano,m2,d2);}
+      else{fim=new Date(inicio);fim.setDate(fim.getDate()+6);}
+      fim.setHours(23,59,59,999);
+      return hoje>=inicio&&hoje<=fim;
+    }
+    let escalado = false;
+    ['watiPedro','watiDaniel'].forEach(wati=>{
+      (escData[wati]||[]).forEach(sem=>{
+        if(sem.operador&&sem.operador.toLowerCase()===nome&&isThisWeekHF(sem.dates)) escalado=true;
+      });
+    });
+    if(!escalado) return;
+
+    const HF_SLOTS = [9*60+15,10*60+15,11*60+15,12*60+15,13*60+15,14*60+15,15*60+15,16*60+15,17*60+15];
+    const HF_NOTIF_KEY = 'notif_hf_fired_'; // + date + slot
+
+    function scheduleHFNotifs(){
+      const now = new Date();
+      const dow = now.getDay();
+      if(dow===0||dow===6) return; // só dias úteis
+      const todayStr = now.toISOString().slice(0,10);
+      const nowMin = now.getHours()*60+now.getMinutes();
+
+      HF_SLOTS.forEach(slot=>{
+        const key = HF_NOTIF_KEY+todayStr+'-'+slot;
+        if(localStorage.getItem(key)) return; // já disparou hoje neste slot
+        const msUntil = (slot-1)*60*1000 - (nowMin*60+now.getSeconds())*1000; // 1 min antes
+        if(msUntil > 0 && msUntil < 4*60*60*1000){ // só agenda se for nas próximas 4h
+          setTimeout(()=>{
+            localStorage.setItem(key,'1');
+            notificarBrowser('🖐️ Hora do High Five!', 'Seu High Five está disponível em 1 minuto (às '+(Math.floor(slot/60))+'h'+(slot%60<10?'0'+slot%60:slot%60)+').');
+          }, msUntil);
+        }
+      });
+    }
+    scheduleHFNotifs();
+    // Re-agenda a cada hora para pegar novos slots
+    setInterval(scheduleHFNotifs, 60*60*1000);
+  })();
+
+  // 3) Reunião próxima — 30 min e 5 min antes
+  (async()=>{
+    const MEETING_NOTIF_KEY = 'notif_meeting_fired_';
+    async function scheduleMeetingNotifs(){
+      const [semSnap, menSnap] = await Promise.all([
+        getDoc(doc(db,'config','reuniao')),
+        getDoc(doc(db,'config','reuniao_mensal'))
+      ]);
+      const meetings = [];
+      if(semSnap.exists()&&semSnap.data().horario) meetings.push({label:'Reunião Semanal', ...semSnap.data()});
+      if(menSnap.exists()&&menSnap.data().horario) meetings.push({label:'Reunião Mensal', ...menSnap.data()});
+
+      meetings.forEach(meet=>{
+        if(!meet.horario) return;
+        const [hh,mm] = meet.horario.split(':').map(Number);
+        if(isNaN(hh)||isNaN(mm)) return;
+
+        // Resolve the date: use meet.data if set, otherwise today
+        let meetDate = new Date();
+        if(meet.data){
+          const p = meet.data.split('/');
+          if(p.length>=2){
+            meetDate = new Date(
+              p.length>=3?parseInt(p[2]):new Date().getFullYear(),
+              parseInt(p[1])-1, parseInt(p[0]), hh, mm, 0
+            );
+          }
+        } else {
+          meetDate = new Date();
+          meetDate.setHours(hh,mm,0,0);
+        }
+
+        const now = Date.now();
+        const meetTs = meetDate.getTime();
+        const todayStr = meetDate.toISOString().slice(0,10);
+
+        [30,5].forEach(minBefore=>{
+          const fireAt = meetTs - minBefore*60*1000;
+          const key = MEETING_NOTIF_KEY+meet.label+'-'+todayStr+'-'+minBefore;
+          if(localStorage.getItem(key)) return;
+          const delay = fireAt - now;
+          if(delay > 0 && delay < 25*60*60*1000){
+            setTimeout(()=>{
+              localStorage.setItem(key,'1');
+              notificarBrowser(
+                '📅 '+meet.label+' em '+minBefore+' minutos',
+                'Começa às '+meet.horario+(meet.data?' · '+meet.data:'')+(meet.meet?' — Acesse o link no Serpentis':'')+'.'
+              );
+            }, delay);
+          }
+        });
+      });
+    }
+    await scheduleMeetingNotifs();
+    // Re-verifica a cada 10 min (caso o coord edite o horário)
+    setInterval(scheduleMeetingNotifs, 10*60*1000);
+  })();
 }
 
 function notificarBrowser(titulo, corpo){
