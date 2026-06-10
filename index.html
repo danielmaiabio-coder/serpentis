@@ -188,8 +188,8 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
 .reuniao-label{font-size:10px;font-weight:500;letter-spacing:0.12em;text-transform:uppercase;opacity:0.55;margin-bottom:4px;}
 .reuniao-datetime{font-size:16px;font-weight:500;letter-spacing:0.01em;}
 .reuniao-actions{display:flex;align-items:center;gap:8px;position:relative;z-index:1;}
-.reuniao-meet-btn{padding:9px 20px;background:rgba(255,255,255,0.15);backdrop-filter:blur(4px);color:#fff;border:1px solid rgba(255,255,255,0.25);border-radius:var(--radius);font-family:var(--font);font-size:13px;font-weight:500;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:7px;transition:all 0.15s;}
-.reuniao-meet-btn:hover{background:rgba(255,255,255,0.25);border-color:rgba(255,255,255,0.4);}
+.reuniao-meet-btn{padding:9px 20px;background:rgba(34,197,94,0.2);backdrop-filter:blur(4px);color:#4ade80;border:1px solid rgba(34,197,94,0.45);border-radius:var(--radius);font-family:var(--font);font-size:13px;font-weight:600;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:7px;transition:all 0.15s;letter-spacing:0.01em;text-shadow:0 0 10px rgba(74,222,128,0.5);}
+.reuniao-meet-btn:hover{background:rgba(34,197,94,0.32);border-color:rgba(34,197,94,0.7);color:#86efac;}
 .reuniao-meet-dot{width:7px;height:7px;border-radius:50%;background:#4CAF6A;box-shadow:0 0 6px #4CAF6A;animation:pulse-dot 2s infinite;}
 @keyframes pulse-dot{0%,100%{opacity:1;}50%{opacity:0.4;}}
 .reuniao-edit-btn{padding:8px 12px;border:1px solid rgba(255,255,255,0.15);border-radius:var(--radius);background:transparent;color:rgba(255,255,255,0.55);font-family:var(--font);font-size:12px;cursor:pointer;transition:all 0.15s;}
@@ -343,7 +343,6 @@ body.dark-mode select{background:#22263a;color:#e8eaf0;border-color:rgba(255,255
 .sound-mute-toggle:hover{color:#fff;}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
-<script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
 <div id="loadingScreen"><div class="loader"></div><div class="load-text">Carregando...</div></div>
@@ -3920,13 +3919,6 @@ async function renderAgenda(mc){
   mc.style.padding = '0';
   mc.style.overflow = 'hidden';
 
-  const GCAL_CLIENT_ID = '784122936551-7r640rsebf7fnvkhb0ciqkmrim5ksu6u.apps.googleusercontent.com';
-  const GCAL_SCOPE = 'https://www.googleapis.com/auth/calendar.readonly';
-
-  // Google Calendar token (session only)
-  let gcalToken = sessionStorage.getItem('gcal_token') || null;
-  let gcalEvents = JSON.parse(sessionStorage.getItem('gcal_events') || '[]');
-
   // Transparência salva por usuário
   let agendaOpacity = parseFloat(localStorage.getItem('agenda_opacity') || '0.72');
 
@@ -3994,18 +3986,6 @@ async function renderAgenda(mc){
     // Pessoal
     pessoal.forEach(r => addEv(r.data, {tipo:'pessoal',label:r.titulo,horario:r.horario||'',meet:r.meet||'',id:r.id}));
 
-    // Google Calendar events
-    gcalEvents.forEach(e=>{
-      if(!e.start) return;
-      const dateStr = (e.start.dateTime||e.start.date||'').slice(0,10); // YYYY-MM-DD
-      if(!dateStr) return;
-      const [y,m,d] = dateStr.split('-').map(Number);
-      const key = d+'-'+(m-1)+'-'+y;
-      if(!evMap[key]) evMap[key]=[];
-      const timeStr = e.start.dateTime ? e.start.dateTime.slice(11,16) : '';
-      evMap[key].push({tipo:'gcal',label:e.summary||'(sem título)',horario:timeStr,meet:e.hangoutLink||e.htmlLink||''});
-    });
-
     // Calendar grid
     const daysInMonth = new Date(viewYear, viewMonth+1, 0).getDate();
     const firstDow = new Date(viewYear, viewMonth, 1).getDay(); // 0=Sun
@@ -4024,9 +4004,8 @@ async function renderAgenda(mc){
       const isToday = (d===now.getDate() && viewMonth===now.getMonth() && viewYear===now.getFullYear());
       const key = d+'-'+viewMonth+'-'+viewYear;
       const evs = evMap[key]||[];
-      const dotColors = {semanal:'#22c55e', mensal:'#ef4444', pessoal:'#3b82f6', gcal:'#a855f7'};
-      const dotShadows = {semanal:'0 0 5px #22c55e', mensal:'0 0 5px #ef4444', pessoal:'0 0 5px #3b82f6', gcal:'0 0 5px #a855f7'};
-      const dots = evs.map(e=>'<span style="width:6px;height:6px;border-radius:50%;background:'+(dotColors[e.tipo]||'#fff')+';box-shadow:'+(dotShadows[e.tipo]||'none')+';display:inline-block;margin:0 1px;"></span>').join('');
+      const dotColors = {semanal:'#4CAF6A', mensal:'#f87171', pessoal:'#60a5fa'};
+      const dots = evs.map(e=>'<span style="width:5px;height:5px;border-radius:50%;background:'+dotColors[e.tipo]+';display:inline-block;margin:0 1px;"></span>').join('');
       const todayBg = isToday?'rgba(76,175,106,0.35)':'transparent';
       calCells += '<div onclick="agendaSelectDay('+d+','+viewMonth+','+viewYear+')" data-today="'+(isToday?'1':'0')+'" style="cursor:pointer;border-radius:8px;padding:4px 2px;text-align:center;background:'+todayBg+';border:'+(isToday?'1px solid rgba(76,175,106,0.6)':'1px solid transparent')+';transition:background 0.12s;" onmouseover="this.style.background=\'rgba(255,255,255,0.08)\'" onmouseout="this.style.background=(this.dataset.today===\'1\'?\'rgba(76,175,106,0.35)\':\'transparent\')">'+
         '<div style="font-size:13px;font-weight:'+(isToday?'600':'400')+';color:'+(isToday?'#fff':'rgba(255,255,255,0.85)')+';">'+d+'</div>'+
@@ -4050,7 +4029,7 @@ async function renderAgenda(mc){
           '</div>'+
         '</div>'+
         '<div style="display:flex;align-items:center;gap:6px;flex-shrink:0;position:relative;z-index:1;">'+
-          (temLink?'<a href="'+data.meet+'" target="_blank" style="padding:6px 12px;background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.25);border-radius:20px;text-decoration:none;font-size:11px;font-weight:500;display:inline-flex;align-items:center;gap:5px;"><span style="width:6px;height:6px;border-radius:50%;background:#4CAF6A;box-shadow:0 0 5px #4CAF6A;"></span>Meet</a>':'')+
+          (temLink?'<a href="'+data.meet+'" target="_blank" style="padding:6px 14px;background:rgba(34,197,94,0.18);color:#4ade80;border:1px solid rgba(34,197,94,0.5);border-radius:20px;text-decoration:none;font-size:11px;font-weight:600;display:inline-flex;align-items:center;gap:5px;text-shadow:0 0 8px rgba(74,222,128,0.5);letter-spacing:0.01em;"><span style="width:6px;height:6px;border-radius:50%;background:#22c55e;box-shadow:0 0 6px #22c55e;"></span>Meet</a>':'')+
           (isCoord?'<button onclick="'+onEdit+'()" style="padding:5px 10px;border:1px solid rgba(255,255,255,0.15);border-radius:20px;background:transparent;color:rgba(255,255,255,0.55);font-family:var(--font);font-size:11px;cursor:pointer;">Editar</button>':'')+
         '</div>'+
       '</div>';
@@ -4090,11 +4069,10 @@ async function renderAgenda(mc){
             // Grid
             '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;">'+calCells+'</div>'+
             // Legend
-            '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.08);">'+
-              '<div style="display:flex;align-items:center;gap:5px;font-size:11px;color:rgba(255,255,255,0.6);"><span style="width:8px;height:8px;border-radius:50%;background:#22c55e;box-shadow:0 0 6px #22c55e;display:inline-block;"></span>Semanal</div>'+
-              '<div style="display:flex;align-items:center;gap:5px;font-size:11px;color:rgba(255,255,255,0.6);"><span style="width:8px;height:8px;border-radius:50%;background:#ef4444;box-shadow:0 0 6px #ef4444;display:inline-block;"></span>Mensal</div>'+
-              '<div style="display:flex;align-items:center;gap:5px;font-size:11px;color:rgba(255,255,255,0.6);"><span style="width:8px;height:8px;border-radius:50%;background:#3b82f6;box-shadow:0 0 6px #3b82f6;display:inline-block;"></span>Pessoal</div>'+
-              '<div style="display:flex;align-items:center;gap:5px;font-size:11px;color:rgba(255,255,255,0.6);"><span style="width:8px;height:8px;border-radius:50%;background:#a855f7;box-shadow:0 0 6px #a855f7;display:inline-block;"></span>Google</div>'+
+            '<div style="display:flex;gap:14px;margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.08);">'+
+              '<div style="display:flex;align-items:center;gap:5px;font-size:11px;color:rgba(255,255,255,0.5);"><span style="width:7px;height:7px;border-radius:50%;background:#4CAF6A;display:inline-block;"></span>Semanal</div>'+
+              '<div style="display:flex;align-items:center;gap:5px;font-size:11px;color:rgba(255,255,255,0.5);"><span style="width:7px;height:7px;border-radius:50%;background:#f87171;display:inline-block;"></span>Mensal</div>'+
+              '<div style="display:flex;align-items:center;gap:5px;font-size:11px;color:rgba(255,255,255,0.5);"><span style="width:7px;height:7px;border-radius:50%;background:#60a5fa;display:inline-block;"></span>Pessoal</div>'+
             '</div>'+
           '</div>'+
 
@@ -4112,14 +4090,6 @@ async function renderAgenda(mc){
               '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>'+
               'Nova reunião'+
             '</button>'+
-
-            // Google Calendar connect button
-            '<div id="gcal-btn-wrap" style="'+glassStyle+'padding:12px 16px;text-align:center;">'+
-              (gcalToken
-                ? '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><span style="width:8px;height:8px;border-radius:50%;background:#a78bfa;box-shadow:0 0 6px #a78bfa;flex-shrink:0;"></span><span style="font-size:12px;color:rgba(255,255,255,0.7);">Google Agenda conectada</span><button onclick="gcalDesconectar()" style="margin-left:auto;padding:3px 8px;border:1px solid rgba(255,255,255,0.15);border-radius:6px;background:transparent;color:rgba(255,255,255,0.35);font-size:10px;cursor:pointer;font-family:var(--font);">Desconectar</button></div>'
-                : '<button onclick="gcalConectar()" style="width:100%;padding:9px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);border-radius:10px;color:rgba(255,255,255,0.7);font-family:var(--font);font-size:12px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;"><svg width="14" height="14" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>Conectar Google Agenda</button>'
-              )+
-            '</div>'+
 
             // Opacity slider
             '<div style="'+glassStyle+'padding:12px 16px;">'+
@@ -4186,24 +4156,24 @@ async function renderAgenda(mc){
       return;
     }
     const colors = {semanal:'#22c55e', mensal:'#ef4444', pessoal:'#3b82f6', gcal:'#a855f7'};
+    const meetBtn = (url) => url
+      ? '<a href="'+url+'" target="_blank" style="display:inline-flex;align-items:center;gap:4px;margin-top:6px;padding:4px 10px;background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.5);border-radius:20px;color:#4ade80;text-decoration:none;font-size:11px;font-weight:600;text-shadow:0 0 8px rgba(74,222,128,0.6);letter-spacing:0.01em;"><span style="width:5px;height:5px;border-radius:50%;background:#22c55e;box-shadow:0 0 5px #22c55e;display:inline-block;"></span>Entrar no Meet</a>'
+      : '';
     list.innerHTML = evs.map(e=>{
-      // Regras de permissão:
-      // semanal/mensal → só coord pode remover/editar
-      // pessoal → qualquer um pode remover (é da própria pessoa)
-      const podeRemover = e.tipo==='pessoal' || isCoord;
-      const btnRemover = podeRemover
-        ? (e.tipo==='pessoal' && e.id
-            ? '<button onclick="excluirReuniaoP(\"'+e.id+'\")" style="margin-top:6px;padding:3px 8px;border:1px solid rgba(255,255,255,0.15);border-radius:6px;background:transparent;color:rgba(255,100,100,0.6);font-size:10px;cursor:pointer;font-family:var(--font);">✕ Remover</button>'
-            : (isCoord && (e.tipo==='semanal'||e.tipo==='mensal')
-                ? '<button onclick="'+(e.tipo==='semanal'?'editarReuniao':'editarReuniaoMensal')+'()" style="margin-top:6px;padding:3px 8px;border:1px solid rgba(255,255,255,0.15);border-radius:6px;background:transparent;color:rgba(255,255,255,0.4);font-size:10px;cursor:pointer;font-family:var(--font);">✎ Editar</button>'
-                : '')
-          )
-        : '';
-      return '<div style="background:rgba(255,255,255,0.06);border-radius:10px;padding:10px 12px;border-left:3px solid '+colors[e.tipo]+';">'+
+      // Botão de ação: pessoal → remover; semanal/mensal → editar (só coord); gcal → nenhum
+      let actionBtn = '';
+      if(e.tipo==='pessoal' && e.id){
+        actionBtn = '<button onclick="excluirReuniaoP(\"'+e.id+'\")" style="margin-top:8px;padding:4px 10px;border:1px solid rgba(239,68,68,0.3);border-radius:6px;background:rgba(239,68,68,0.08);color:rgba(239,68,68,0.7);font-size:10px;cursor:pointer;font-family:var(--font);display:inline-flex;align-items:center;gap:4px;">'+
+          '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>Remover</button>';
+      } else if((e.tipo==='semanal'||e.tipo==='mensal') && isCoord){
+        actionBtn = '<button onclick="'+(e.tipo==='semanal'?'editarReuniao':'editarReuniaoMensal')+'()" style="margin-top:8px;padding:4px 10px;border:1px solid rgba(255,255,255,0.15);border-radius:6px;background:transparent;color:rgba(255,255,255,0.45);font-size:10px;cursor:pointer;font-family:var(--font);display:inline-flex;align-items:center;gap:4px;">'+
+          '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Editar</button>';
+      }
+      return '<div style="background:rgba(255,255,255,0.06);border-radius:10px;padding:10px 12px;border-left:3px solid '+(colors[e.tipo]||'#fff')+';">'+
         '<div style="font-size:13px;font-weight:500;color:#fff;margin-bottom:3px;">'+e.label+'</div>'+
         (e.horario?'<div style="font-size:11px;color:rgba(255,255,255,0.45);">'+e.horario+'</div>':'')+
-        (e.meet?'<a href="'+e.meet+'" target="_blank" style="display:inline-flex;align-items:center;gap:4px;margin-top:6px;padding:4px 10px;background:rgba(76,175,106,0.2);border:1px solid rgba(76,175,106,0.3);border-radius:20px;color:#4CAF6A;text-decoration:none;font-size:11px;font-weight:500;"><span style="width:5px;height:5px;border-radius:50%;background:#4CAF6A;"></span>Entrar no Meet</a>':'')+
-        btnRemover+
+        meetBtn(e.meet)+
+        actionBtn+
       '</div>';
     }).join('');
   };
@@ -4247,61 +4217,6 @@ async function renderAgenda(mc){
       await renderPage(mc._agendaYear, mc._agendaMonth);
     }catch(e){showToast('Erro ao remover.');}
   };
-
-  window.gcalConectar = function(){
-    if(!window.google||!window.google.accounts){
-      showToast('API do Google ainda carregando, tente em instantes.');return;
-    }
-    const client = google.accounts.oauth2.initTokenClient({
-      client_id: GCAL_CLIENT_ID,
-      scope: GCAL_SCOPE,
-      callback: async (resp)=>{
-        if(resp.error){showToast('Erro ao conectar Google: '+resp.error);return;}
-        gcalToken = resp.access_token;
-        sessionStorage.setItem('gcal_token', gcalToken);
-        showToast('Google Agenda conectada!');
-        await gcalFetchEvents();
-        await renderPage(mc._agendaYear, mc._agendaMonth);
-      }
-    });
-    client.requestAccessToken();
-  };
-
-  window.gcalDesconectar = function(){
-    gcalToken = null;
-    gcalEvents = [];
-    sessionStorage.removeItem('gcal_token');
-    sessionStorage.removeItem('gcal_events');
-    renderPage(mc._agendaYear, mc._agendaMonth);
-    showToast('Google Agenda desconectada.');
-  };
-
-  async function gcalFetchEvents(){
-    if(!gcalToken) return;
-    const now = new Date();
-    const start = new Date(now.getFullYear(), now.getMonth()-1, 1).toISOString();
-    const end   = new Date(now.getFullYear(), now.getMonth()+3, 0).toISOString();
-    try{
-      const res = await fetch(
-        'https://www.googleapis.com/calendar/v3/calendars/primary/events?'+
-        'timeMin='+encodeURIComponent(start)+'&timeMax='+encodeURIComponent(end)+
-        '&singleEvents=true&orderBy=startTime&maxResults=250',
-        {headers:{Authorization:'Bearer '+gcalToken}}
-      );
-      if(!res.ok){
-        if(res.status===401){gcalToken=null;sessionStorage.removeItem('gcal_token');}
-        return;
-      }
-      const data = await res.json();
-      gcalEvents = data.items||[];
-      sessionStorage.setItem('gcal_events', JSON.stringify(gcalEvents));
-    }catch(e){console.log('gcal fetch error',e);}
-  }
-
-  // Auto-fetch if already has token
-  if(gcalToken){
-    gcalFetchEvents().then(()=>renderPage(mc._agendaYear, mc._agendaMonth));
-  }
 }
 
 // ── /AGENDA ───────────────────────────────────────────────────────────────
