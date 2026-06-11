@@ -1123,8 +1123,19 @@ async function renderLinks(mc){
           '</div>'+
         '</div>'+
       '</div>'+
-      '<div style="display:grid;grid-template-columns:2fr 1fr;gap:10px;margin-bottom:12px;">'+
-        '<div><label class="inp-label">URL</label><input type="url" class="inp" id="link-url" placeholder="https://..."/></div>'+
+      '<div style="margin-bottom:12px;">'+
+        '<label class="inp-label">URL ou Arquivo</label>'+
+        '<div style="display:flex;gap:8px;align-items:center;">'+
+          '<input type="url" class="inp" id="link-url" placeholder="https://..." style="flex:1;"/>'+
+          '<label id="link-upload-btn" style="display:inline-flex;align-items:center;gap:6px;padding:9px 14px;border:1px solid var(--border-md);border-radius:var(--radius);cursor:pointer;font-size:12px;color:var(--text-2);background:var(--surface);white-space:nowrap;flex-shrink:0;">'+
+            '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>'+
+            'Upload arquivo'+
+            '<input type="file" id="link-file-input" accept=".pdf,.xlsx,.xls,.doc,.docx,.csv,.txt,.pptx,.ppt" onchange="linkFileUpload(this)" style="display:none;"/>'+
+          '</label>'+
+        '</div>'+
+        '<div id="link-upload-status" style="font-size:11px;color:var(--text-3);margin-top:4px;display:none;">Enviando...</div>'+
+      '</div>'+
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">'+
         '<div><label class="inp-label">Código de Oferta <span style="font-size:10px;color:var(--text-3);">(opcional)</span></label><input type="text" class="inp" id="link-codigo" placeholder="Ex: OFF30"/></div>'+
       '</div>'+
       '<button class="btn-blue" onclick="salvarLink()">+ Adicionar link</button>'+
@@ -1149,7 +1160,9 @@ async function renderLinks(mc){
       '</div>'+
       '</div>'+
       (isCoord?'<button class="btn-ghost" onclick="deletarLink(\''+item.id+'\')" >Excluir</button>':'')+
-      '<a class="link-card-btn" href="'+item.url+'" target="_blank" rel="noopener">Abrir -></a></div>').join('')+'</div>');
+      '<a class="link-card-btn" href="'+item.url+'" target="_blank" rel="noopener" download="'+(item.titulo||'arquivo')+'">'+
+        (item.url&&(item.url.includes('/raw/')||item.url.match(/\.(pdf|xlsx?|docx?|csv|pptx?)(\?|$)/i))?'⬇ Baixar':'Abrir →')+
+      '</a></div>').join('')+'</div>');
 }
 window.filtrarLinks=function(){const q=document.getElementById('busca-link').value.toLowerCase();document.querySelectorAll('.link-card').forEach(el=>{const match=(el.dataset.titulo+' '+el.dataset.desc).includes(q);el.style.display=match?'flex':'none';});};
 window.setTipoLink=function(tipo){
@@ -1173,6 +1186,25 @@ window.salvarLink=async function(){
   if(codigo) payload.codigo=codigo;
   try{await addDoc(collection(db,'links'),payload);showToast('Link adicionado!');await renderLinks(document.getElementById('mainContent'));}
   catch(e){showToast('Erro.');}
+};
+window.linkFileUpload=async function(input){
+  const file=input.files[0]; if(!file) return;
+  const status=document.getElementById('link-upload-status');
+  const btn=document.getElementById('link-upload-btn');
+  if(status){ status.style.display='block'; status.textContent='⏳ Enviando '+file.name+'...'; status.style.color='var(--text-3)'; }
+  if(btn) btn.style.opacity='0.5';
+  try{
+    const url=await uploadRawToCloudinary(file);
+    const urlField=document.getElementById('link-url');
+    if(urlField) urlField.value=url;
+    if(!document.getElementById('link-titulo').value) document.getElementById('link-titulo').value=file.name.replace(/\.[^.]+$/,'');
+    if(status){ status.style.display='block'; status.textContent='✅ Arquivo enviado! URL preenchida automaticamente.'; status.style.color='var(--primary)'; }
+  }catch(e){
+    if(status){ status.style.display='block'; status.textContent='❌ Erro no upload. Verifique se o preset ml_default aceita arquivos raw no Cloudinary.'; status.style.color='#ef4444'; }
+  }finally{
+    if(btn) btn.style.opacity='1';
+    input.value='';
+  }
 };
 window.deletarLink=async function(id){if(!confirm('Excluir?'))return;try{await deleteDoc(doc(db,'links',id));showToast('Excluido.');await renderLinks(document.getElementById('mainContent'));}catch(e){showToast('Erro.');}};
 window.toggleBulkArea=function(){var a=document.getElementById('link-bulk-area');if(a)a.style.display=a.style.display==='none'?'block':'none';};
@@ -1985,6 +2017,17 @@ async function uploadToCloudinary(file){
   fd.append('upload_preset', CLOUDINARY_PRESET);
   const res = await fetch('https://api.cloudinary.com/v1_1/'+CLOUDINARY_CLOUD+'/auto/upload', {method:'POST',body:fd});
   const data = await res.json();
+  return data.secure_url;
+}
+
+async function uploadRawToCloudinary(file){
+  const fd = new FormData();
+  fd.append('file', file);
+  fd.append('upload_preset', CLOUDINARY_PRESET);
+  // resource_type=raw stores file as-is without transformation — required for PDF, Excel, Word, etc.
+  const res = await fetch('https://api.cloudinary.com/v1_1/'+CLOUDINARY_CLOUD+'/raw/upload', {method:'POST',body:fd});
+  const data = await res.json();
+  if(!data.secure_url) throw new Error(data.error?.message||'Upload falhou');
   return data.secure_url;
 }
 
