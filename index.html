@@ -1112,7 +1112,15 @@ async function renderLinks(mc){
     '<div class="panel">'+
       '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">'+
         '<div class="panel-title" style="margin:0;">Adicionar link</div>'+
-        '<button onclick="toggleBulkArea()" style="padding:6px 12px;border:1px solid var(--border-md);border-radius:var(--radius);background:var(--surface);cursor:pointer;font-family:var(--font);font-size:12px;color:var(--text-2);">📎 Importar varios</button>'+
+        '<div style="display:flex;gap:6px;">'+
+          '<button onclick="toggleBulkArea()" style="padding:6px 12px;border:1px solid var(--border-md);border-radius:var(--radius);background:var(--surface);cursor:pointer;font-family:var(--font);font-size:12px;color:var(--text-2);">📎 Importar .txt/.csv</button>'+
+          '<label style="display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border:1px solid #1D6F42;border-radius:var(--radius);cursor:pointer;font-size:12px;color:#1D6F42;background:var(--surface);">'+
+            '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>'+
+            '📊 Importar Excel'+
+            '<input type="file" id="link-xlsx-input" accept=".xlsx,.xls" onchange="importarLinksExcel(this)" style="display:none;"/>'+
+          '</label>'+
+          '<div id="link-xlsx-status" style="display:none;font-size:11px;color:var(--text-3);align-self:center;"></div>'+
+        '</div>'+
       '</div>'+
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">'+
         '<div><label class="inp-label">Titulo</label><input type="text" class="inp" id="link-titulo" placeholder="Ex: Sistema de boletos"/></div>'+
@@ -1204,6 +1212,65 @@ window.linkFileUpload=async function(input){
   }finally{
     if(btn) btn.style.opacity='1';
     input.value='';
+  }
+};
+window.importarLinksExcel=async function(input){
+  const file=input.files[0]; if(!file) return;
+  const status=document.getElementById('link-xlsx-status');
+  const setStatus=(msg,color)=>{if(status){status.style.display='flex';status.style.color=color||'var(--text-3)';status.textContent=msg;}};
+  setStatus('📖 Lendo planilha...','var(--text-3)');
+  try{
+    // Read file as ArrayBuffer
+    const buf=await file.arrayBuffer();
+    const XLSX=window.XLSX||await import('https://cdn.sheetjs.com/xlsx-0.20.1/package/xlsx.mjs');
+    const wb=XLSX.read(buf,{type:'array'});
+    const ws=wb.Sheets[wb.SheetNames[0]];
+    const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+
+    // Find header row (row with "Oferta" or "Link" in it)
+    let dataStart=1; // default: skip row 0 (header)
+    for(let i=0;i<Math.min(rows.length,5);i++){
+      const r=rows[i].map(c=>(c+'').toLowerCase());
+      if(r.some(c=>c.includes('oferta')||c.includes('link')||c.includes('opção')||c.includes('opcao'))){
+        dataStart=i+1; break;
+      }
+    }
+
+    // Map columns: B=index1(oferta), C=index2(opção), D=index3(descricao/titulo), E=index4(link)
+    const toAdd=[];
+    for(let i=dataStart;i<rows.length;i++){
+      const row=rows[i];
+      const oferta=(row[1]+'').trim();   // col B
+      const opcao=(row[2]+'').trim();    // col C
+      const titulo=(row[3]+'').trim();   // col D
+      const url=(row[4]+'').trim();      // col E
+      if(!titulo&&!url) continue;        // skip empty rows
+      // Map Opção to tipo
+      const tipoMap={'especial':'Recorrente','recorrente':'Recorrente','padrão':'Padrao','padrao':'Padrao','standard':'Padrao'};
+      const tipo=tipoMap[opcao.toLowerCase()]||'Recorrente';
+      const payload={titulo:titulo||url,url,tipo,ts:Date.now()};
+      if(oferta) payload.codigo=oferta;
+      toAdd.push(payload);
+    }
+
+    if(toAdd.length===0){setStatus('⚠️ Nenhuma linha válida encontrada.','#f59e0b');return;}
+    setStatus('⏳ Salvando '+toAdd.length+' links...','var(--text-3)');
+
+    // Save all in parallel (batches of 20 to avoid rate limits)
+    let saved=0;
+    for(let i=0;i<toAdd.length;i+=20){
+      const batch=toAdd.slice(i,i+20);
+      await Promise.all(batch.map(p=>addDoc(collection(db,'links'),p)));
+      saved+=batch.length;
+      setStatus('⏳ Salvando... '+saved+'/'+toAdd.length,'var(--text-3)');
+    }
+
+    setStatus('✅ '+toAdd.length+' links importados!','var(--primary)');
+    input.value='';
+    setTimeout(()=>renderLinks(document.getElementById('mainContent')),800);
+  }catch(e){
+    console.error('xlsx import error',e);
+    setStatus('❌ Erro ao ler o arquivo: '+e.message,'#ef4444');
   }
 };
 window.deletarLink=async function(id){if(!confirm('Excluir?'))return;try{await deleteDoc(doc(db,'links',id));showToast('Excluido.');await renderLinks(document.getElementById('mainContent'));}catch(e){showToast('Erro.');}};
