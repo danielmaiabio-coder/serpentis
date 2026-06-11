@@ -2950,45 +2950,100 @@ function showToast(msg){const t=document.getElementById('toast');t.textContent=m
 
 // CADERNO
 async function renderCaderno(mc){
+  // Load all notes
   let notas=[];
   try{
     const snap=await getDocs(query(collection(db,'caderno',currentUser.uid,'notas'),orderBy('ts','desc')));
     snap.forEach(d=>notas.push({id:d.id,...d.data()}));
-  }catch(e){
-    // Collection doesn't exist yet - that's fine, start empty
-    notas=[];
-  }
+  }catch(e){ notas=[]; }
+
+  // Group by topic (topico field, default 'Geral')
+  const topicos = {};
+  notas.forEach(n=>{
+    const t = n.topico||'Geral';
+    if(!topicos[t]) topicos[t]=[];
+    topicos[t].push(n);
+  });
+  const topicoList = Object.keys(topicos).sort((a,b)=>a==='Geral'?1:b==='Geral'?-1:a.localeCompare(b));
 
   mc.style.background='#f0ebe0';
   mc.style.backgroundImage='repeating-linear-gradient(transparent,transparent 31px,#d9cfbd 31px,#d9cfbd 32px)';
 
-  mc.innerHTML=snakeHtml()+
-    '<div style="max-width:780px;margin:0 auto;">'+
-    '<div style="background:rgba(255,255,255,0.88);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);border-left:6px solid #8B4513;position:relative;z-index:1;">'+
-    '<div style="font-size:11px;font-weight:500;color:#8B4513;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">📓 Caderno Pessoal</div>'+
-    '<div style="font-size:26px;font-weight:700;color:#2d2d2d;font-family:\'UnifrakturMaguntia\',serif;">Meu Caderno</div>'+
-    '<div style="font-size:12px;color:#888;margin-top:2px;">Só você tem acesso a essas anotações</div>'+
-    '</div>'+
-    '<div style="margin-bottom:1.5rem;">'+
-    '<button onclick="novaNota()" style="display:flex;align-items:center;gap:10px;width:100%;padding:14px 20px;background:rgba(255,255,255,0.85);border:2px dashed #c8b89a;border-radius:12px;font-family:var(--font);font-size:14px;color:#8B6914;cursor:pointer;">'+
-    '<span style="font-size:22px;">✏️</span> Nova anotação...</button></div>'+
-    '<div id="caderno-notas">'+
-    (notas.length===0?'<div style="text-align:center;padding:3rem;color:#aaa;font-style:italic;font-size:15px;">Sua primeira página está em branco...<br>Comece escrevendo algo!</div>':
-    notas.map(n=>'<div style="background:rgba(255,255,255,0.88);border-radius:12px;padding:1.25rem 1.5rem;margin-bottom:1rem;box-shadow:0 2px 10px rgba(0,0,0,0.06);border-left:4px solid #c8a96e;cursor:pointer;transition:all 0.15s;" onclick="abrirNota(\''+n.id+'\',\''+encodeURIComponent(n.titulo||'')+'\',\''+encodeURIComponent(n.texto||'')+'\')">'+
-      '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">'+
-      '<div style="flex:1;min-width:0;">'+
-      '<div style="font-size:16px;font-weight:600;color:#2d2d2d;margin-bottom:4px;">'+(n.titulo||'Sem título')+'</div>'+
-      '<div style="font-size:13px;color:#777;line-height:1.5;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">'+(n.texto||'')+'</div>'+
+  function buildHtml(openTopico){
+    return snakeHtml()+
+    '<div style="max-width:820px;margin:0 auto;padding-bottom:2rem;">'+
+    // Header
+    '<div style="background:rgba(255,255,255,0.88);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);border-left:6px solid #8B4513;position:relative;z-index:1;display:flex;align-items:center;justify-content:space-between;">'+
+      '<div>'+
+        '<div style="font-size:11px;font-weight:500;color:#8B4513;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">📓 Caderno Pessoal</div>'+
+        '<div style="font-size:26px;font-weight:700;color:#2d2d2d;font-family:UnifrakturMaguntia,serif;">Meu Caderno</div>'+
+        '<div style="font-size:12px;color:#888;margin-top:2px;">Só você tem acesso a essas anotações</div>'+
       '</div>'+
-      '<div style="text-align:right;flex-shrink:0;">'+
-      '<div style="font-size:10px;color:#bbb;margin-bottom:8px;">'+(n.data||'')+'</div>'+
-      '<button onclick="event.stopPropagation();deletarNota(\''+n.id+'\')" style="background:none;border:none;cursor:pointer;color:#ddd;font-size:16px;">✕</button>'+
-      '</div></div></div>').join(''))+
-    '</div></div>'+
+      '<div style="display:flex;gap:8px;">'+
+        '<button onclick="novoTopico()" style="display:flex;align-items:center;gap:6px;padding:8px 14px;background:rgba(139,69,19,0.1);border:1px solid #c8a96e;border-radius:8px;font-family:var(--font);font-size:12px;color:#8B4513;cursor:pointer;">'+
+          '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Novo Tópico</button>'+
+        '<button onclick="novaNota(null)" style="display:flex;align-items:center;gap:6px;padding:8px 14px;background:#8B4513;border:none;border-radius:8px;font-family:var(--font);font-size:12px;color:#fff;cursor:pointer;">'+
+          '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Nova Nota</button>'+
+      '</div>'+
+    '</div>'+
+
+    // Topics list
+    (topicoList.length===0
+      ? '<div style="text-align:center;padding:3rem;color:#aaa;font-style:italic;font-size:15px;background:rgba(255,255,255,0.7);border-radius:12px;">Sua primeira página está em branco...<br>Comece criando um tópico!</div>'
+      : topicoList.map(t=>{
+          const isOpen = t===openTopico;
+          const notes = topicos[t]||[];
+          return '<div style="margin-bottom:10px;border-radius:12px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,0.06);">'+
+            // Topic header
+            '<div onclick="cadernoToggleTopico(\''+encodeURIComponent(t)+'\')"" style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;background:rgba(255,255,255,0.92);cursor:pointer;border-left:5px solid #8B4513;">'+
+              '<div style="display:flex;align-items:center;gap:10px;">'+
+                '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8B4513" stroke-width="2" style="transform:'+(isOpen?'rotate(90deg)':'rotate(0)')+';transition:transform 0.2s;"><polyline points="9 18 15 12 9 6"/></svg>'+
+                '<span style="font-size:15px;font-weight:600;color:#2d2d2d;">'+t+'</span>'+
+                '<span style="font-size:11px;color:#aaa;font-weight:400;">'+(notes.length)+' nota'+(notes.length!==1?'s':'')+'</span>'+
+              '</div>'+
+              '<div style="display:flex;gap:6px;" onclick="event.stopPropagation()">'+
+                '<button onclick="novaNota(\''+encodeURIComponent(t)+'\')" title="Nova nota neste tópico" style="padding:4px 10px;border:1px solid #c8a96e;border-radius:6px;background:transparent;color:#8B4513;font-size:11px;cursor:pointer;font-family:var(--font);">+ Nota</button>'+
+                '<button onclick="exportarTopico(\''+encodeURIComponent(t)+'\')" title="Exportar tópico em Word" style="padding:4px 10px;border:1px solid #1D6F42;border-radius:6px;background:transparent;color:#1D6F42;font-size:11px;cursor:pointer;font-family:var(--font);">⬇ Word</button>'+
+                '<button onclick="deletarTopico(\''+encodeURIComponent(t)+'\')" title="Deletar tópico" style="padding:4px 8px;border:1px solid #ddd;border-radius:6px;background:transparent;color:#ccc;font-size:11px;cursor:pointer;font-family:var(--font);">✕</button>'+
+              '</div>'+
+            '</div>'+
+            // Notes inside topic (visible when open)
+            (isOpen
+              ? '<div style="background:rgba(255,255,251,0.85);padding:8px 12px;display:flex;flex-direction:column;gap:8px;">'+
+                  (notes.length===0
+                    ? '<div style="padding:12px;text-align:center;color:#bbb;font-size:13px;font-style:italic;">Nenhuma nota neste tópico. Clique em "+ Nota"</div>'
+                    : notes.map(n=>
+                        '<div data-nid="'+n.id+'" data-ntit="'+encodeURIComponent(n.titulo||'')+'" data-ntxt="'+encodeURIComponent(n.texto||'')+'" data-ntop="'+encodeURIComponent(t)+'" onclick="abrirNota(this.dataset.nid,this.dataset.ntit,this.dataset.ntxt,this.dataset.ntop)" style="padding:12px 14px;background:rgba(255,255,255,0.9);border-radius:8px;border-left:3px solid #c8a96e;cursor:pointer;transition:all 0.12s;" onmouseover="this.style.background=\'rgba(255,255,255,1)\'" onmouseout="this.style.background=\'rgba(255,255,255,0.9)\'">'+
+                          '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;">'+
+                            '<div style="flex:1;min-width:0;">'+
+                              '<div style="font-size:14px;font-weight:600;color:#2d2d2d;margin-bottom:3px;">'+(n.titulo||'Sem título')+'</div>'+
+                              '<div style="font-size:12px;color:#999;line-height:1.4;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">'+(n.texto||'')+'</div>'+
+                            '</div>'+
+                            '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0;">'+
+                              '<div style="font-size:10px;color:#bbb;">'+(n.data||'')+'</div>'+
+                              '<button data-nid="'+n.id+'" onclick="event.stopPropagation();deletarNota(this.dataset.nid)" style="background:none;border:none;cursor:pointer;color:#ddd;font-size:14px;" onmouseover="this.style.color=\'#f87171\'" onmouseout="this.style.color=\'#ddd\'">✕</button>'+
+                            '</div>'+
+                          '</div>'+
+                        '</div>'
+                      ).join('')
+                  )+
+                '</div>'
+              : ''
+            )+
+          '</div>';
+        }).join('')
+    )+
+    '</div>'+
+
+    // Modal
     '<div id="caderno-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:200;align-items:center;justify-content:center;">'+
     '<div style="background:#fffef5;border-radius:16px;width:100%;max-width:640px;box-shadow:0 20px 60px rgba(0,0,0,0.3);overflow:hidden;border-top:8px solid #8B4513;">'+
-    '<div style="padding:1.5rem;border-bottom:1px solid #ede8da;">'+
-    '<input id="caderno-titulo" type="text" placeholder="Título..." style="width:100%;font-size:20px;font-weight:600;border:none;outline:none;background:transparent;color:#2d2d2d;font-family:var(--font);" maxlength="100"/>'+
+    '<div style="padding:1.5rem;border-bottom:1px solid #ede8da;display:flex;gap:12px;">'+
+      '<div style="flex:1;"><input id="caderno-titulo" type="text" placeholder="Título..." style="width:100%;font-size:18px;font-weight:600;border:none;outline:none;background:transparent;color:#2d2d2d;font-family:var(--font);" maxlength="100"/></div>'+
+      '<select id="caderno-topico" style="padding:6px 10px;border:1px solid #e8dfc8;border-radius:8px;font-family:var(--font);font-size:12px;background:#fff;color:#555;">'+
+        topicoList.map(t=>'<option value="'+t+'">'+t+'</option>').join('')+
+        '<option value="Geral">Geral</option>'+
+      '</select>'+
     '</div>'+
     '<div style="padding:1.5rem;">'+
     '<textarea id="caderno-texto" rows="12" placeholder="Escreva aqui..." style="width:100%;border:none;outline:none;background:transparent;font-size:15px;color:#333;font-family:var(--font);resize:none;line-height:1.8;"></textarea>'+
@@ -2997,48 +3052,130 @@ async function renderCaderno(mc){
     '<button onclick="fecharCaderno()" style="padding:8px 18px;border:1px solid #ddd;border-radius:8px;background:transparent;font-family:var(--font);font-size:13px;cursor:pointer;color:#666;">Cancelar</button>'+
     '<button onclick="salvarNota()" style="padding:8px 18px;background:#8B4513;color:#fff;border:none;border-radius:8px;font-family:var(--font);font-size:13px;cursor:pointer;font-weight:500;">Salvar</button>'+
     '</div></div></div>';
+  }
+
+  let _openTopico = topicoList[0]||null;
+  mc.innerHTML = buildHtml(_openTopico);
+
+  window.cadernoToggleTopico = function(tEnc){
+    const t = decodeURIComponent(tEnc);
+    _openTopico = _openTopico===t ? null : t;
+    mc.innerHTML = buildHtml(_openTopico);
+  };
+
+  window.novoTopico = function(){
+    const nome = prompt('Nome do novo tópico:');
+    if(!nome||!nome.trim()) return;
+    // Create a placeholder note so topic persists
+    const t = nome.trim();
+    if(topicos[t]){ showToast('Tópico já existe.'); return; }
+    topicos[t] = [];
+    topicoList.unshift(t);
+    _openTopico = t;
+    mc.innerHTML = buildHtml(_openTopico);
+  };
+
+  window._cadernoEditId = null;
+  window._cadernoTopicoAtual = null;
+
+  window.novaNota = function(topicoEnc){
+    window._cadernoEditId = null;
+    const t = topicoEnc ? decodeURIComponent(topicoEnc) : (_openTopico||'Geral');
+    window._cadernoTopicoAtual = t;
+    document.getElementById('caderno-titulo').value = '';
+    document.getElementById('caderno-texto').value = '';
+    const sel = document.getElementById('caderno-topico');
+    if(sel){ for(let o of sel.options){ if(o.value===t){ o.selected=true; break; } } }
+    document.getElementById('caderno-modal').style.display = 'flex';
+    setTimeout(()=>document.getElementById('caderno-titulo').focus(), 100);
+  };
+
+  window.abrirNota = function(id, titulo, texto, topicoEnc){
+    window._cadernoEditId = id;
+    window._cadernoTopicoAtual = topicoEnc ? decodeURIComponent(topicoEnc) : 'Geral';
+    document.getElementById('caderno-titulo').value = decodeURIComponent(titulo);
+    document.getElementById('caderno-texto').value = decodeURIComponent(texto);
+    const sel = document.getElementById('caderno-topico');
+    if(sel){ for(let o of sel.options){ if(o.value===window._cadernoTopicoAtual){ o.selected=true; break; } } }
+    document.getElementById('caderno-modal').style.display = 'flex';
+  };
+
+  window.fecharCaderno = function(){ document.getElementById('caderno-modal').style.display='none'; };
+
+  window.salvarNota = async function(){
+    const titulo = document.getElementById('caderno-titulo').value.trim();
+    const texto  = document.getElementById('caderno-texto').value.trim();
+    const sel    = document.getElementById('caderno-topico');
+    const topico = sel ? sel.value : (window._cadernoTopicoAtual||'Geral');
+    if(!titulo&&!texto){ showToast('Escreva algo primeiro.'); return; }
+    const data = new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'short',year:'numeric'});
+    try{
+      if(window._cadernoEditId){
+        await setDoc(doc(db,'caderno',currentUser.uid,'notas',window._cadernoEditId),{titulo,texto,topico,data,ts:Date.now()},{merge:true});
+      } else {
+        await addDoc(collection(db,'caderno',currentUser.uid,'notas'),{titulo,texto,topico,data,ts:Date.now()});
+      }
+      fecharCaderno();
+      showToast('Anotação salva!');
+      await renderCaderno(document.getElementById('mainContent'));
+    }catch(e){ showToast('Erro ao salvar.'); }
+  };
+
+  window.deletarNota = async function(id){
+    if(!confirm('Excluir esta anotação?')) return;
+    try{
+      await deleteDoc(doc(db,'caderno',currentUser.uid,'notas',id));
+      showToast('Excluída!');
+      await renderCaderno(document.getElementById('mainContent'));
+    }catch(e){ showToast('Erro.'); }
+  };
+
+  window.deletarTopico = async function(tEnc){
+    const t = decodeURIComponent(tEnc);
+    const count = (topicos[t]||[]).length;
+    if(!confirm('Excluir tópico "'+t+'"'+(count>0?' e suas '+count+' nota(s)':'')+' ?')) return;
+    try{
+      await Promise.all((topicos[t]||[]).map(n=>deleteDoc(doc(db,'caderno',currentUser.uid,'notas',n.id))));
+      showToast('Tópico excluído!');
+      await renderCaderno(document.getElementById('mainContent'));
+    }catch(e){ showToast('Erro.'); }
+  };
+
+  window.exportarTopico = function(tEnc){
+    const t = decodeURIComponent(tEnc);
+    const notes = topicos[t]||[];
+    if(notes.length===0){ showToast('Nenhuma nota para exportar.'); return; }
+
+    // Build Word-compatible HTML
+    let html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"/><title>'+t+'</title><style>'+
+      'body{font-family:Arial,sans-serif;font-size:12pt;line-height:1.6;margin:2cm;}'+
+      'h1{font-size:18pt;color:#8B4513;border-bottom:2px solid #c8a96e;padding-bottom:6pt;margin-top:0;}'+
+      'h2{font-size:14pt;color:#5c3010;margin-top:18pt;margin-bottom:4pt;}'+
+      '.data{font-size:9pt;color:#999;margin-top:-4pt;margin-bottom:8pt;}'+
+      '.texto{white-space:pre-wrap;font-size:11pt;}'+
+      'hr{border:none;border-top:1px solid #e8dfc8;margin:16pt 0;}'+
+    '</style></head><body>'+
+    '<h1>📓 '+t+'</h1>'+
+    '<p style="font-size:10pt;color:#aaa;">Exportado em '+new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'})+' · '+notes.length+' nota(s)</p><hr/>'+
+    notes.map((n,i)=>
+      '<h2>'+(n.titulo||'Sem título')+'</h2>'+
+      '<div class="data">'+(n.data||'')+'</div>'+
+      '<div class="texto">'+(n.texto||'').replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</div>'+
+      (i<notes.length-1?'<hr/>':'')
+    ).join('')+
+    '</body></html>';
+
+    const blob = new Blob(['﻿'+html], {type:'application/msword'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = t.replace(/[^a-zA-Z0-9À-ú ]/g,'_')+'.doc';
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a); URL.revokeObjectURL(url);
+    showToast('Exportado com sucesso!');
+  };
 }
 
-window._cadernoEditId=null;
-window.novaNota=function(){
-  window._cadernoEditId=null;
-  document.getElementById('caderno-titulo').value='';
-  document.getElementById('caderno-texto').value='';
-  document.getElementById('caderno-modal').style.display='flex';
-  setTimeout(()=>document.getElementById('caderno-titulo').focus(),100);
-};
-window.abrirNota=function(id,titulo,texto){
-  window._cadernoEditId=id;
-  document.getElementById('caderno-titulo').value=decodeURIComponent(titulo);
-  document.getElementById('caderno-texto').value=decodeURIComponent(texto);
-  document.getElementById('caderno-modal').style.display='flex';
-};
-window.fecharCaderno=function(){document.getElementById('caderno-modal').style.display='none';};
-window.salvarNota=async function(){
-  const titulo=document.getElementById('caderno-titulo').value.trim();
-  const texto=document.getElementById('caderno-texto').value.trim();
-  if(!titulo&&!texto){showToast('Escreva algo primeiro.');return;}
-  const data=new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'short',year:'numeric'});
-  try{
-    if(window._cadernoEditId){
-      await setDoc(doc(db,'caderno',currentUser.uid,'notas',window._cadernoEditId),{titulo,texto,data,ts:Date.now()},{merge:true});
-    }else{
-      await addDoc(collection(db,'caderno',currentUser.uid,'notas'),{titulo,texto,data,ts:Date.now()});
-    }
-    fecharCaderno();showToast('Anotação salva!');
-    await renderCaderno(document.getElementById('mainContent'));
-  }catch(e){showToast('Erro ao salvar.');}
-};
-window.deletarNota=async function(id){
-  if(!confirm('Excluir esta anotação?'))return;
-  try{
-    await deleteDoc(doc(db,'caderno',currentUser.uid,'notas',id));
-    showToast('Excluída!');
-    await renderCaderno(document.getElementById('mainContent'));
-  }catch(e){showToast('Erro.');}
-};
 
-// PERFIS
 async function renderPerfis(mc){
   const snap=await getDocs(collection(db,'usuarios'));
   const users=[];
@@ -3505,7 +3642,7 @@ window.slackSend = async function() {
 
 // ── INFORMAÇÕES ÚTEIS ────────────────────────────────────────────────────
 function renderInfosUteis(mc){
-  let activeTab = 'ementas';
+  let activeTab = 'contatos';
 
   function tabBtn(id, label, icon){
     const active = activeTab===id;
@@ -3661,11 +3798,11 @@ function renderInfosUteis(mc){
         '<div class="page-sub">Ementas, contatos e grupos da equipe Hashtag</div>'+
       '</div>'+
       '<div style="display:flex;gap:0;margin-bottom:1.5rem;border-bottom:2px solid var(--border);">'+
-        tabBtn('ementas','Ementas','📄')+
         tabBtn('contatos','Contatos','📱')+
+        tabBtn('ementas','Ementas','📄')+
         tabBtn('grupos','Grupos WhatsApp/Facebook','👥')+
       '</div>'+
-      (activeTab==='ementas'?renderEmentas():activeTab==='contatos'?renderContatos():renderGrupos());
+      (activeTab==='contatos'?renderContatos():activeTab==='ementas'?renderEmentas():renderGrupos());
   }
 
   window.iuSetTab = function(tab){ activeTab=tab; build(); };
@@ -3704,7 +3841,17 @@ async function renderRelatDisparos(mc){
     const mon = new Date(d); mon.setDate(d.getDate() - diff);
     return [0,1,2,3,4].map(i=>{ const x=new Date(mon); x.setDate(mon.getDate()+i); return fmtDateKey(x); });
   }
-  let freeDates = defaultDates();
+  // Persist dates across F5
+  const RD_KEY = 'rd_freeDates';
+  function loadFreeDates(){
+    try{
+      const saved = JSON.parse(localStorage.getItem(RD_KEY)||'null');
+      if(saved && saved.length===5 && saved.every(d=>typeof d==='string'&&d.length===10)) return saved;
+    }catch(e){}
+    return defaultDates();
+  }
+  function saveFreeDates(){ localStorage.setItem(RD_KEY, JSON.stringify(freeDates)); }
+  let freeDates = loadFreeDates();
   let editMode = false;
 
   async function loadData(weekDays){
@@ -3888,11 +4035,13 @@ async function renderRelatDisparos(mc){
   window.rdChangeDate = function(i, val){
     if(!val) return;
     freeDates[i] = val;
+    saveFreeDates();
     editMode=false;
     render();
   };
   window.rdResetDatas = function(){
     freeDates = defaultDates();
+    saveFreeDates();
     editMode=false;
     render();
   };
