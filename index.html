@@ -882,9 +882,14 @@ async function renderLancar(mc){
   mc.innerHTML=snakeHtml()+'<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;"><div class="page-eyebrow">* Lancar Resultados</div><div class="page-title">Resultados semanais</div><div class="page-sub">Preencha os dados de cada operador</div></div>'+
     ops.map(op=>{const ini=(op.nome||'?').split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
       return'<div class="panel"><div style="display:flex;align-items:center;gap:10px;margin-bottom:1.25rem;"><div class="op-av" style="background:'+(op.cor||'#1A5C2A')+';color:#fff;">'+(op.foto?'<img src="'+op.foto+'" alt=""/>':ini)+'</div><div><div style="font-size:14px;font-weight:500;">'+op.nome+'</div><div style="font-size:11px;color:var(--text-3);">'+(op.email||'')+'</div></div></div>'+
-      '<div style="margin-bottom:10px;"><label class="inp-label">Descricao da semana</label><input type="text" class="inp" id="desc-'+op.uid+'" placeholder="Ex: Semana 24 ? 09 a 13 de Jun"/></div>'+
-      '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px;"><div><label class="inp-label">Valor recuperado (R$)</label><input type="number" class="inp" id="valor-'+op.uid+'" placeholder="48320"/></div><div><label class="inp-label">Atendimentos</label><input type="number" class="inp" id="atend-'+op.uid+'" placeholder="87"/></div><div><label class="inp-label">Cobrancas totais</label><input type="number" class="inp" id="cobr-'+op.uid+'" placeholder="124"/></div></div>'+
+      '<div style="margin-bottom:10px;"><label class="inp-label">Descricao da semana</label><input type="text" class="inp" id="desc-'+op.uid+'" placeholder="Ex: Semana 24 – 09 a 13 de Jun"/></div>'+
+      '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px;"><div><label class="inp-label">Valor recuperado (R$)</label><input type="number" class="inp" id="valor-'+op.uid+'" placeholder="48320"/></div><div><label class="inp-label">Atendimentos</label><input type="number" class="inp" id="atend-'+op.uid+'" placeholder="87"/></div><div><label class="inp-label">Cobrancas totais</label><input type="number" class="inp" id="cobr-'+op.uid+'" placeholder="124"/></div></div>'+
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;"><div><label class="inp-label">Média atend./dia</label><input type="number" step="0.1" class="inp" id="media-'+op.uid+'" placeholder="17.4"/></div><div><label class="inp-label">Ticket Médio (R$)</label><input type="number" step="0.01" class="inp" id="ticket-'+op.uid+'" placeholder="555.40"/></div></div>'+
+      '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">'+
       '<button class="btn-blue" onclick="salvarResultado(\''+op.uid+'\')">Salvar resultados de '+op.nome.split(' ')[0]+'</button>'+
+        '<label style="display:inline-flex;align-items:center;gap:5px;padding:8px 14px;border:1px solid #1D6F42;border-radius:var(--radius);cursor:pointer;font-size:12px;color:#1D6F42;background:var(--surface);">📊 Importar Excel<input type="file" accept=".xlsx,.xls" onchange="importarResultadoExcel(this,\''+op.uid+'\');" style="display:none;"/></label>'+
+        '<span id="xlsx-status-'+op.uid+'" style="font-size:11px;color:var(--text-3);display:none;"></span>'+
+      '</div>'+
       '<span id="saved-'+op.uid+'" style="font-size:12px;color:#1D9E75;margin-left:12px;display:none;">OK Salvo!</span></div>';
     }).join('');
 }
@@ -894,20 +899,74 @@ window.salvarResultado=async function(uid){
   const valor=parseFloat(document.getElementById('valor-'+uid).value);
   const atend=parseInt(document.getElementById('atend-'+uid).value);
   const cobr=parseInt(document.getElementById('cobr-'+uid).value);
+  const mediaEl=document.getElementById('media-'+uid);
+  const ticketEl=document.getElementById('ticket-'+uid);
+  const media=mediaEl?parseFloat(mediaEl.value)||0:0;
+  const ticket=ticketEl?parseFloat(ticketEl.value)||0:0;
   if(!desc||isNaN(valor)||isNaN(atend)||isNaN(cobr)){showToast('Preencha todos os campos.');return;}
   const semSnap=await getDoc(doc(db,'semanas',uid));
   const semAnterior=semSnap.exists()?semSnap.data().atual:null;
   const valorFmt=valor.toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0});
+  const ticketFmt=ticket?ticket.toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:2}):'';
   try{
-    await setDoc(doc(db,'semanas',uid),{descricao:desc,atual:{valor:valorFmt,atend,cobr,raw:valor},passada:semAnterior||{valor:'R$ 0',raw:0}});
+    await setDoc(doc(db,'semanas',uid),{descricao:desc,atual:{valor:valorFmt,atend,cobr,media,ticket,ticketFmt,raw:valor},passada:semAnterior||{valor:'R$ 0',raw:0}});
     const ordemSnap=await getDocs(collection(db,'historico',uid,'semanas'));
     const ordem=ordemSnap.size+1;
     const pRaw=semAnterior?semAnterior.raw||0:0;
     const diff=valor-pRaw;const pct=pRaw?((diff/pRaw)*100).toFixed(1):'0.0';const up=diff>=0;
-    await setDoc(doc(db,'historico',uid,'semanas','sem-'+ordem),{semana:desc,valor:valorFmt,raw:valor,delta:(up?'+':'')+pct+'%',up,ordem});
+    await setDoc(doc(db,'historico',uid,'semanas','sem-'+ordem),{semana:desc,valor:valorFmt,raw:valor,media,ticket,ticketFmt,delta:(up?'+':'')+pct+'%',up,ordem});
     const s=document.getElementById('saved-'+uid);s.style.display='inline';setTimeout(()=>s.style.display='none',3000);
     showToast('Resultados salvos!');
   }catch(e){showToast('Erro ao salvar.');}
+};
+
+window.importarResultadoExcel=async function(input,uid){
+  const file=input.files[0]; if(!file) return;
+  const status=document.getElementById('xlsx-status-'+uid);
+  const setS=(msg,color)=>{if(status){status.style.display='inline';status.style.color=color||'var(--text-3)';status.textContent=msg;}};
+  setS('📖 Lendo...','var(--text-3)');
+  try{
+    const buf=await file.arrayBuffer();
+    const wb=window.XLSX.read(buf,{type:'array'});
+    const ws=wb.Sheets[wb.SheetNames[0]];
+    const rows=window.XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+    // Find first data row (skip header)
+    let dataRow=null;
+    for(let i=0;i<rows.length;i++){
+      const r=rows[i];
+      // Look for a row that has a description and at least one number
+      if(r[0]&&typeof r[0]==='string'&&r[0].length>2&&(typeof r[1]==='number'||parseFloat(r[1])>0)){
+        dataRow=r; break;
+      }
+    }
+    if(!dataRow){
+      // try row 1 (skip header row 0)
+      dataRow=rows[1]||rows[0];
+    }
+    if(!dataRow){setS('❌ Nenhum dado encontrado.','#ef4444');return;}
+
+    // Map columns: A=desc, B=valor, C=atend, D=media, E=cobr, F=ticket
+    const desc=(dataRow[0]+'').trim();
+    const valor=parseFloat((dataRow[1]+'').replace(/[^0-9.,]/g,'').replace(',','.'));
+    const atend=parseInt(dataRow[2])||0;
+    const media=parseFloat((dataRow[3]+'').replace(',','.'))||0;
+    const cobr=parseInt(dataRow[4])||0;
+    const ticket=parseFloat((dataRow[5]+'').replace(',','.'))||0;
+
+    // Fill fields
+    const setVal=(id,v)=>{const el=document.getElementById(id);if(el)el.value=v||'';};
+    setVal('desc-'+uid, desc);
+    setVal('valor-'+uid, isNaN(valor)?'':valor);
+    setVal('atend-'+uid, atend||'');
+    setVal('cobr-'+uid, cobr||'');
+    setVal('media-'+uid, media||'');
+    setVal('ticket-'+uid, ticket||'');
+
+    setS('✅ Campos preenchidos! Confira e salve.','var(--primary)');
+    input.value='';
+  }catch(e){
+    setS('❌ Erro: '+e.message,'#ef4444');
+  }
 };
 
 async function renderResultado(mc,op){
