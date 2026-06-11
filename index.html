@@ -1078,12 +1078,25 @@ async function renderCopys(mc){
   const isCoord = canBanco;
   const snap=await getDocs(collection(db,'copys'));const items=[];snap.forEach(d=>items.push({id:d.id,...d.data()}));
   mc.innerHTML=snakeHtml()+'<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;"><div class="page-eyebrow">* Banco de Copys</div><div class="page-title">Copys mais utilizadas</div><div class="page-sub">Textos prontos para uso</div></div>'+
-    (isCoord?'<div class="panel"><div class="panel-title">Adicionar nova copy</div><div style="margin-bottom:10px;"><label class="inp-label">Titulo</label><input type="text" class="inp" id="copy-titulo" placeholder="Ex: Abertura de atendimento"/></div><div style="margin-bottom:12px;"><label class="inp-label">Texto</label><textarea class="inp" id="copy-texto" rows="4" style="resize:vertical;"></textarea></div><button class="btn-blue" onclick="salvarCopy()">Adicionar copy</button></div>':'')+
+    (isCoord?'<div class="panel"><div class="panel-title">Adicionar nova copy</div><div style="margin-bottom:10px;"><label class="inp-label">Titulo</label><input type="text" class="inp" id="copy-titulo" placeholder="Ex: Abertura de atendimento"/></div><div style="margin-bottom:8px;"><label class="inp-label">Texto</label><textarea class="inp" id="copy-texto" rows="4" style="resize:vertical;"></textarea></div><div style="margin-bottom:12px;display:flex;align-items:center;gap:8px;"><label style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border:1px solid var(--border-md);border-radius:var(--radius);cursor:pointer;font-size:12px;color:var(--text-2);background:var(--surface);"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>Upload .txt / .docx<input type="file" id="copy-file" accept=".txt,.doc,.docx" onchange="copyFileRead(this)" style="display:none;"/></label><span id="copy-file-label" style="font-size:11px;color:var(--text-3);">Nenhum arquivo</span></div><button class="btn-blue" onclick="salvarCopy()">Adicionar copy</button></div>':'')+
     (items.length===0?'<div class="panel"><div class="empty">Nenhuma copy ainda.</div></div>':
     items.map(item=>'<div class="copy-card"><button class="copy-btn" onclick="copiarTexto(\''+item.id+'\')">Copiar</button><div class="copy-card-title">'+item.titulo+'</div><div class="copy-card-body" id="copy-text-'+item.id+'">'+item.texto+'</div>'+(isCoord?'<button class="btn-ghost" style="margin-top:10px;" onclick="deletarCopy(\''+item.id+'\')">Excluir</button>':'')+'</div>').join(''));
 }
 window.copiarTexto=function(id){const el=document.getElementById('copy-text-'+id);navigator.clipboard.writeText(el.textContent).then(()=>showToast('Copiado!')).catch(()=>showToast('Erro.'));};
 window.salvarCopy=async function(){const titulo=document.getElementById('copy-titulo').value.trim();const texto=document.getElementById('copy-texto').value.trim();if(!titulo||!texto){showToast('Preencha titulo e texto.');return;}try{await addDoc(collection(db,'copys'),{titulo,texto,ts:Date.now()});showToast('Copy adicionada!');await renderCopys(document.getElementById('mainContent'));}catch(e){showToast('Erro.');}};
+window.copyFileRead=function(input){
+  const file=input.files[0]; if(!file) return;
+  const lbl=document.getElementById('copy-file-label');
+  if(lbl) lbl.textContent=file.name;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const txt=e.target.result||'';
+    const el=document.getElementById('copy-texto');
+    if(el) el.value=txt;
+    if(!document.getElementById('copy-titulo').value) document.getElementById('copy-titulo').value=file.name.replace(/\.[^.]+$/,'');
+  };
+  reader.readAsText(file,'UTF-8');
+};
 window.deletarCopy=async function(id){if(!confirm('Excluir?'))return;try{await deleteDoc(doc(db,'copys',id));showToast('Excluida.');await renderCopys(document.getElementById('mainContent'));}catch(e){showToast('Erro.');}};
 
 async function renderLinks(mc){
@@ -1110,7 +1123,10 @@ async function renderLinks(mc){
           '</div>'+
         '</div>'+
       '</div>'+
-      '<div style="margin-bottom:12px;"><label class="inp-label">URL</label><input type="url" class="inp" id="link-url" placeholder="https://..."/></div>'+
+      '<div style="display:grid;grid-template-columns:2fr 1fr;gap:10px;margin-bottom:12px;">'+
+        '<div><label class="inp-label">URL</label><input type="url" class="inp" id="link-url" placeholder="https://..."/></div>'+
+        '<div><label class="inp-label">Código de Oferta <span style="font-size:10px;color:var(--text-3);">(opcional)</span></label><input type="text" class="inp" id="link-codigo" placeholder="Ex: OFF30"/></div>'+
+      '</div>'+
       '<button class="btn-blue" onclick="salvarLink()">+ Adicionar link</button>'+
       '<div id="link-bulk-area" style="display:none;margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">'+
         '<div style="font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:6px;">📎 Importar varios links de uma vez</div>'+
@@ -1127,7 +1143,10 @@ async function renderLinks(mc){
     (items.length===0?'<div class="panel"><div class="empty">Nenhum link cadastrado ainda.</div></div>':'<div id="lista-links">'+
     items.map(item=>'<div class="link-card" data-titulo="'+(item.titulo||'').toLowerCase()+'" data-desc="'+(item.tipo||'').toLowerCase()+'">'+
       '<div><div class="link-card-title">'+item.titulo+'</div>'+
-      '<div style="margin-top:4px;"><span style="font-size:10px;font-weight:500;padding:2px 8px;border-radius:20px;background:'+(item.tipo==='Recorrente'?'var(--green-light)':'var(--blue-light)')+';color:'+(item.tipo==='Recorrente'?'#085041':'var(--primary)')+';">'+(item.tipo||'Recorrente')+'</span></div>'+
+      '<div style="margin-top:4px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">'+
+        '<span style="font-size:10px;font-weight:500;padding:2px 8px;border-radius:20px;background:'+(item.tipo==='Recorrente'?'var(--green-light)':'var(--blue-light)')+';color:'+(item.tipo==='Recorrente'?'#085041':'var(--primary)')+';">'+(item.tipo||'Recorrente')+'</span>'+
+        (item.codigo?'<span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;background:rgba(139,69,19,0.1);color:#8B4513;cursor:pointer;" data-cod="'+item.codigo+'" onclick="navigator.clipboard.writeText(this.dataset.cod).then(()=>showToast(\'Código copiado!\'))" title="Clique para copiar">🏷 '+item.codigo+'</span>':'')+
+      '</div>'+
       '</div>'+
       (isCoord?'<button class="btn-ghost" onclick="deletarLink(\''+item.id+'\')" >Excluir</button>':'')+
       '<a class="link-card-btn" href="'+item.url+'" target="_blank" rel="noopener">Abrir -></a></div>').join('')+'</div>');
@@ -1147,8 +1166,12 @@ window.salvarLink=async function(){
   const titulo=document.getElementById('link-titulo').value.trim();
   const url=document.getElementById('link-url').value.trim();
   const tipo=window._linkTipo||'Recorrente';
+  const codigoEl=document.getElementById('link-codigo');
+  const codigo=(codigoEl?codigoEl.value.trim():'');
   if(!titulo||!url){showToast('Preencha titulo e URL.');return;}
-  try{await addDoc(collection(db,'links'),{titulo,url,tipo,ts:Date.now()});showToast('Link adicionado!');await renderLinks(document.getElementById('mainContent'));}
+  const payload={titulo,url,tipo,ts:Date.now()};
+  if(codigo) payload.codigo=codigo;
+  try{await addDoc(collection(db,'links'),payload);showToast('Link adicionado!');await renderLinks(document.getElementById('mainContent'));}
   catch(e){showToast('Erro.');}
 };
 window.deletarLink=async function(id){if(!confirm('Excluir?'))return;try{await deleteDoc(doc(db,'links',id));showToast('Excluido.');await renderLinks(document.getElementById('mainContent'));}catch(e){showToast('Erro.');}};
