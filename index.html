@@ -4871,7 +4871,7 @@ window.perguntarBasilisco=async function(){
       contents:[...geminiHistory,{role:'user',parts:[{text:pergunta}]}],
       generationConfig:{maxOutputTokens:2000,temperature:0.2}
     };
-    const res=await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro:generateContent?key='+basiliscoKey,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(geminiBody)});
+    const res=await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent?key='+basiliscoKey,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(geminiBody)});
     const data=await res.json();loading.style.display='none';
     if(data.error){showToast('Erro: '+data.error.message);return;}
     const resposta=data.candidates?.[0]?.content?.parts?.[0]?.text||'Sem resposta.';
