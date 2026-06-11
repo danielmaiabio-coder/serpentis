@@ -3038,15 +3038,15 @@ async function renderCaderno(mc){
     // Modal
     '<div id="caderno-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:200;align-items:center;justify-content:center;">'+
     '<div style="background:#fffef5;border-radius:16px;width:100%;max-width:640px;box-shadow:0 20px 60px rgba(0,0,0,0.3);overflow:hidden;border-top:8px solid #8B4513;">'+
-    '<div style="padding:1.5rem;border-bottom:1px solid #ede8da;display:flex;gap:12px;">'+
-      '<div style="flex:1;"><input id="caderno-titulo" type="text" placeholder="Título..." style="width:100%;font-size:18px;font-weight:600;border:none;outline:none;background:transparent;color:#2d2d2d;font-family:var(--font);" maxlength="100"/></div>'+
+    '<div style="padding:1.5rem;border-bottom:1px solid #ede8da;display:flex;gap:12px;background:#fffef5;">'+
+      '<div style="flex:1;"><input id="caderno-titulo" type="text" placeholder="Título..." style="width:100%;font-size:18px;font-weight:600;border:none;outline:none;background:#fffef5;color:#2d2d2d;font-family:var(--font);" maxlength="100"/></div>'+
       '<select id="caderno-topico" style="padding:6px 10px;border:1px solid #e8dfc8;border-radius:8px;font-family:var(--font);font-size:12px;background:#fff;color:#555;">'+
         topicoList.map(t=>'<option value="'+t+'">'+t+'</option>').join('')+
         '<option value="Geral">Geral</option>'+
       '</select>'+
     '</div>'+
-    '<div style="padding:1.5rem;">'+
-    '<textarea id="caderno-texto" rows="12" placeholder="Escreva aqui..." style="width:100%;border:none;outline:none;background:transparent;font-size:15px;color:#333;font-family:var(--font);resize:none;line-height:1.8;"></textarea>'+
+    '<div style="padding:1.5rem;background:#fffef5;">'+
+    '<textarea id="caderno-texto" rows="12" placeholder="Escreva aqui..." style="width:100%;border:none;outline:none;background:#fffef5;color:#2d2d2d;font-family:var(--font);resize:none;line-height:1.8;font-size:15px;"></textarea>'+
     '</div>'+
     '<div style="padding:1rem 1.5rem;border-top:1px solid #ede8da;display:flex;align-items:center;justify-content:flex-end;gap:8px;">'+
     '<button onclick="fecharCaderno()" style="padding:8px 18px;border:1px solid #ddd;border-radius:8px;background:transparent;font-family:var(--font);font-size:13px;cursor:pointer;color:#666;">Cancelar</button>'+
