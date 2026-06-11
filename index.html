@@ -879,7 +879,17 @@ async function renderEquipe(mc){
 async function renderLancar(mc){
   const snap=await getDocs(collection(db,'usuarios'));const ops=[];
   snap.forEach(d=>{const data=d.data();if(data.role==='op')ops.push({uid:d.id,...data});});
-  mc.innerHTML=snakeHtml()+'<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;"><div class="page-eyebrow">* Lancar Resultados</div><div class="page-title">Resultados semanais</div><div class="page-sub">Preencha os dados de cada operador</div></div>'+
+  // store ops on mc for global import
+  mc._ops = ops;
+  mc.innerHTML=snakeHtml()+'<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">'+
+    '<div><div class="page-eyebrow">* Lancar Resultados</div><div class="page-title">Resultados semanais</div><div class="page-sub">Preencha os dados de cada operador</div></div>'+
+    '<label style="display:inline-flex;align-items:center;gap:7px;padding:10px 18px;background:#1D6F42;border-radius:var(--radius);cursor:pointer;font-size:13px;color:#fff;font-weight:500;font-family:var(--font);">'+
+      '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>'+
+      '📊 Importar Excel (todos)'+
+      '<input type="file" accept=".xlsx,.xls" onchange="importarResultadosTodos(this)" style="display:none;"/>'+
+    '</label>'+
+    '<div id="global-xlsx-status" style="font-size:12px;color:var(--text-3);width:100%;display:none;"></div>'+
+  '</div>'+
     ops.map(op=>{const ini=(op.nome||'?').split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
       return'<div class="panel"><div style="display:flex;align-items:center;gap:10px;margin-bottom:1.25rem;"><div class="op-av" style="background:'+(op.cor||'#1A5C2A')+';color:#fff;">'+(op.foto?'<img src="'+op.foto+'" alt=""/>':ini)+'</div><div><div style="font-size:14px;font-weight:500;">'+op.nome+'</div><div style="font-size:11px;color:var(--text-3);">'+(op.email||'')+'</div></div></div>'+
       '<div style="margin-bottom:10px;"><label class="inp-label">Descricao da semana</label><input type="text" class="inp" id="desc-'+op.uid+'" placeholder="Ex: Semana 24 – 09 a 13 de Jun"/></div>'+
@@ -893,6 +903,115 @@ async function renderLancar(mc){
       '<span id="saved-'+op.uid+'" style="font-size:12px;color:#1D9E75;margin-left:12px;display:none;">OK Salvo!</span></div>';
     }).join('');
 }
+
+window.importarResultadosTodos=async function(input){
+  const file=input.files[0]; if(!file) return;
+  const status=document.getElementById('global-xlsx-status');
+  const setS=(msg,color)=>{if(status){status.style.display='block';status.style.color=color||'var(--text-3)';status.textContent=msg;}};
+  setS('📖 Lendo planilha...','var(--text-3)');
+
+  try{
+    const buf=await file.arrayBuffer();
+    const wb=window.XLSX.read(buf,{type:'array'});
+    const ws=wb.Sheets[wb.SheetNames[0]];
+    const rows=window.XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+
+    // Find header row
+    let headerIdx=0;
+    for(let i=0;i<Math.min(rows.length,5);i++){
+      const r=rows[i].map(c=>(c+'').toLowerCase());
+      if(r.some(c=>c.includes('operador')||c.includes('valor')||c.includes('atendimento'))){
+        headerIdx=i; break;
+      }
+    }
+
+    // Map column indices from header row
+    const hdr=rows[headerIdx].map(c=>(c+'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''));
+    const ci=(term)=>hdr.findIndex(h=>h.includes(term));
+    const iDesc=ci('descri');
+    const iValor=ci('valor');
+    const iAtend=Math.max(ci('atendimentos'),ci('atend'));
+    const iMedia=ci('media');
+    const iCobr=ci('cobran');
+    const iTicket=ci('ticket');
+    const iOp=ci('operador');
+
+    if(iOp===-1){setS('❌ Coluna "Operador" não encontrada na planilha.','#ef4444');return;}
+
+    // Get ops list from mc
+    const mc=document.getElementById('mainContent');
+    const ops=mc._ops||[];
+    if(ops.length===0){setS('❌ Nenhum operador carregado.','#ef4444');return;}
+
+    // Build name → uid map (normalize for fuzzy match)
+    const norm=(s)=>(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+    const opMap={};
+    ops.forEach(op=>{ opMap[norm(op.nome)]=op.uid; });
+
+    // Process data rows
+    const dataRows=rows.slice(headerIdx+1).filter(r=>r.some(c=>c!==''));
+    let matched=0, notFound=[];
+
+    for(const row of dataRows){
+      const opNome=(row[iOp]+'').trim();
+      if(!opNome) continue;
+
+      // Try exact match first, then partial
+      let uid=opMap[norm(opNome)];
+      if(!uid){
+        // Try partial — find op whose name contains the spreadsheet name or vice versa
+        const normOp=norm(opNome);
+        const found=Object.entries(opMap).find(([n])=>n.includes(normOp)||normOp.includes(n)||n.split(' ')[0]===normOp.split(' ')[0]);
+        if(found) uid=found[1];
+      }
+
+      if(!uid){notFound.push(opNome);continue;}
+
+      const desc=iDesc>=0?(row[iDesc]+'').trim():'';
+      const valor=iValor>=0?parseFloat((row[iValor]+'').replace(/[^0-9.,]/g,'').replace(',','.'))||0:0;
+      const atend=iAtend>=0?parseInt(row[iAtend])||0:0;
+      const media=iMedia>=0?parseFloat((row[iMedia]+'').replace(',','.'))||0:0;
+      const cobr=iCobr>=0?parseInt(row[iCobr])||0:0;
+      const ticket=iTicket>=0?parseFloat((row[iTicket]+'').replace(',','.'))||0:0;
+
+      if(!desc&&!valor) continue;
+
+      const valorFmt=valor?valor.toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0}):'R$ 0';
+      const ticketFmt=ticket?ticket.toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:2}):'';
+
+      // Load previous week for delta
+      const semSnap=await getDoc(doc(db,'semanas',uid));
+      const semAnterior=semSnap.exists()?semSnap.data().atual:null;
+      const pRaw=semAnterior?semAnterior.raw||0:0;
+      const diff=valor-pRaw;const pct=pRaw?((diff/pRaw)*100).toFixed(1):'0.0';const up=diff>=0;
+
+      await setDoc(doc(db,'semanas',uid),{descricao:desc,atual:{valor:valorFmt,atend,cobr,media,ticket,ticketFmt,raw:valor},passada:semAnterior||{valor:'R$ 0',raw:0}});
+      const ordemSnap=await getDocs(collection(db,'historico',uid,'semanas'));
+      const ordem=ordemSnap.size+1;
+      await setDoc(doc(db,'historico',uid,'semanas','sem-'+ordem),{semana:desc,valor:valorFmt,raw:valor,media,ticket,ticketFmt,delta:(up?'+':'')+pct+'%',up,ordem});
+
+      // Fill fields visually too
+      const setVal=(id,v)=>{const el=document.getElementById(id);if(el)el.value=v||'';};
+      setVal('desc-'+uid,desc);
+      setVal('valor-'+uid,valor||'');
+      setVal('atend-'+uid,atend||'');
+      setVal('cobr-'+uid,cobr||'');
+      setVal('media-'+uid,media||'');
+      setVal('ticket-'+uid,ticket||'');
+      const s=document.getElementById('saved-'+uid);if(s){s.style.display='inline';setTimeout(()=>s.style.display='none',4000);}
+
+      matched++;
+    }
+
+    let msg='✅ '+matched+' operador(es) importado(s) com sucesso!';
+    if(notFound.length) msg+=' ⚠️ Não encontrados: '+notFound.join(', ');
+    setS(msg, matched>0?'var(--primary)':'#f59e0b');
+    input.value='';
+  }catch(e){
+    console.error('import error',e);
+    setS('❌ Erro ao processar: '+e.message,'#ef4444');
+  }
+};
 
 window.salvarResultado=async function(uid){
   const desc=document.getElementById('desc-'+uid).value.trim();
