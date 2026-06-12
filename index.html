@@ -1675,15 +1675,31 @@ function renderCalc(mc){
     '<div class="panel" style="margin-bottom:1.5rem;">'+
       '<div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);padding-bottom:10px;margin-bottom:1rem;">'+
         '<div style="font-size:15px;font-weight:500;color:var(--text);">Calculo de Renegociacao</div>'+
-        '<div id="btn-export-reneg" style="display:none;gap:8px;flex-wrap:wrap;">'+
-          '<button onclick="exportarImagemReneg(\'vertical\')" style="padding:7px 14px;background:linear-gradient(135deg,#1D6F42,#2d9e5e);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:12px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:6px;">'+
-            '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>'+
-            '📱 Imagem Vertical'+
-          '</button>'+
-          '<button onclick="exportarImagemReneg(\'horizontal\')" style="padding:7px 14px;background:linear-gradient(135deg,#1a5c8a,#2980b9);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:12px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:6px;">'+
-            '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>'+
-            '🖥 Imagem Horizontal'+
-          '</button>'+
+        '<div id="btn-export-reneg" style="display:none;flex-direction:column;gap:8px;">'+
+          // WATI Pedro
+          '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">'+
+            '<span style="font-size:10px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:0.08em;min-width:80px;">WATI Pedro</span>'+
+            '<button onclick="exportarImagemReneg(\'vertical\',\'pedro\')" style="padding:6px 13px;background:linear-gradient(135deg,#1D6F42,#2d9e5e);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:11px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:5px;">'+
+              '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>'+
+              '📱 Vertical'+
+            '</button>'+
+            '<button onclick="exportarImagemReneg(\'horizontal\',\'pedro\')" style="padding:6px 13px;background:linear-gradient(135deg,#1a5c8a,#2980b9);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:11px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:5px;">'+
+              '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>'+
+              '🖥 Horizontal'+
+            '</button>'+
+          '</div>'+
+          // WATI Daniel — fundos a adicionar depois
+          '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">'+
+            '<span style="font-size:10px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:0.08em;min-width:80px;">WATI Daniel</span>'+
+            '<button onclick="exportarImagemReneg(\'vertical\',\'daniel\')" style="padding:6px 13px;background:linear-gradient(135deg,#6b21a8,#9333ea);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:11px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:5px;">'+
+              '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>'+
+              '📱 Vertical'+
+            '</button>'+
+            '<button onclick="exportarImagemReneg(\'horizontal\',\'daniel\')" style="padding:6px 13px;background:linear-gradient(135deg,#92400e,#d97706);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:11px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:5px;">'+
+              '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>'+
+              '🖥 Horizontal'+
+            '</button>'+
+          '</div>'+
         '</div>'+
       '</div>'+
       '<div class="calc-wrap">'+
@@ -1753,7 +1769,7 @@ window.calcularQuit=function(){
   if(btnExport) btnExport.style.display='flex';
 };
 
-window.exportarImagemReneg=async function(tipo='vertical'){
+window.exportarImagemReneg=async function(tipo='vertical', wati='pedro'){
   const total=parseFloat(document.getElementById('quit-total').value)||0;
   const parcTotal=parseInt(document.getElementById('quit-parc-total').value)||0;
   const parcPagas=parseInt(document.getElementById('quit-parc-pagas').value)||0;
@@ -1771,9 +1787,20 @@ window.exportarImagemReneg=async function(tipo='vertical'){
   const isVert=tipo==='vertical';
   const W=isVert?1024:1792;
   const H=isVert?1536:1024;
-  const bgUrl=isVert
-    ?'https://res.cloudinary.com/dbd9hpwyb/image/upload/v1781230053/fundo_foto1_dvhotb.png'
-    :'https://res.cloudinary.com/dbd9hpwyb/image/upload/v1781228115/foto_horizontal_icvrof.png';
+
+  // Background map — add Daniel's URLs when available
+  const bgMap = {
+    pedro: {
+      vertical:   'https://res.cloudinary.com/dbd9hpwyb/image/upload/v1781230053/fundo_foto1_dvhotb.png',
+      horizontal: 'https://res.cloudinary.com/dbd9hpwyb/image/upload/v1781235780/ChatGPT_Image_12_de_jun._de_2026_00_42_35_jxuzar.png',
+    },
+    daniel: {
+      vertical:   'https://res.cloudinary.com/dbd9hpwyb/image/upload/v1781230053/fundo_foto1_dvhotb.png', // placeholder — trocar depois
+      horizontal: 'https://res.cloudinary.com/dbd9hpwyb/image/upload/v1781235780/ChatGPT_Image_12_de_jun._de_2026_00_42_35_jxuzar.png', // placeholder — trocar depois
+    },
+  };
+  const bgUrl = bgMap[wati]?.[tipo] || bgMap.pedro[tipo];
+  const fileName = 'renegociacao-'+wati+'-'+tipo+'.png';
 
   const canvas=document.createElement('canvas');
   canvas.width=W;canvas.height=H;
@@ -1986,7 +2013,7 @@ window.exportarImagemReneg=async function(tipo='vertical'){
   canvas.toBlob(blob=>{
     const url=URL.createObjectURL(blob);
     const a=document.createElement('a');
-    a.href=url;a.download='renegociacao-'+tipo+'.png';
+    a.href=url;a.download=fileName;
     document.body.appendChild(a);a.click();
     document.body.removeChild(a);URL.revokeObjectURL(url);
     showToast('Imagem '+tipo+' exportada!');
