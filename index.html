@@ -1836,9 +1836,10 @@ window.exportarImagemReneg=async function(tipo='vertical'){
     const startY=dataZoneTop+108;
 
     // Auto-scale card height to fit all items in the data zone
+    const bottomY=H-32; // cards end 32px from bottom
     const rowsV=Math.ceil(items.length/cols);
-    const availHV=dataZoneH-startY-16;
-    const cardGapV=Math.max(4,Math.min(cardGap,Math.floor((availHV-rowsV*30)/Math.max(rowsV-1,1))));
+    const availHV=bottomY-startY;
+    const cardGapV=Math.max(4,Math.min(10,Math.floor((availHV-rowsV*36)/Math.max(rowsV-1,1))));
     const cardHV=Math.max(36,Math.floor((availHV-cardGapV*(rowsV-1))/rowsV));
 
     items.forEach((p,i)=>{
@@ -1847,7 +1848,7 @@ window.exportarImagemReneg=async function(tipo='vertical'){
       const x=PAD+col*(cardW+14);
       const y=startY+row*(cardHV+cardGapV);
       const cardH=cardHV;
-      if(y+cardH>dataZoneH-8) return;
+      if(y+cardH>bottomY) return;
 
       // Card bg
       ctx.fillStyle='rgba(255,255,255,0.07)';
