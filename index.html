@@ -1819,8 +1819,10 @@ window.exportarImagemReneg=async function(tipo='vertical', wati='pedro'){
     // Place content in bottom 60% of the image
     const PAD=52;
     const contentW=W-PAD*2;
-    const topPhoto=Math.round(H*0.42); // photo ends around 42%
-    const dataZoneTop=topPhoto+20;
+    // Each vertical background has different content zone start
+    const topPhotoMap={pedro:0.64, daniel:0.42};
+    const topPhoto=Math.round(H*(topPhotoMap[wati]||0.42));
+    const dataZoneTop=topPhoto+10;
     const dataZoneH=H-20; // goes to near bottom
 
     // No overlay — content sits directly on background
