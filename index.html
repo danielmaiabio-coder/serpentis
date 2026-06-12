@@ -1797,16 +1797,7 @@ window.exportarImagemReneg=async function(tipo='vertical'){
     const dataZoneTop=topPhoto+20;
     const dataZoneH=H-20; // goes to near bottom
 
-    // Dark overlay on lower portion only
-    ctx.fillStyle='rgba(0,0,0,0.70)';
-    ctx.fillRect(0,topPhoto-40,W,H-(topPhoto-40));
-
-    // Feather transition at top of overlay
-    const fadeG=ctx.createLinearGradient(0,topPhoto-60,0,topPhoto+40);
-    fadeG.addColorStop(0,'rgba(0,0,0,0)');
-    fadeG.addColorStop(1,'rgba(0,0,0,0.70)');
-    ctx.fillStyle=fadeG;
-    ctx.fillRect(0,topPhoto-60,W,100);
+    // No overlay — content sits directly on background
 
     // Header — valor a quitar box
     ctx.fillStyle='rgba(74,222,128,0.2)';
@@ -1866,7 +1857,7 @@ window.exportarImagemReneg=async function(tipo='vertical'){
       const midV=y+cardH/2;
 
       ctx.fillStyle='rgba(255,255,255,0.45)';
-      ctx.font='500 '+fsV1+'px Arial';ctx.textAlign='left';
+      ctx.font='500 '+Math.round(fsV1*2)+'px Arial';ctx.textAlign='left';
       ctx.fillText(p+'x de',x+22,midV-fsV2*0.18);
 
       ctx.fillStyle='#ffffff';
