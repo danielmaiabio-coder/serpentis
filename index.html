@@ -1675,10 +1675,16 @@ function renderCalc(mc){
     '<div class="panel" style="margin-bottom:1.5rem;">'+
       '<div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);padding-bottom:10px;margin-bottom:1rem;">'+
         '<div style="font-size:15px;font-weight:500;color:var(--text);">Calculo de Renegociacao</div>'+
-        '<button onclick="exportarImagemReneg()" id="btn-export-reneg" style="display:none;padding:7px 14px;background:linear-gradient(135deg,#1D6F42,#2d9e5e);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:12px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:6px;">'+
-          '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>'+
-          'Exportar imagem'+
-        '</button>'+
+        '<div id="btn-export-reneg" style="display:none;gap:8px;flex-wrap:wrap;">'+
+          '<button onclick="exportarImagemReneg(\'vertical\')" style="padding:7px 14px;background:linear-gradient(135deg,#1D6F42,#2d9e5e);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:12px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:6px;">'+
+            '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>'+
+            '📱 Imagem Vertical'+
+          '</button>'+
+          '<button onclick="exportarImagemReneg(\'horizontal\')" style="padding:7px 14px;background:linear-gradient(135deg,#1a5c8a,#2980b9);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:12px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:6px;">'+
+            '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>'+
+            '🖥 Imagem Horizontal'+
+          '</button>'+
+        '</div>'+
       '</div>'+
       '<div class="calc-wrap">'+
         '<div class="calc-box">'+
@@ -1744,10 +1750,10 @@ window.calcularQuit=function(){
     '</div>';
   }
   parcsEl.innerHTML=html;
-  if(btnExport) btnExport.style.display='inline-flex';
+  if(btnExport) btnExport.style.display='flex';
 };
 
-window.exportarImagemReneg=async function(){
+window.exportarImagemReneg=async function(tipo='vertical'){
   const total=parseFloat(document.getElementById('quit-total').value)||0;
   const parcTotal=parseInt(document.getElementById('quit-parc-total').value)||0;
   const parcPagas=parseInt(document.getElementById('quit-parc-pagas').value)||0;
@@ -1760,85 +1766,200 @@ window.exportarImagemReneg=async function(){
   const vista=valorParc*restantes;
   const limite=maxParc&&maxParc>0?Math.min(maxParc,restantes):restantes;
   const fmt=(v)=>v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+  const fmtSimple=(v)=>'R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
 
-  // Canvas dimensions — 1024x1536 (2:3 vertical)
-  const W=1024,H=1536;
+  const isVert=tipo==='vertical';
+  const W=isVert?1024:1792;
+  const H=isVert?1536:1024;
+  const bgUrl=isVert
+    ?'https://res.cloudinary.com/dbd9hpwyb/image/upload/v1781226011/fundo_iso7qh.png'
+    :'https://res.cloudinary.com/dbd9hpwyb/image/upload/v1781226701/3aa62c4e-eacc-43c5-9de9-76353cd30a62_zqkzay.png';
+
   const canvas=document.createElement('canvas');
   canvas.width=W;canvas.height=H;
   const ctx=canvas.getContext('2d');
 
-  // Load background image
   const bgImg=new Image();bgImg.crossOrigin='anonymous';
-  await new Promise((res,rej)=>{bgImg.onload=res;bgImg.onerror=rej;bgImg.src='https://res.cloudinary.com/dbd9hpwyb/image/upload/v1781226011/fundo_iso7qh.png';});
+  await new Promise((res,rej)=>{bgImg.onload=res;bgImg.onerror=rej;bgImg.src=bgUrl;});
   ctx.drawImage(bgImg,0,0,W,H);
 
-  // Overlay escuro suave
-  ctx.fillStyle='rgba(0,0,0,0.42)';
+  // Overlay
+  ctx.fillStyle='rgba(0,0,0,0.50)';
   ctx.fillRect(0,0,W,H);
-
-  // Title
-  ctx.fillStyle='#ffffff';
-  ctx.font='bold 44px Arial';
-  ctx.textAlign='center';
-  ctx.fillText('Opções de Renegociação',W/2,120);
-
-  // Vista total pill
-  ctx.fillStyle='rgba(255,255,255,0.12)';
-  roundRect(ctx,W/2-220,148,440,64,14);ctx.fill();
-  ctx.fillStyle='#4ade80';
-  ctx.font='bold 30px Arial';
-  ctx.fillText('Valor total: '+fmt(vista),W/2,190);
-
-  // Parcelas grid — 1 coluna em layout vertical para caber melhor
-  const itemW=880,itemH=80,gap=14;
-  const startX=(W-itemW)/2;
-  const startY=248;
 
   const items=[];
   for(let p=limite;p>=1;p--) items.push(p);
 
-  items.forEach((p,i)=>{
-    const x=startX;
-    const y=startY+i*(itemH+gap);
+  if(isVert){
+    // ── VERTICAL LAYOUT ── 1024×1536
+    const PAD=64;
+    const contentW=W-PAD*2;
 
-    // Card background
-    ctx.fillStyle='rgba(255,255,255,0.13)';
-    roundRect(ctx,x,y,itemW,itemH,12);ctx.fill();
-    ctx.strokeStyle='rgba(255,255,255,0.2)';ctx.lineWidth=1;
-    roundRect(ctx,x,y,itemW,itemH,12);ctx.stroke();
-
-    // Parcelas label
-    ctx.fillStyle='rgba(255,255,255,0.6)';
-    ctx.font='500 22px Arial';
-    ctx.textAlign='left';
-    ctx.fillText(p+'x de',x+24,y+32);
-
-    // Valor em destaque
+    // Header tag
+    ctx.fillStyle='rgba(74,222,128,0.2)';
+    roundRect(ctx,PAD,52,220,36,18);ctx.fill();
     ctx.fillStyle='#4ade80';
-    ctx.font='bold 30px Arial';
-    ctx.fillText('R$ '+(vista/p).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}),x+24,y+62);
+    ctx.font='bold 16px Arial';
+    ctx.textAlign='left';
+    ctx.fillText('RENEGOCIAÇÃO',PAD+16,76);
 
-    // Total alinhado à direita
-    ctx.fillStyle='rgba(255,255,255,0.45)';
-    ctx.font='16px Arial';
-    ctx.textAlign='right';
-    ctx.fillText('Total: '+fmt(vista),x+itemW-20,y+52);
-  });
+    // Title
+    ctx.fillStyle='#ffffff';
+    ctx.font='bold 52px Arial';
+    ctx.textAlign='left';
+    ctx.fillText('Opções de',PAD,150);
+    ctx.fillText('Parcelamento',PAD,210);
 
-  // Footer
-  ctx.fillStyle='rgba(255,255,255,0.4)';
-  ctx.font='18px Arial';
-  ctx.textAlign='center';
-  ctx.fillText('Hashtag Treinamentos',W/2,H-36);
+    // Divider
+    ctx.fillStyle='#4ade80';
+    ctx.fillRect(PAD,230,60,4);
 
-  // Download
+    // Valor total box
+    ctx.fillStyle='rgba(255,255,255,0.08)';
+    roundRect(ctx,PAD,256,contentW,72,14);ctx.fill();
+    ctx.strokeStyle='rgba(255,255,255,0.12)';ctx.lineWidth=1;
+    roundRect(ctx,PAD,256,contentW,72,14);ctx.stroke();
+    ctx.fillStyle='rgba(255,255,255,0.5)';
+    ctx.font='16px Arial';ctx.textAlign='left';
+    ctx.fillText('VALOR A QUITAR',PAD+24,282);
+    ctx.fillStyle='#4ade80';
+    ctx.font='bold 32px Arial';
+    ctx.fillText(fmt(vista),PAD+24,314);
+    ctx.fillStyle='rgba(255,255,255,0.35)';
+    ctx.font='14px Arial';ctx.textAlign='right';
+    ctx.fillText(restantes+' parc. restantes de '+fmtSimple(valorParc),PAD+contentW-16,300);
+
+    // Cards grid
+    const cols=limite<=4?1:2;
+    const cardW=cols===1?contentW:(contentW-12)/2;
+    const cardH=78;const cardGap=10;
+    const startY=352;
+
+    items.forEach((p,i)=>{
+      const col=cols===1?0:i%cols;
+      const row=cols===1?i:Math.floor(i/cols);
+      const x=PAD+col*(cardW+12);
+      const y=startY+row*(cardH+cardGap);
+
+      ctx.fillStyle='rgba(255,255,255,0.10)';
+      roundRect(ctx,x,y,cardW,cardH,12);ctx.fill();
+      ctx.strokeStyle='rgba(255,255,255,0.18)';ctx.lineWidth=1;
+      roundRect(ctx,x,y,cardW,cardH,12);ctx.stroke();
+
+      // Parcela número badge
+      ctx.fillStyle='rgba(74,222,128,0.15)';
+      roundRect(ctx,x+16,y+14,50,28,8);ctx.fill();
+      ctx.fillStyle='#4ade80';
+      ctx.font='bold 16px Arial';ctx.textAlign='center';
+      ctx.fillText(p+'x',x+41,y+33);
+
+      // Valor parcela
+      ctx.fillStyle='#ffffff';
+      ctx.font='bold 26px Arial';ctx.textAlign='left';
+      ctx.fillText(fmtSimple(vista/p),x+80,y+36);
+
+      // Subtexto
+      ctx.fillStyle='rgba(255,255,255,0.4)';
+      ctx.font='13px Arial';
+      ctx.fillText('Total: '+fmt(vista),x+80,y+56);
+    });
+
+    // Footer
+    ctx.fillStyle='rgba(255,255,255,0.25)';
+    ctx.font='16px Arial';ctx.textAlign='center';
+    ctx.fillText('Hashtag Treinamentos',W/2,H-30);
+
+  } else {
+    // ── HORIZONTAL LAYOUT ── 1792×1024
+    const PAD=70;
+
+    // Left column — info
+    const leftW=580;
+
+    // Header tag
+    ctx.fillStyle='rgba(74,222,128,0.2)';
+    roundRect(ctx,PAD,60,220,36,18);ctx.fill();
+    ctx.fillStyle='#4ade80';
+    ctx.font='bold 16px Arial';ctx.textAlign='left';
+    ctx.fillText('RENEGOCIAÇÃO',PAD+16,84);
+
+    // Title
+    ctx.fillStyle='#ffffff';
+    ctx.font='bold 56px Arial';ctx.textAlign='left';
+    ctx.fillText('Opções de',PAD,170);
+    ctx.fillText('Parcelamento',PAD,234);
+
+    // Divider
+    ctx.fillStyle='#4ade80';ctx.fillRect(PAD,256,60,4);
+
+    // Valor total
+    ctx.fillStyle='rgba(255,255,255,0.08)';
+    roundRect(ctx,PAD,280,leftW-60,80,14);ctx.fill();
+    ctx.strokeStyle='rgba(255,255,255,0.12)';ctx.lineWidth=1;
+    roundRect(ctx,PAD,280,leftW-60,80,14);ctx.stroke();
+    ctx.fillStyle='rgba(255,255,255,0.5)';
+    ctx.font='15px Arial';ctx.textAlign='left';
+    ctx.fillText('VALOR A QUITAR',PAD+20,304);
+    ctx.fillStyle='#4ade80';
+    ctx.font='bold 34px Arial';
+    ctx.fillText(fmt(vista),PAD+20,338);
+
+    // Vertical separator
+    ctx.fillStyle='rgba(255,255,255,0.1)';
+    ctx.fillRect(leftW+PAD,40,1,H-80);
+
+    // Right column — cards grid
+    const rightStartX=leftW+PAD+40;
+    const rightW=W-rightStartX-PAD;
+    const cols=limite<=3?1:2;
+    const cardW=cols===1?rightW:(rightW-12)/2;
+    const cardH=86;const cardGap=12;
+    const startY=60;
+
+    // Right header
+    ctx.fillStyle='rgba(255,255,255,0.4)';
+    ctx.font='14px Arial';ctx.textAlign='left';
+    ctx.fillText(limite+' opção(ões) disponível(is)',rightStartX,46);
+
+    items.forEach((p,i)=>{
+      const col=cols===1?0:i%cols;
+      const row=cols===1?i:Math.floor(i/cols);
+      const x=rightStartX+col*(cardW+12);
+      const y=startY+row*(cardH+cardGap);
+
+      ctx.fillStyle='rgba(255,255,255,0.10)';
+      roundRect(ctx,x,y,cardW,cardH,12);ctx.fill();
+      ctx.strokeStyle='rgba(255,255,255,0.18)';ctx.lineWidth=1;
+      roundRect(ctx,x,y,cardW,cardH,12);ctx.stroke();
+
+      ctx.fillStyle='rgba(74,222,128,0.15)';
+      roundRect(ctx,x+16,y+16,54,30,8);ctx.fill();
+      ctx.fillStyle='#4ade80';
+      ctx.font='bold 17px Arial';ctx.textAlign='center';
+      ctx.fillText(p+'x',x+43,y+37);
+
+      ctx.fillStyle='#ffffff';
+      ctx.font='bold 28px Arial';ctx.textAlign='left';
+      ctx.fillText(fmtSimple(vista/p),x+84,y+40);
+
+      ctx.fillStyle='rgba(255,255,255,0.4)';
+      ctx.font='13px Arial';
+      ctx.fillText('Total: '+fmt(vista),x+84,y+62);
+    });
+
+    // Footer
+    ctx.fillStyle='rgba(255,255,255,0.25)';
+    ctx.font='16px Arial';ctx.textAlign='center';
+    ctx.fillText('Hashtag Treinamentos',W/2,H-24);
+  }
+
   canvas.toBlob(blob=>{
     const url=URL.createObjectURL(blob);
     const a=document.createElement('a');
-    a.href=url;a.download='renegociacao.png';
+    a.href=url;a.download='renegociacao-'+tipo+'.png';
     document.body.appendChild(a);a.click();
     document.body.removeChild(a);URL.revokeObjectURL(url);
-    showToast('Imagem exportada!');
+    showToast('Imagem '+tipo+' exportada!');
   },'image/png');
 };
 
