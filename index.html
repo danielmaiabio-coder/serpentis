@@ -1954,20 +1954,27 @@ window.exportarImagemReneg=async function(tipo='vertical'){
       const fs3 = Math.max(9,  Math.min(12, Math.round(cardH * 0.18)));
       const mid = y + cardH / 2;
 
-      // 'Nx' number
-      ctx.fillStyle = 'rgba(255,255,255,0.45)';
-      ctx.font = '500 ' + fs1 + 'px Arial'; ctx.textAlign = 'left';
-      ctx.fillText(p + 'x', x + 14, mid - fs2 * 0.18);
-
-      // Valor em destaque
-      ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold ' + fs2 + 'px Arial';
-      ctx.fillText(fmtSimple(vista / p), x + 14, mid + fs2 * 0.68);
+      // 'Nx de R$118,16' — one line, Nx bold
+      const nxH=p+'x';
+      const deH=' de ';
+      const valH=fmtSimple(vista/p);
+      const lineYH=mid+Math.round(fs2*0.35);
+      const nxFontH='bold '+Math.round(fs1*2)+'px Arial';
+      const deFontH='500 '+Math.round(fs1*2)+'px Arial';
+      const valFontH='bold '+fs2+'px Arial';
+      ctx.font=nxFontH; const nxWH=ctx.measureText(nxH).width;
+      ctx.font=deFontH; const deWH=ctx.measureText(deH).width;
+      ctx.fillStyle='#ffffff'; ctx.font=nxFontH; ctx.textAlign='left';
+      ctx.fillText(nxH,x+14,lineYH);
+      ctx.fillStyle='rgba(255,255,255,0.5)'; ctx.font=deFontH;
+      ctx.fillText(deH,x+14+nxWH,lineYH);
+      ctx.fillStyle='#ffffff'; ctx.font=valFontH;
+      ctx.fillText(valH,x+14+nxWH+deWH,lineYH);
 
       // Total — direita
       ctx.fillStyle = 'rgba(255,255,255,0.28)';
       ctx.font = fs3 + 'px Arial'; ctx.textAlign = 'right';
-      ctx.fillText('Total ' + fmt(vista), x + cardW - 10, mid + fs2 * 0.55);
+      ctx.fillText('Total ' + fmt(vista), x + cardW - 10, lineYH);
     });
 
     // ── Footer ──
