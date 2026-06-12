@@ -1779,178 +1779,164 @@ window.exportarImagemReneg=async function(tipo='vertical'){
   canvas.width=W;canvas.height=H;
   const ctx=canvas.getContext('2d');
 
+  // Draw background
   const bgImg=new Image();bgImg.crossOrigin='anonymous';
   await new Promise((res,rej)=>{bgImg.onload=res;bgImg.onerror=rej;bgImg.src=bgUrl;});
   ctx.drawImage(bgImg,0,0,W,H);
-
-  // Overlay
-  ctx.fillStyle='rgba(0,0,0,0.50)';
-  ctx.fillRect(0,0,W,H);
 
   const items=[];
   for(let p=limite;p>=1;p--) items.push(p);
 
   if(isVert){
-    // ── VERTICAL LAYOUT ── 1024×1536
-    const PAD=64;
+    // ── VERTICAL 1024×1536 ──
+    // Background has design in lower half — use upper 55% for data
+    // Dark overlay only on upper portion to keep bottom art visible
+    const dataZoneH=Math.round(H*0.58);
+    ctx.fillStyle='rgba(0,0,0,0.72)';
+    roundRect(ctx,0,0,W,dataZoneH,0);ctx.fill();
+
+    const PAD=52;
     const contentW=W-PAD*2;
 
-    // Header tag
-    ctx.fillStyle='rgba(74,222,128,0.2)';
-    roundRect(ctx,PAD,52,220,36,18);ctx.fill();
-    ctx.fillStyle='#4ade80';
-    ctx.font='bold 16px Arial';
-    ctx.textAlign='left';
-    ctx.fillText('RENEGOCIAÇÃO',PAD+16,76);
+    // "VALOR A QUITAR" label
+    ctx.fillStyle='rgba(74,222,128,0.25)';
+    roundRect(ctx,PAD,36,contentW,90,16);ctx.fill();
+    ctx.strokeStyle='rgba(74,222,128,0.3)';ctx.lineWidth=1.5;
+    roundRect(ctx,PAD,36,contentW,90,16);ctx.stroke();
 
-    // Title
-    ctx.fillStyle='#ffffff';
-    ctx.font='bold 52px Arial';
-    ctx.textAlign='left';
-    ctx.fillText('Opções de',PAD,150);
-    ctx.fillText('Parcelamento',PAD,210);
+    ctx.fillStyle='rgba(255,255,255,0.55)';
+    ctx.font='600 15px Arial';ctx.textAlign='left';
+    ctx.fillText('VALOR A QUITAR',PAD+22,62);
 
-    // Divider
     ctx.fillStyle='#4ade80';
-    ctx.fillRect(PAD,230,60,4);
+    ctx.font='bold 38px Arial';
+    ctx.fillText(fmt(vista),PAD+22,100);
 
-    // Valor total box
-    ctx.fillStyle='rgba(255,255,255,0.08)';
-    roundRect(ctx,PAD,256,contentW,72,14);ctx.fill();
-    ctx.strokeStyle='rgba(255,255,255,0.12)';ctx.lineWidth=1;
-    roundRect(ctx,PAD,256,contentW,72,14);ctx.stroke();
-    ctx.fillStyle='rgba(255,255,255,0.5)';
-    ctx.font='16px Arial';ctx.textAlign='left';
-    ctx.fillText('VALOR A QUITAR',PAD+24,282);
-    ctx.fillStyle='#4ade80';
-    ctx.font='bold 32px Arial';
-    ctx.fillText(fmt(vista),PAD+24,314);
     ctx.fillStyle='rgba(255,255,255,0.35)';
     ctx.font='14px Arial';ctx.textAlign='right';
-    ctx.fillText(restantes+' parc. restantes de '+fmtSimple(valorParc),PAD+contentW-16,300);
+    ctx.fillText(restantes+' parc. restantes  ·  '+fmtSimple(valorParc)+' cada',PAD+contentW-16,90);
+
+    // Separator line
+    ctx.fillStyle='rgba(74,222,128,0.4)';
+    ctx.fillRect(PAD,142,contentW,1.5);
+
+    // Cards
+    const cols=limite<=4?1:2;
+    const cardW=cols===1?contentW:(contentW-14)/2;
+    const cardH=82;const cardGap=10;
+    const startY=158;
+
+    items.forEach((p,i)=>{
+      const col=cols===1?0:i%cols;
+      const row=cols===1?i:Math.floor(i/cols);
+      const x=PAD+col*(cardW+14);
+      const y=startY+row*(cardH+cardGap);
+      if(y+cardH>dataZoneH-16) return; // don't overflow into art zone
+
+      // Card bg
+      ctx.fillStyle='rgba(255,255,255,0.07)';
+      roundRect(ctx,x,y,cardW,cardH,12);ctx.fill();
+      ctx.strokeStyle='rgba(255,255,255,0.14)';ctx.lineWidth=1;
+      roundRect(ctx,x,y,cardW,cardH,12);ctx.stroke();
+
+      // Left accent bar
+      ctx.fillStyle='#4ade80';
+      ctx.fillRect(x,y+16,3,cardH-32);
+
+      // "Nx"
+      ctx.fillStyle='rgba(255,255,255,0.45)';
+      ctx.font='500 15px Arial';ctx.textAlign='left';
+      ctx.fillText(p+'x de',x+22,y+33);
+
+      // Valor
+      ctx.fillStyle='#ffffff';
+      ctx.font='bold 32px Arial';
+      ctx.fillText(fmtSimple(vista/p),x+22,y+65);
+
+      // Total
+      ctx.fillStyle='rgba(255,255,255,0.3)';
+      ctx.font='13px Arial';ctx.textAlign='right';
+      ctx.fillText('Total '+fmt(vista),x+cardW-16,y+62);
+    });
+
+  } else {
+    // ── HORIZONTAL 1792×1024 ──
+    // Background has art on right side + big text bottom-left
+    // Data zone: right panel (x>380) with dark overlay only there
+    const dataX=380;const dataW=W-dataX-40;
+
+    // Dark overlay only on data area
+    ctx.fillStyle='rgba(0,0,0,0.78)';
+    roundRect(ctx,dataX,0,W-dataX,H,0);ctx.fill();
+
+    // Subtle left overlay so valor box sits cleanly
+    ctx.fillStyle='rgba(0,0,0,0.45)';
+    roundRect(ctx,0,0,380,280,0);ctx.fill();
+
+    // Valor box — top left, above the big art text
+    ctx.fillStyle='rgba(74,222,128,0.2)';
+    roundRect(ctx,40,36,300,90,14);ctx.fill();
+    ctx.strokeStyle='rgba(74,222,128,0.3)';ctx.lineWidth=1.5;
+    roundRect(ctx,40,36,300,90,14);ctx.stroke();
+
+    ctx.fillStyle='rgba(255,255,255,0.55)';
+    ctx.font='600 14px Arial';ctx.textAlign='left';
+    ctx.fillText('VALOR A QUITAR',60,62);
+
+    ctx.fillStyle='#4ade80';
+    ctx.font='bold 34px Arial';
+    ctx.fillText(fmt(vista),60,96);
+
+    // Vertical separator
+    ctx.fillStyle='rgba(74,222,128,0.3)';
+    ctx.fillRect(dataX-1,30,1.5,H-60);
+
+    // Header right panel
+    ctx.fillStyle='rgba(255,255,255,0.4)';
+    ctx.font='600 13px Arial';ctx.textAlign='left';
+    ctx.fillText(limite+' OPÇÃO(ÕES) DE PARCELAMENTO',dataX+28,40);
+
+    ctx.fillStyle='rgba(255,255,255,0.12)';
+    ctx.fillRect(dataX+28,46,dataW-28,1);
 
     // Cards grid
     const cols=limite<=4?1:2;
-    const cardW=cols===1?contentW:(contentW-12)/2;
-    const cardH=78;const cardGap=10;
-    const startY=352;
+    const cardW=cols===1?dataW-56:(dataW-56-14)/2;
+    const cardH=90;const cardGap=10;
+    const startY=62;
 
     items.forEach((p,i)=>{
       const col=cols===1?0:i%cols;
       const row=cols===1?i:Math.floor(i/cols);
-      const x=PAD+col*(cardW+12);
+      const x=dataX+28+col*(cardW+14);
       const y=startY+row*(cardH+cardGap);
+      if(y+cardH>H-30) return;
 
-      ctx.fillStyle='rgba(255,255,255,0.10)';
+      ctx.fillStyle='rgba(255,255,255,0.07)';
       roundRect(ctx,x,y,cardW,cardH,12);ctx.fill();
-      ctx.strokeStyle='rgba(255,255,255,0.18)';ctx.lineWidth=1;
+      ctx.strokeStyle='rgba(255,255,255,0.14)';ctx.lineWidth=1;
       roundRect(ctx,x,y,cardW,cardH,12);ctx.stroke();
 
-      // Parcela número badge
-      ctx.fillStyle='rgba(74,222,128,0.15)';
-      roundRect(ctx,x+16,y+14,50,28,8);ctx.fill();
       ctx.fillStyle='#4ade80';
-      ctx.font='bold 16px Arial';ctx.textAlign='center';
-      ctx.fillText(p+'x',x+41,y+33);
+      ctx.fillRect(x,y+18,3,cardH-36);
 
-      // Valor parcela
+      ctx.fillStyle='rgba(255,255,255,0.45)';
+      ctx.font='500 15px Arial';ctx.textAlign='left';
+      ctx.fillText(p+'x de',x+18,y+36);
+
       ctx.fillStyle='#ffffff';
-      ctx.font='bold 26px Arial';ctx.textAlign='left';
-      ctx.fillText(fmtSimple(vista/p),x+80,y+36);
+      ctx.font='bold 30px Arial';
+      ctx.fillText(fmtSimple(vista/p),x+18,y+68);
 
-      // Subtexto
-      ctx.fillStyle='rgba(255,255,255,0.4)';
-      ctx.font='13px Arial';
-      ctx.fillText('Total: '+fmt(vista),x+80,y+56);
+      ctx.fillStyle='rgba(255,255,255,0.3)';
+      ctx.font='13px Arial';ctx.textAlign='right';
+      ctx.fillText('Total '+fmt(vista),x+cardW-12,y+66);
     });
 
     // Footer
-    ctx.fillStyle='rgba(255,255,255,0.25)';
-    ctx.font='16px Arial';ctx.textAlign='center';
-    ctx.fillText('Hashtag Treinamentos',W/2,H-30);
-
-  } else {
-    // ── HORIZONTAL LAYOUT ── 1792×1024
-    const PAD=70;
-
-    // Left column — info
-    const leftW=580;
-
-    // Header tag
-    ctx.fillStyle='rgba(74,222,128,0.2)';
-    roundRect(ctx,PAD,60,220,36,18);ctx.fill();
-    ctx.fillStyle='#4ade80';
-    ctx.font='bold 16px Arial';ctx.textAlign='left';
-    ctx.fillText('RENEGOCIAÇÃO',PAD+16,84);
-
-    // Title
-    ctx.fillStyle='#ffffff';
-    ctx.font='bold 56px Arial';ctx.textAlign='left';
-    ctx.fillText('Opções de',PAD,170);
-    ctx.fillText('Parcelamento',PAD,234);
-
-    // Divider
-    ctx.fillStyle='#4ade80';ctx.fillRect(PAD,256,60,4);
-
-    // Valor total
-    ctx.fillStyle='rgba(255,255,255,0.08)';
-    roundRect(ctx,PAD,280,leftW-60,80,14);ctx.fill();
-    ctx.strokeStyle='rgba(255,255,255,0.12)';ctx.lineWidth=1;
-    roundRect(ctx,PAD,280,leftW-60,80,14);ctx.stroke();
-    ctx.fillStyle='rgba(255,255,255,0.5)';
-    ctx.font='15px Arial';ctx.textAlign='left';
-    ctx.fillText('VALOR A QUITAR',PAD+20,304);
-    ctx.fillStyle='#4ade80';
-    ctx.font='bold 34px Arial';
-    ctx.fillText(fmt(vista),PAD+20,338);
-
-    // Vertical separator
-    ctx.fillStyle='rgba(255,255,255,0.1)';
-    ctx.fillRect(leftW+PAD,40,1,H-80);
-
-    // Right column — cards grid
-    const rightStartX=leftW+PAD+40;
-    const rightW=W-rightStartX-PAD;
-    const cols=limite<=3?1:2;
-    const cardW=cols===1?rightW:(rightW-12)/2;
-    const cardH=86;const cardGap=12;
-    const startY=60;
-
-    // Right header
-    ctx.fillStyle='rgba(255,255,255,0.4)';
-    ctx.font='14px Arial';ctx.textAlign='left';
-    ctx.fillText(limite+' opção(ões) disponível(is)',rightStartX,46);
-
-    items.forEach((p,i)=>{
-      const col=cols===1?0:i%cols;
-      const row=cols===1?i:Math.floor(i/cols);
-      const x=rightStartX+col*(cardW+12);
-      const y=startY+row*(cardH+cardGap);
-
-      ctx.fillStyle='rgba(255,255,255,0.10)';
-      roundRect(ctx,x,y,cardW,cardH,12);ctx.fill();
-      ctx.strokeStyle='rgba(255,255,255,0.18)';ctx.lineWidth=1;
-      roundRect(ctx,x,y,cardW,cardH,12);ctx.stroke();
-
-      ctx.fillStyle='rgba(74,222,128,0.15)';
-      roundRect(ctx,x+16,y+16,54,30,8);ctx.fill();
-      ctx.fillStyle='#4ade80';
-      ctx.font='bold 17px Arial';ctx.textAlign='center';
-      ctx.fillText(p+'x',x+43,y+37);
-
-      ctx.fillStyle='#ffffff';
-      ctx.font='bold 28px Arial';ctx.textAlign='left';
-      ctx.fillText(fmtSimple(vista/p),x+84,y+40);
-
-      ctx.fillStyle='rgba(255,255,255,0.4)';
-      ctx.font='13px Arial';
-      ctx.fillText('Total: '+fmt(vista),x+84,y+62);
-    });
-
-    // Footer
-    ctx.fillStyle='rgba(255,255,255,0.25)';
-    ctx.font='16px Arial';ctx.textAlign='center';
-    ctx.fillText('Hashtag Treinamentos',W/2,H-24);
+    ctx.fillStyle='rgba(255,255,255,0.2)';
+    ctx.font='14px Arial';ctx.textAlign='center';
+    ctx.fillText('Hashtag Treinamentos',W/2,H-16);
   }
 
   canvas.toBlob(blob=>{
@@ -1962,6 +1948,7 @@ window.exportarImagemReneg=async function(tipo='vertical'){
     showToast('Imagem '+tipo+' exportada!');
   },'image/png');
 };
+
 
 function roundRect(ctx,x,y,w,h,r){
   ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);
