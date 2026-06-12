@@ -1761,8 +1761,8 @@ window.exportarImagemReneg=async function(){
   const limite=maxParc&&maxParc>0?Math.min(maxParc,restantes):restantes;
   const fmt=(v)=>v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 
-  // Canvas dimensions
-  const W=1080,H=1080;
+  // Canvas dimensions — 1024x1536 (2:3 vertical)
+  const W=1024,H=1536;
   const canvas=document.createElement('canvas');
   canvas.width=W;canvas.height=H;
   const ctx=canvas.getContext('2d');
@@ -1773,37 +1773,33 @@ window.exportarImagemReneg=async function(){
   ctx.drawImage(bgImg,0,0,W,H);
 
   // Overlay escuro suave
-  ctx.fillStyle='rgba(0,0,0,0.38)';
+  ctx.fillStyle='rgba(0,0,0,0.42)';
   ctx.fillRect(0,0,W,H);
 
   // Title
   ctx.fillStyle='#ffffff';
-  ctx.font='bold 38px Inter Tight, Arial, sans-serif';
+  ctx.font='bold 44px Arial';
   ctx.textAlign='center';
-  ctx.fillText('Opções de Renegociação',W/2,100);
+  ctx.fillText('Opções de Renegociação',W/2,120);
 
   // Vista total pill
   ctx.fillStyle='rgba(255,255,255,0.12)';
-  roundRect(ctx,W/2-200,128,400,56,12);ctx.fill();
+  roundRect(ctx,W/2-220,148,440,64,14);ctx.fill();
   ctx.fillStyle='#4ade80';
-  ctx.font='bold 28px Arial';
-  ctx.fillText('Valor total: '+fmt(vista),W/2,166);
+  ctx.font='bold 30px Arial';
+  ctx.fillText('Valor total: '+fmt(vista),W/2,190);
 
-  // Parcelas grid
-  const cols=2;
-  const itemW=460,itemH=72,gap=16;
-  const rows=Math.ceil(limite/cols);
-  const gridW=cols*itemW+(cols-1)*gap;
-  const startX=(W-gridW)/2;
-  const startY=220;
+  // Parcelas grid — 1 coluna em layout vertical para caber melhor
+  const itemW=880,itemH=80,gap=14;
+  const startX=(W-itemW)/2;
+  const startY=248;
 
   const items=[];
   for(let p=limite;p>=1;p--) items.push(p);
 
   items.forEach((p,i)=>{
-    const col=i%cols;const row=Math.floor(i/cols);
-    const x=startX+col*(itemW+gap);
-    const y=startY+row*(itemH+gap);
+    const x=startX;
+    const y=startY+i*(itemH+gap);
 
     // Card background
     ctx.fillStyle='rgba(255,255,255,0.13)';
@@ -1813,27 +1809,27 @@ window.exportarImagemReneg=async function(){
 
     // Parcelas label
     ctx.fillStyle='rgba(255,255,255,0.6)';
-    ctx.font='500 20px Arial';
+    ctx.font='500 22px Arial';
     ctx.textAlign='left';
-    ctx.fillText(p+'x de',x+20,y+30);
+    ctx.fillText(p+'x de',x+24,y+32);
 
-    // Valor
+    // Valor em destaque
     ctx.fillStyle='#4ade80';
-    ctx.font='bold 26px Arial';
-    ctx.fillText('R$ '+(vista/p).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}),x+20,y+56);
+    ctx.font='bold 30px Arial';
+    ctx.fillText('R$ '+(vista/p).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}),x+24,y+62);
 
-    // Total
+    // Total alinhado à direita
     ctx.fillStyle='rgba(255,255,255,0.45)';
-    ctx.font='14px Arial';
+    ctx.font='16px Arial';
     ctx.textAlign='right';
-    ctx.fillText('Total: '+fmt(vista),x+itemW-16,y+48);
+    ctx.fillText('Total: '+fmt(vista),x+itemW-20,y+52);
   });
 
   // Footer
   ctx.fillStyle='rgba(255,255,255,0.4)';
-  ctx.font='16px Arial';
+  ctx.font='18px Arial';
   ctx.textAlign='center';
-  ctx.fillText('Hashtag Treinamentos',W/2,H-30);
+  ctx.fillText('Hashtag Treinamentos',W/2,H-36);
 
   // Download
   canvas.toBlob(blob=>{
