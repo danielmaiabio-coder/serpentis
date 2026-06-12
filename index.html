@@ -1739,7 +1739,7 @@ window.calcularQuit=function(){
   resEl.textContent=vista.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
   detEl.textContent=restantes+' parcelas restantes x R$ '+valorParc.toFixed(2).replace('.',',');
   // Use maxParc if set, otherwise use restantes
-  const limite=maxParc&&maxParc>0?Math.min(maxParc,restantes):restantes;
+  const limite=maxParc&&maxParc>0?maxParc:restantes; // maxParc can exceed restantes — user chooses max installments to offer
   let html='';
   for(let p=limite;p>=1;p--){
     const valParc=vista/p;
@@ -1764,7 +1764,7 @@ window.exportarImagemReneg=async function(tipo='vertical'){
   const valorParc=total/parcTotal;
   const restantes=parcTotal-parcPagas;
   const vista=valorParc*restantes;
-  const limite=maxParc&&maxParc>0?Math.min(maxParc,restantes):restantes;
+  const limite=maxParc&&maxParc>0?maxParc:restantes; // maxParc can exceed restantes — user chooses max installments to offer
   const fmt=(v)=>v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
   const fmtSimple=(v)=>'R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
 
@@ -1867,26 +1867,17 @@ window.exportarImagemReneg=async function(tipo='vertical'){
     const dataX = splitX + PAD;
     const dataW = W - dataX - PAD;
 
-    // Dark gradient overlay on right half only
-    const grad = ctx.createLinearGradient(splitX, 0, W, 0);
-    grad.addColorStop(0,   'rgba(8,8,12,0.92)');
-    grad.addColorStop(0.15,'rgba(8,8,12,0.97)');
-    grad.addColorStop(1,   'rgba(8,8,12,0.97)');
-    ctx.fillStyle = grad;
-    ctx.fillRect(splitX, 0, W - splitX, H);
-
-    // Soft feather on left edge of overlay
-    const feather = ctx.createLinearGradient(splitX - 80, 0, splitX + 40, 0);
-    feather.addColorStop(0, 'rgba(8,8,12,0)');
-    feather.addColorStop(1, 'rgba(8,8,12,0.92)');
-    ctx.fillStyle = feather;
-    ctx.fillRect(splitX - 80, 0, 120, H);
+    // No overlay — cards sit directly on the background photo
 
     // ── Header ──
     const headerY = 52;
 
+    // Soft dark blob behind header text for readability
+    ctx.fillStyle = 'rgba(0,0,0,0.45)';
+    roundRect(ctx, dataX - 16, headerY - 16, dataW + 16, 170, 16); ctx.fill();
+
     // "PARCELAMENTO" tag pill
-    ctx.fillStyle = 'rgba(74,222,128,0.18)';
+    ctx.fillStyle = 'rgba(74,222,128,0.25)';
     roundRect(ctx, dataX, headerY, 188, 30, 15); ctx.fill();
     ctx.strokeStyle = 'rgba(74,222,128,0.35)'; ctx.lineWidth = 1;
     roundRect(ctx, dataX, headerY, 188, 30, 15); ctx.stroke();
@@ -1927,10 +1918,10 @@ window.exportarImagemReneg=async function(tipo='vertical'){
       const y = startY + row * (cardH + rowGap);
       if (y + cardH > H - 28) return;
 
-      // Card bg with subtle glass effect
-      ctx.fillStyle = 'rgba(255,255,255,0.055)';
+      // Card bg — glassmorphism on photo
+      ctx.fillStyle = 'rgba(0,0,0,0.55)';
       roundRect(ctx, x, y, cardW, cardH, 12); ctx.fill();
-      ctx.strokeStyle = 'rgba(255,255,255,0.10)'; ctx.lineWidth = 1;
+      ctx.strokeStyle = 'rgba(255,255,255,0.18)'; ctx.lineWidth = 1;
       roundRect(ctx, x, y, cardW, cardH, 12); ctx.stroke();
 
       // Left green accent
