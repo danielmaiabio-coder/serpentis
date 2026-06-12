@@ -1826,12 +1826,19 @@ window.exportarImagemReneg=async function(tipo='vertical'){
     const cardH=82;const cardGap=10;
     const startY=158;
 
+    // Auto-scale card height to fit all items in the data zone
+    const rowsV=Math.ceil(items.length/cols);
+    const availHV=dataZoneH-startY-16;
+    const cardGapV=Math.max(4,Math.min(cardGap,Math.floor((availHV-rowsV*30)/Math.max(rowsV-1,1))));
+    const cardHV=Math.max(36,Math.floor((availHV-cardGapV*(rowsV-1))/rowsV));
+
     items.forEach((p,i)=>{
       const col=cols===1?0:i%cols;
       const row=cols===1?i:Math.floor(i/cols);
       const x=PAD+col*(cardW+14);
-      const y=startY+row*(cardH+cardGap);
-      if(y+cardH>dataZoneH-16) return; // don't overflow into art zone
+      const y=startY+row*(cardHV+cardGapV);
+      const cardH=cardHV;
+      if(y+cardH>dataZoneH-8) return;
 
       // Card bg
       ctx.fillStyle='rgba(255,255,255,0.07)';
@@ -1841,22 +1848,24 @@ window.exportarImagemReneg=async function(tipo='vertical'){
 
       // Left accent bar
       ctx.fillStyle='#4ade80';
-      ctx.fillRect(x,y+16,3,cardH-32);
+      ctx.fillRect(x,y+Math.round(cardH*0.18),3,Math.round(cardH*0.64));
 
-      // "Nx"
+      const fsV1=Math.max(10,Math.min(15,Math.round(cardH*0.22)));
+      const fsV2=Math.max(14,Math.min(30,Math.round(cardH*0.42)));
+      const fsV3=Math.max(9, Math.min(13,Math.round(cardH*0.18)));
+      const midV=y+cardH/2;
+
       ctx.fillStyle='rgba(255,255,255,0.45)';
-      ctx.font='500 15px Arial';ctx.textAlign='left';
-      ctx.fillText(p+'x de',x+22,y+33);
+      ctx.font='500 '+fsV1+'px Arial';ctx.textAlign='left';
+      ctx.fillText(p+'x de',x+22,midV-fsV2*0.18);
 
-      // Valor
       ctx.fillStyle='#ffffff';
-      ctx.font='bold 32px Arial';
-      ctx.fillText(fmtSimple(vista/p),x+22,y+65);
+      ctx.font='bold '+fsV2+'px Arial';
+      ctx.fillText(fmtSimple(vista/p),x+22,midV+fsV2*0.65);
 
-      // Total
       ctx.fillStyle='rgba(255,255,255,0.3)';
-      ctx.font='13px Arial';ctx.textAlign='right';
-      ctx.fillText('Total '+fmt(vista),x+cardW-16,y+62);
+      ctx.font=fsV3+'px Arial';ctx.textAlign='right';
+      ctx.fillText('Total '+fmt(vista),x+cardW-16,midV+fsV2*0.52);
     });
 
   } else {
@@ -1903,20 +1912,21 @@ window.exportarImagemReneg=async function(tipo='vertical'){
     ctx.fillStyle = 'rgba(74,222,128,0.5)';
     ctx.fillRect(dataX, headerY + 138, dataW, 1.5);
 
-    // ── Cards grid ──
+    // ── Cards grid — auto-scale to fit all items ──
     const cols = 2;
-    const cardGap = 12;
+    const cardGap = 10;
     const cardW = (dataW - cardGap) / 2;
-    const cardH = 82;
-    const rowGap = 10;
     const startY = headerY + 154;
+    const availH = H - startY - 28;
+    const rows = Math.ceil(items.length / cols);
+    const rowGap = Math.max(4, Math.min(10, Math.floor((availH - rows * 40) / Math.max(rows - 1, 1))));
+    const cardH = Math.max(40, Math.floor((availH - rowGap * (rows - 1)) / rows));
 
     items.forEach((p, i) => {
       const col = i % cols;
       const row = Math.floor(i / cols);
       const x = dataX + col * (cardW + cardGap);
       const y = startY + row * (cardH + rowGap);
-      if (y + cardH > H - 28) return;
 
       // Card bg — glassmorphism on photo
       ctx.fillStyle = 'rgba(0,0,0,0.55)';
@@ -1926,22 +1936,28 @@ window.exportarImagemReneg=async function(tipo='vertical'){
 
       // Left green accent
       ctx.fillStyle = '#4ade80';
-      roundRect(ctx, x, y + 18, 3, cardH - 36, 2); ctx.fill();
+      ctx.fillRect(x, y + Math.round(cardH*0.18), 3, Math.round(cardH*0.64));
 
-      // "Nx" number
-      ctx.fillStyle = 'rgba(255,255,255,0.4)';
-      ctx.font = '500 13px Arial'; ctx.textAlign = 'left';
-      ctx.fillText(p + 'x', x + 18, y + 30);
+      // Scale fonts to card height
+      const fs1 = Math.max(10, Math.min(13, Math.round(cardH * 0.22)));
+      const fs2 = Math.max(14, Math.min(26, Math.round(cardH * 0.40)));
+      const fs3 = Math.max(9,  Math.min(12, Math.round(cardH * 0.18)));
+      const mid = y + cardH / 2;
+
+      // 'Nx' number
+      ctx.fillStyle = 'rgba(255,255,255,0.45)';
+      ctx.font = '500 ' + fs1 + 'px Arial'; ctx.textAlign = 'left';
+      ctx.fillText(p + 'x', x + 14, mid - fs2 * 0.18);
 
       // Valor em destaque
       ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 26px Arial';
-      ctx.fillText(fmtSimple(vista / p), x + 18, y + 58);
+      ctx.font = 'bold ' + fs2 + 'px Arial';
+      ctx.fillText(fmtSimple(vista / p), x + 14, mid + fs2 * 0.68);
 
-      // Total — direita, menor
+      // Total — direita
       ctx.fillStyle = 'rgba(255,255,255,0.28)';
-      ctx.font = '12px Arial'; ctx.textAlign = 'right';
-      ctx.fillText('Total ' + fmt(vista), x + cardW - 12, y + 56);
+      ctx.font = fs3 + 'px Arial'; ctx.textAlign = 'right';
+      ctx.fillText('Total ' + fmt(vista), x + cardW - 10, mid + fs2 * 0.55);
     });
 
     // ── Footer ──
