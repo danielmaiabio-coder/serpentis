@@ -5682,8 +5682,8 @@ async function renderCodigosOferta(mc){
         cache:{cacheLocation:'sessionStorage'}
       });
       await pca.initialize();
-      const resp=await pca.loginPopup({scopes:['User.Read','Files.ReadWrite','Files.ReadWrite.All','Sites.ReadWrite.All']});
-      const tokenResp=await pca.acquireTokenSilent({scopes:['Files.ReadWrite','Files.ReadWrite.All','Sites.ReadWrite.All'],account:resp.account});
+      const resp=await pca.loginPopup({scopes:['User.Read','Files.ReadWrite']});
+      const tokenResp=await pca.acquireTokenSilent({scopes:['Files.ReadWrite'],account:resp.account});
       msToken=tokenResp.accessToken;
       sessionStorage.setItem('ms_token',msToken);
       await loadAndRender();
