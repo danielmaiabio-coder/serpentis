@@ -1856,13 +1856,22 @@ window.exportarImagemReneg=async function(tipo='vertical'){
       const fsV3=Math.max(9, Math.min(13,Math.round(cardH*0.18)));
       const midV=y+cardH/2;
 
-      ctx.fillStyle='rgba(255,255,255,0.45)';
-      ctx.font='500 '+Math.round(fsV1*2)+'px Arial';ctx.textAlign='left';
-      ctx.fillText(p+'x de',x+22,midV-fsV2*0.18);
-
-      ctx.fillStyle='#ffffff';
-      ctx.font='bold '+fsV2+'px Arial';
-      ctx.fillText(fmtSimple(vista/p),x+22,midV+fsV2*0.65);
+      // 'Nx de R$118,16' — one line, Nx bold, rest normal
+      const nxStr=p+'x';
+      const deStr=' de ';
+      const valStr=fmtSimple(vista/p);
+      const lineY=midV+Math.round(fsV2*0.35);
+      const nxFont='bold '+Math.round(fsV1*2)+'px Arial';
+      const deFont='500 '+Math.round(fsV1*2)+'px Arial';
+      const valFont='bold '+fsV2+'px Arial';
+      ctx.font=nxFont; const nxW=ctx.measureText(nxStr).width;
+      ctx.font=deFont; const deW=ctx.measureText(deStr).width;
+      ctx.fillStyle='#ffffff'; ctx.font=nxFont; ctx.textAlign='left';
+      ctx.fillText(nxStr,x+22,lineY);
+      ctx.fillStyle='rgba(255,255,255,0.5)'; ctx.font=deFont;
+      ctx.fillText(deStr,x+22+nxW,lineY);
+      ctx.fillStyle='#ffffff'; ctx.font=valFont;
+      ctx.fillText(valStr,x+22+nxW+deW,lineY);
 
       ctx.fillStyle='rgba(255,255,255,0.3)';
       ctx.font=fsV3+'px Arial';ctx.textAlign='right';
