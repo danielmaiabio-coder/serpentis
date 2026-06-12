@@ -1772,7 +1772,7 @@ window.exportarImagemReneg=async function(tipo='vertical'){
   const W=isVert?1024:1792;
   const H=isVert?1536:1024;
   const bgUrl=isVert
-    ?'https://res.cloudinary.com/dbd9hpwyb/image/upload/v1781226011/fundo_iso7qh.png'
+    ?'https://res.cloudinary.com/dbd9hpwyb/image/upload/v1781230053/fundo_foto1_dvhotb.png'
     :'https://res.cloudinary.com/dbd9hpwyb/image/upload/v1781228115/foto_horizontal_icvrof.png';
 
   const canvas=document.createElement('canvas');
@@ -1789,42 +1789,51 @@ window.exportarImagemReneg=async function(tipo='vertical'){
 
   if(isVert){
     // ── VERTICAL 1024×1536 ──
-    // Background has design in lower half — use upper 55% for data
-    // Dark overlay only on upper portion to keep bottom art visible
-    const dataZoneH=Math.round(H*0.58);
-    ctx.fillStyle='rgba(0,0,0,0.72)';
-    roundRect(ctx,0,0,W,dataZoneH,0);ctx.fill();
-
+    // New background: photo occupies top ~45%, clean dark area below
+    // Place content in bottom 60% of the image
     const PAD=52;
     const contentW=W-PAD*2;
+    const topPhoto=Math.round(H*0.42); // photo ends around 42%
+    const dataZoneTop=topPhoto+20;
+    const dataZoneH=H-20; // goes to near bottom
 
-    // "VALOR A QUITAR" label
-    ctx.fillStyle='rgba(74,222,128,0.25)';
-    roundRect(ctx,PAD,36,contentW,90,16);ctx.fill();
+    // Dark overlay on lower portion only
+    ctx.fillStyle='rgba(0,0,0,0.70)';
+    ctx.fillRect(0,topPhoto-40,W,H-(topPhoto-40));
+
+    // Feather transition at top of overlay
+    const fadeG=ctx.createLinearGradient(0,topPhoto-60,0,topPhoto+40);
+    fadeG.addColorStop(0,'rgba(0,0,0,0)');
+    fadeG.addColorStop(1,'rgba(0,0,0,0.70)');
+    ctx.fillStyle=fadeG;
+    ctx.fillRect(0,topPhoto-60,W,100);
+
+    // Header — valor a quitar box
+    ctx.fillStyle='rgba(74,222,128,0.2)';
+    roundRect(ctx,PAD,dataZoneTop,contentW,86,16);ctx.fill();
     ctx.strokeStyle='rgba(74,222,128,0.3)';ctx.lineWidth=1.5;
-    roundRect(ctx,PAD,36,contentW,90,16);ctx.stroke();
+    roundRect(ctx,PAD,dataZoneTop,contentW,86,16);ctx.stroke();
 
     ctx.fillStyle='rgba(255,255,255,0.55)';
-    ctx.font='600 15px Arial';ctx.textAlign='left';
-    ctx.fillText('VALOR A QUITAR',PAD+22,62);
+    ctx.font='600 14px Arial';ctx.textAlign='left';
+    ctx.fillText('VALOR A QUITAR',PAD+22,dataZoneTop+24);
 
     ctx.fillStyle='#4ade80';
-    ctx.font='bold 38px Arial';
-    ctx.fillText(fmt(vista),PAD+22,100);
+    ctx.font='bold 36px Arial';
+    ctx.fillText(fmt(vista),PAD+22,dataZoneTop+62);
 
     ctx.fillStyle='rgba(255,255,255,0.35)';
-    ctx.font='14px Arial';ctx.textAlign='right';
-    ctx.fillText(restantes+' parc. restantes  ·  '+fmtSimple(valorParc)+' cada',PAD+contentW-16,90);
+    ctx.font='13px Arial';ctx.textAlign='right';
+    ctx.fillText(restantes+' parc. restantes · '+fmtSimple(valorParc)+' cada',PAD+contentW-16,dataZoneTop+52);
 
-    // Separator line
+    // Thin separator
     ctx.fillStyle='rgba(74,222,128,0.4)';
-    ctx.fillRect(PAD,142,contentW,1.5);
+    ctx.fillRect(PAD,dataZoneTop+96,contentW,1.5);
 
-    // Cards
+    // Cards — fill remaining space to bottom
     const cols=limite<=4?1:2;
     const cardW=cols===1?contentW:(contentW-14)/2;
-    const cardH=82;const cardGap=10;
-    const startY=158;
+    const startY=dataZoneTop+108;
 
     // Auto-scale card height to fit all items in the data zone
     const rowsV=Math.ceil(items.length/cols);
