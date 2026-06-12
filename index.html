@@ -1673,17 +1673,24 @@ function renderCalc(mc){
   mc.innerHTML=snakeHtml()+
     '<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;"><div class="page-eyebrow">🧮 Calculadoras</div><div class="page-title">Calculadoras</div><div class="page-sub">Quitacao e Renegociacao em um so lugar</div></div>'+
     '<div class="panel" style="margin-bottom:1.5rem;">'+
-      '<div style="font-size:15px;font-weight:500;color:var(--text);border-bottom:1px solid var(--border);padding-bottom:10px;margin-bottom:1rem;">Calculo de Renegociacao</div>'+
+      '<div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);padding-bottom:10px;margin-bottom:1rem;">'+
+        '<div style="font-size:15px;font-weight:500;color:var(--text);">Calculo de Renegociacao</div>'+
+        '<button onclick="exportarImagemReneg()" id="btn-export-reneg" style="display:none;padding:7px 14px;background:linear-gradient(135deg,#1D6F42,#2d9e5e);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:12px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:6px;">'+
+          '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>'+
+          'Exportar imagem'+
+        '</button>'+
+      '</div>'+
       '<div class="calc-wrap">'+
         '<div class="calc-box">'+
           '<div style="margin-bottom:12px;"><label class="inp-label">Valor total do curso (R$)</label><input type="number" class="inp" id="quit-total" placeholder="2997" oninput="calcularQuit()"/></div>'+
           '<div style="margin-bottom:12px;"><label class="inp-label">Parcelas totais</label><input type="number" class="inp" id="quit-parc-total" placeholder="12" oninput="calcularQuit()"/></div>'+
           '<div style="margin-bottom:12px;"><label class="inp-label">Parcelas pagas</label><input type="number" class="inp" id="quit-parc-pagas" placeholder="2" oninput="calcularQuit()"/></div>'+
+          '<div style="margin-bottom:12px;"><label class="inp-label">Até quantas parcelas <span style="font-size:10px;color:var(--text-3);">(máx. na lista)</span></label><input type="number" class="inp" id="quit-max-parc" placeholder="Ex: 12" min="1" max="36" oninput="calcularQuit()"/></div>'+
           '<div class="calc-result"><div class="calc-result-label">Valor a vista (quitacao)</div><div class="calc-result-val" id="quit-resultado">R$ 0,00</div><div style="font-size:11px;opacity:0.75;margin-top:4px;" id="quit-detalhe">Preencha os campos acima</div></div>'+
         '</div>'+
         '<div class="calc-box">'+
           '<div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:12px;">Opcoes de parcelamento</div>'+
-          '<div id="quit-parcelas" style="display:flex;flex-direction:column;gap:8px;max-height:280px;overflow-y:auto;"><div style="text-align:center;color:var(--text-3);font-size:13px;padding:2rem;">Preencha os campos ao lado</div></div>'+
+          '<div id="quit-parcelas" style="display:flex;flex-direction:column;gap:8px;max-height:320px;overflow-y:auto;"><div style="text-align:center;color:var(--text-3);font-size:13px;padding:2rem;">Preencha os campos ao lado</div></div>'+
         '</div>'+
       '</div>'+
     '</div>'+
@@ -1710,17 +1717,141 @@ window.calcularQuit=function(){
   const total=parseFloat(document.getElementById('quit-total').value)||0;
   const parcTotal=parseInt(document.getElementById('quit-parc-total').value)||0;
   const parcPagas=parseInt(document.getElementById('quit-parc-pagas').value)||0;
+  const maxParcEl=document.getElementById('quit-max-parc');
+  const maxParc=maxParcEl&&maxParcEl.value?parseInt(maxParcEl.value):null;
   const resEl=document.getElementById('quit-resultado');
   const detEl=document.getElementById('quit-detalhe');
   const parcsEl=document.getElementById('quit-parcelas');
-  if(!total||!parcTotal||parcPagas>=parcTotal){resEl.textContent='R$ 0,00';detEl.textContent='Verifique os valores';parcsEl.innerHTML='<div style="text-align:center;color:var(--text-3);font-size:13px;padding:2rem;">Preencha os campos ao lado</div>';return;}
+  const btnExport=document.getElementById('btn-export-reneg');
+  if(!total||!parcTotal||parcPagas>=parcTotal){
+    resEl.textContent='R$ 0,00';detEl.textContent='Verifique os valores';
+    parcsEl.innerHTML='<div style="text-align:center;color:var(--text-3);font-size:13px;padding:2rem;">Preencha os campos ao lado</div>';
+    if(btnExport) btnExport.style.display='none';
+    return;
+  }
   const valorParc=total/parcTotal;const restantes=parcTotal-parcPagas;const vista=valorParc*restantes;
   resEl.textContent=vista.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
   detEl.textContent=restantes+' parcelas restantes x R$ '+valorParc.toFixed(2).replace('.',',');
+  // Use maxParc if set, otherwise use restantes
+  const limite=maxParc&&maxParc>0?Math.min(maxParc,restantes):restantes;
   let html='';
-  for(let p=restantes;p>=1;p--){const valParc=vista/p;html+='<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--bg);border-radius:var(--radius);border:1px solid var(--border);"><div style="font-size:14px;font-weight:500;color:var(--text);">'+p+'x</div><div style="font-size:14px;color:var(--primary);font-weight:500;">R$ '+valParc.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})+'</div><div style="font-size:11px;color:var(--text-3);">Total: '+vista.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})+'</div></div>';}
+  for(let p=limite;p>=1;p--){
+    const valParc=vista/p;
+    html+='<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--bg);border-radius:var(--radius);border:1px solid var(--border);">'+
+      '<div style="font-size:14px;font-weight:500;color:var(--text);">'+p+'x</div>'+
+      '<div style="font-size:14px;color:var(--primary);font-weight:500;">R$ '+valParc.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})+'</div>'+
+      '<div style="font-size:11px;color:var(--text-3);">Total: '+vista.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})+'</div>'+
+    '</div>';
+  }
   parcsEl.innerHTML=html;
+  if(btnExport) btnExport.style.display='inline-flex';
 };
+
+window.exportarImagemReneg=async function(){
+  const total=parseFloat(document.getElementById('quit-total').value)||0;
+  const parcTotal=parseInt(document.getElementById('quit-parc-total').value)||0;
+  const parcPagas=parseInt(document.getElementById('quit-parc-pagas').value)||0;
+  const maxParcEl=document.getElementById('quit-max-parc');
+  const maxParc=maxParcEl&&maxParcEl.value?parseInt(maxParcEl.value):null;
+  if(!total||!parcTotal||parcPagas>=parcTotal){showToast('Preencha os campos primeiro.');return;}
+
+  const valorParc=total/parcTotal;
+  const restantes=parcTotal-parcPagas;
+  const vista=valorParc*restantes;
+  const limite=maxParc&&maxParc>0?Math.min(maxParc,restantes):restantes;
+  const fmt=(v)=>v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+
+  // Canvas dimensions
+  const W=1080,H=1080;
+  const canvas=document.createElement('canvas');
+  canvas.width=W;canvas.height=H;
+  const ctx=canvas.getContext('2d');
+
+  // Load background image
+  const bgImg=new Image();bgImg.crossOrigin='anonymous';
+  await new Promise((res,rej)=>{bgImg.onload=res;bgImg.onerror=rej;bgImg.src='https://res.cloudinary.com/dbd9hpwyb/image/upload/v1781226011/fundo_iso7qh.png';});
+  ctx.drawImage(bgImg,0,0,W,H);
+
+  // Overlay escuro suave
+  ctx.fillStyle='rgba(0,0,0,0.38)';
+  ctx.fillRect(0,0,W,H);
+
+  // Title
+  ctx.fillStyle='#ffffff';
+  ctx.font='bold 38px Inter Tight, Arial, sans-serif';
+  ctx.textAlign='center';
+  ctx.fillText('Opções de Renegociação',W/2,100);
+
+  // Vista total pill
+  ctx.fillStyle='rgba(255,255,255,0.12)';
+  roundRect(ctx,W/2-200,128,400,56,12);ctx.fill();
+  ctx.fillStyle='#4ade80';
+  ctx.font='bold 28px Arial';
+  ctx.fillText('Valor total: '+fmt(vista),W/2,166);
+
+  // Parcelas grid
+  const cols=2;
+  const itemW=460,itemH=72,gap=16;
+  const rows=Math.ceil(limite/cols);
+  const gridW=cols*itemW+(cols-1)*gap;
+  const startX=(W-gridW)/2;
+  const startY=220;
+
+  const items=[];
+  for(let p=limite;p>=1;p--) items.push(p);
+
+  items.forEach((p,i)=>{
+    const col=i%cols;const row=Math.floor(i/cols);
+    const x=startX+col*(itemW+gap);
+    const y=startY+row*(itemH+gap);
+
+    // Card background
+    ctx.fillStyle='rgba(255,255,255,0.13)';
+    roundRect(ctx,x,y,itemW,itemH,12);ctx.fill();
+    ctx.strokeStyle='rgba(255,255,255,0.2)';ctx.lineWidth=1;
+    roundRect(ctx,x,y,itemW,itemH,12);ctx.stroke();
+
+    // Parcelas label
+    ctx.fillStyle='rgba(255,255,255,0.6)';
+    ctx.font='500 20px Arial';
+    ctx.textAlign='left';
+    ctx.fillText(p+'x de',x+20,y+30);
+
+    // Valor
+    ctx.fillStyle='#4ade80';
+    ctx.font='bold 26px Arial';
+    ctx.fillText('R$ '+(vista/p).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}),x+20,y+56);
+
+    // Total
+    ctx.fillStyle='rgba(255,255,255,0.45)';
+    ctx.font='14px Arial';
+    ctx.textAlign='right';
+    ctx.fillText('Total: '+fmt(vista),x+itemW-16,y+48);
+  });
+
+  // Footer
+  ctx.fillStyle='rgba(255,255,255,0.4)';
+  ctx.font='16px Arial';
+  ctx.textAlign='center';
+  ctx.fillText('Hashtag Treinamentos',W/2,H-30);
+
+  // Download
+  canvas.toBlob(blob=>{
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;a.download='renegociacao.png';
+    document.body.appendChild(a);a.click();
+    document.body.removeChild(a);URL.revokeObjectURL(url);
+    showToast('Imagem exportada!');
+  },'image/png');
+};
+
+function roundRect(ctx,x,y,w,h,r){
+  ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+  ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+  ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+  ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath();
+}
 
 window.calcular=function(){
   const total=parseFloat(document.getElementById('calc-total').value)||0;
