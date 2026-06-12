@@ -5417,16 +5417,144 @@ async function renderCodigosOferta(mc){
     return (await wsRes.json()).values||[];
   }
 
+  // ── Colunas TURMAS (A–Q, índices 0–16) ──
+  const TURMAS_COLS = [
+    'Curso','Oferta','Curso & Oferta','Descrição / Forma de pagamento',
+    'Turma','Grupo','Cód. Produto','Link','Atualizado','Qtde parcelas',
+    'Lançamento','Parte boleto e cartão','Renegociação','Meses de Acesso',
+    'Moeda oferta','HashIA','HashIA Crédito'
+  ];
+  // Índices na aba Modelo: N=13, U=20
+  const MODELO_COL_N = 13;
+  const MODELO_COL_U = 20;
+
+  // ── Resolve base URL do arquivo (reutilizado em read e write) ──
+  async function resolveBase(){
+    const shareUrl='https://hashtagtreinamentos-my.sharepoint.com/:x:/r/personal/diego_hashtagtreinamentos_com/_layouts/15/Doc.aspx?sourcedoc=%7BA63AE1B4-7478-42F5-BBA1-B2FE7DBF8B9B%7D';
+    const encoded=btoa(shareUrl).replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');
+    const shareBase='https://graph.microsoft.com/v1.0/shares/u!'+encoded+'/driveItem';
+    const itemRes=await fetch(shareBase,{headers:{Authorization:'Bearer '+msToken}});
+    if(itemRes.ok){
+      const d=await itemRes.json();
+      const driveId=d.parentReference?.driveId;
+      const itemId=d.id;
+      return driveId
+        ?'https://graph.microsoft.com/v1.0/drives/'+driveId+'/items/'+itemId
+        :'https://graph.microsoft.com/v1.0/me/drive/items/'+itemId;
+    }
+    // fallback sharedWithMe
+    const sharedRes=await fetch('https://graph.microsoft.com/v1.0/me/drive/sharedWithMe',{headers:{Authorization:'Bearer '+msToken}});
+    const sharedData=await sharedRes.json();
+    const sf=(sharedData.value||[]).find(x=>x.name&&x.name.toLowerCase().includes('controle')&&x.name.toLowerCase().includes('oferta'));
+    if(!sf) throw new Error('Arquivo não encontrado.');
+    const driveId=sf.remoteItem?.parentReference?.driveId||sf.parentReference?.driveId;
+    const itemId=sf.remoteItem?.id||sf.id;
+    return driveId
+      ?'https://graph.microsoft.com/v1.0/drives/'+driveId+'/items/'+itemId
+      :'https://graph.microsoft.com/v1.0/me/drive/items/'+itemId;
+  }
+
+  async function fetchSheetData(sheetName){
+    const base=await resolveBase();
+    const wsRes=await fetch(base+'/workbook/worksheets/'+encodeURIComponent(sheetName)+'/usedRange?$select=values',{headers:{Authorization:'Bearer '+msToken}});
+    if(!wsRes.ok){const err=await wsRes.json();throw new Error(err.error?.message||'Erro ao ler aba '+sheetName);}
+    return (await wsRes.json()).values||[];
+  }
+
+  // ── Grava valor em célula específica via Graph API ──
+  async function writeCellValue(sheetName, rowIdx, colIdx, value){
+    // rowIdx e colIdx são 0-based (linha 0 = header)
+    const base=await resolveBase();
+    // Converte colIdx → letra(s) de coluna Excel
+    function colLetter(n){let s='';n++;while(n>0){s=String.fromCharCode(65+(n-1)%26)+s;n=Math.floor((n-1)/26);}return s;}
+    const cellAddr=colLetter(colIdx)+(rowIdx+1); // ex: N5
+    const url=base+'/workbook/worksheets/'+encodeURIComponent(sheetName)+'/range(address=\''+cellAddr+'\')';
+    const res=await fetch(url,{
+      method:'PATCH',
+      headers:{Authorization:'Bearer '+msToken,'Content-Type':'application/json'},
+      body:JSON.stringify({values:[[value]]})
+    });
+    if(!res.ok){const err=await res.json();throw new Error(err.error?.message||'Erro ao gravar célula');}
+  }
+
+  // ── Anexa nova linha ao final de uma aba ──
+  async function appendRow(sheetName, values){
+    const base=await resolveBase();
+    const usedRes=await fetch(base+'/workbook/worksheets/'+encodeURIComponent(sheetName)+'/usedRange?$select=rowCount',{headers:{Authorization:'Bearer '+msToken}});
+    const usedData=await usedRes.json();
+    const nextRow=(usedData.rowCount||1)+1; // 1-based, after last used row
+    function colLetter(n){let s='';n++;while(n>0){s=String.fromCharCode(65+(n-1)%26)+s;n=Math.floor((n-1)/26);}return s;}
+    const startCol='A';
+    const endCol=colLetter(values.length-1);
+    const rangeAddr=startCol+nextRow+':'+endCol+nextRow;
+    const url=base+'/workbook/worksheets/'+encodeURIComponent(sheetName)+'/range(address=\''+rangeAddr+'\')';
+    const res=await fetch(url,{
+      method:'PATCH',
+      headers:{Authorization:'Bearer '+msToken,'Content-Type':'application/json'},
+      body:JSON.stringify({values:[values]})
+    });
+    if(!res.ok){const err=await res.json();throw new Error(err.error?.message||'Erro ao adicionar linha');}
+  }
+
   function buildTable(rows,query=''){
     if(!rows||rows.length===0) return '<div class="empty">Nenhum dado.</div>';
     const headers=rows[0];
-    const data=rows.slice(1).filter(r=>r.some(c=>c!==''&&c!==null));
-    const filtered=query?data.filter(r=>r.some(c=>(c+'').toLowerCase().includes(query.toLowerCase()))):data;
+    const dataRows=rows.slice(1).filter(r=>r.some(c=>c!==''&&c!==null));
+    const filtered=query?dataRows.filter(r=>r.some(c=>(c+'').toLowerCase().includes(query.toLowerCase()))):dataRows;
     if(filtered.length===0) return '<div class="empty">Nenhum resultado para "'+query+'".</div>';
+
+    const isModelo=(activeSheet==='Modelo');
+
+    // Para o Modelo: só mostra colunas relevantes + N editável + U resultado
+    // Para Turmas: mostra todas as colunas
+    let headHtml, bodyHtml;
+
+    if(isModelo){
+      // Colunas visíveis no Modelo: A(Grupo), B(Curso), D(Pacote), N(Código→editar), U(Final)
+      const visibleCols=[
+        {idx:0,label:'Grupo'},
+        {idx:1,label:'Curso'},
+        {idx:3,label:'Pacote'},
+        {idx:4,label:'Cód. Pacote'},
+        {idx:MODELO_COL_N,label:'Código (N) ✏️'},
+        {idx:MODELO_COL_U,label:'Final (U)'},
+      ];
+      headHtml='<thead><tr>'+visibleCols.map(c=>'<th>'+c.label+'</th>').join('')+'</tr></thead>';
+      // Descobrir o índice real da linha no array original (para saber o rowIdx correto na planilha)
+      // dataRows são as linhas após o header, mas filtered pode ser subconjunto
+      bodyHtml='<tbody>'+filtered.map(r=>{
+        const realRowIdx=dataRows.indexOf(r)+1; // +1 porque header é row 0
+        return '<tr>'+visibleCols.map(col=>{
+          const val=r[col.idx]??'';
+          if(col.idx===MODELO_COL_N){
+            // Célula editável inline
+            return '<td>'+
+              '<div style="display:flex;align-items:center;gap:6px;">'+
+                '<span id="modelo-n-val-'+realRowIdx+'" style="font-family:var(--font-mono);font-size:12px;color:var(--text);">'+(val||'—')+'</span>'+
+                '<button onclick="msModeloEditarN('+realRowIdx+')" title="Editar" style="background:none;border:none;cursor:pointer;color:var(--primary);font-size:13px;padding:2px 4px;">✏️</button>'+
+              '</div>'+
+            '</td>';
+          }
+          if(col.idx===MODELO_COL_U){
+            return '<td id="modelo-u-val-'+realRowIdx+'" style="font-family:var(--font-mono);font-size:12px;font-weight:600;color:var(--primary);">'+
+              (val
+                ? '<span style="display:flex;align-items:center;gap:6px;">'+(val)+
+                  '<button onclick="navigator.clipboard.writeText(\''+String(val).replace(/'/g,"\\'")+'\')" title="Copiar" style="background:none;border:none;cursor:pointer;font-size:11px;color:var(--text-3);">📋</button></span>'
+                : '<span style="color:var(--text-3);">—</span>')+
+            '</td>';
+          }
+          return '<td>'+(val??'')+'</td>';
+        }).join('')+'</tr>';
+      }).join('')+'</tbody>';
+    } else {
+      // TURMAS — tabela completa
+      headHtml='<thead><tr>'+headers.map(h=>'<th>'+(h||'')+'</th>').join('')+'</tr></thead>';
+      bodyHtml='<tbody>'+filtered.map(r=>'<tr>'+r.map(c=>'<td>'+(c??'')+'</td>').join('')+'</tr>').join('')+'</tbody>';
+    }
+
     return '<div style="overflow-x:auto;">'+
       '<table class="hist-table" style="min-width:600px;">'+
-        '<thead><tr>'+headers.map(h=>'<th>'+(h||'')+'</th>').join('')+'</tr></thead>'+
-        '<tbody>'+filtered.map(r=>'<tr>'+r.map(c=>'<td>'+(c??'')+'</td>').join('')+'</tr>').join('')+'</tbody>'+
+        headHtml+bodyHtml+
       '</table>'+
       '<div style="font-size:11px;color:var(--text-3);margin-top:8px;">'+filtered.length+' registro(s)</div>'+
     '</div>';
@@ -5434,6 +5562,7 @@ async function renderCodigosOferta(mc){
 
   async function renderPage(data,query=''){
     const rows=data[activeSheet]||[];
+    const isTurmas=(activeSheet==='Turmas');
     mc.innerHTML=snakeHtml()+
       '<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">'+
         '<div><div class="page-eyebrow">📊 UTILIDADES</div><div class="page-title">Controle Código de Oferta</div><div class="page-sub">Dados sincronizados do OneDrive</div></div>'+
@@ -5444,14 +5573,59 @@ async function renderCodigosOferta(mc){
           '<button onclick="msOfertaRecarregar()" style="padding:4px 10px;border:1px solid var(--primary);border-radius:var(--radius);background:transparent;color:var(--primary);font-size:11px;cursor:pointer;font-family:var(--font);">↻ Atualizar</button>'+
         '</div>'+
       '</div>'+
-      '<div style="display:flex;gap:0;margin-bottom:1rem;border-bottom:2px solid var(--border);">'+
-        ['Turmas','Modelo'].map(s=>'<button data-sheet="'+s+'" onclick="msOfertaSetSheet(this.dataset.sheet)" style="padding:10px 20px;background:none;border:none;border-bottom:'+(activeSheet===s?'2px solid var(--primary)':'2px solid transparent')+';color:'+(activeSheet===s?'var(--primary)':'var(--text-2)')+';font-family:var(--font);font-size:13px;font-weight:'+(activeSheet===s?'600':'400')+';cursor:pointer;margin-bottom:-2px;">'+s+'</button>').join('')+
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;border-bottom:2px solid var(--border);">'+
+        '<div style="display:flex;gap:0;">'+
+          ['Turmas','Modelo'].map(s=>'<button data-sheet="'+s+'" onclick="msOfertaSetSheet(this.dataset.sheet)" style="padding:10px 20px;background:none;border:none;border-bottom:'+(activeSheet===s?'2px solid var(--primary)':'2px solid transparent')+';color:'+(activeSheet===s?'var(--primary)':'var(--text-2)')+';font-family:var(--font);font-size:13px;font-weight:'+(activeSheet===s?'600':'400')+';cursor:pointer;margin-bottom:-2px;">'+s+'</button>').join('')+
+        '</div>'+
+        (isTurmas
+          ? '<button onclick="msOfertaNovoRegistro()" style="margin-bottom:4px;padding:7px 14px;background:var(--primary);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:12px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:5px;">＋ Novo Registro</button>'
+          : '<span style="margin-bottom:4px;font-size:11px;color:var(--text-3);padding-bottom:6px;">Clique em ✏️ para editar a coluna N e gerar o código na coluna U</span>')+
       '</div>'+
       '<div style="position:relative;margin-bottom:1rem;">'+
         '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="2" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>'+
         '<input id="oferta-search" type="text" value="'+query+'" placeholder="Buscar..." oninput="msOfertaBuscar(this.value)" style="width:100%;padding:10px 14px 10px 38px;border:1px solid var(--border-md);border-radius:var(--radius);background:var(--surface);color:var(--text);font-family:var(--font);font-size:13px;box-sizing:border-box;"/>'+
       '</div>'+
-      '<div class="panel" id="oferta-table">'+buildTable(rows,query)+'</div>';
+      '<div class="panel" id="oferta-table">'+buildTable(rows,query)+'</div>'+
+      // ── Modal Novo Registro TURMAS ──
+      '<div id="modal-turma" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:3000;align-items:center;justify-content:center;">'+
+        '<div style="background:var(--surface);border-radius:var(--radius-lg);padding:1.5rem;width:100%;max-width:680px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3);">'+
+          '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;">'+
+            '<div style="font-size:15px;font-weight:600;">＋ Novo Registro — Turmas</div>'+
+            '<button onclick="document.getElementById(\'modal-turma\').style.display=\'none\'" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-2);">✕</button>'+
+          '</div>'+
+          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;" id="modal-turma-fields">'+
+            TURMAS_COLS.map((label,i)=>'<div><label style="display:block;font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-2);margin-bottom:4px;">'+label+'</label><input id="turma-field-'+i+'" type="text" placeholder="..." style="width:100%;padding:8px 10px;border:1px solid var(--border-md);border-radius:var(--radius);background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px;box-sizing:border-box;"/></div>').join('')+
+          '</div>'+
+          '<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:1.25rem;">'+
+            '<button onclick="document.getElementById(\'modal-turma\').style.display=\'none\'" style="padding:8px 18px;border:1px solid var(--border-md);border-radius:var(--radius);background:transparent;color:var(--text-2);font-family:var(--font);font-size:13px;cursor:pointer;">Cancelar</button>'+
+            '<button onclick="msOfertaSalvarTurma()" style="padding:8px 18px;background:var(--primary);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:13px;font-weight:500;cursor:pointer;">Salvar</button>'+
+          '</div>'+
+        '</div>'+
+      '</div>'+
+      // ── Modal Editar N (Modelo) ──
+      '<div id="modal-modelo-n" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:3000;align-items:center;justify-content:center;">'+
+        '<div style="background:var(--surface);border-radius:var(--radius-lg);padding:1.5rem;width:100%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,0.3);">'+
+          '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">'+
+            '<div style="font-size:15px;font-weight:600;">Preencher coluna N</div>'+
+            '<button onclick="document.getElementById(\'modal-modelo-n\').style.display=\'none\'" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-2);">✕</button>'+
+          '</div>'+
+          '<div style="font-size:12px;color:var(--text-2);margin-bottom:12px;">Cole o código da Hotmart. O código final será gerado automaticamente na coluna U.</div>'+
+          '<input id="modal-n-input" type="text" placeholder="Cole o código aqui..." style="width:100%;padding:10px 12px;border:1px solid var(--border-md);border-radius:var(--radius);background:var(--bg);color:var(--text);font-family:var(--font-mono);font-size:14px;box-sizing:border-box;"/>'+
+          '<input type="hidden" id="modal-n-rowIdx"/>'+
+          '<div id="modal-n-result" style="display:none;margin-top:12px;padding:12px;background:var(--primary-light);border-radius:var(--radius);border:1px solid var(--primary);">'+
+            '<div style="font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:0.06em;color:var(--primary);margin-bottom:4px;">Código gerado (coluna U)</div>'+
+            '<div style="display:flex;align-items:center;gap:8px;">'+
+              '<span id="modal-n-u-value" style="font-family:var(--font-mono);font-size:15px;font-weight:600;color:var(--primary);flex:1;word-break:break-all;"></span>'+
+              '<button id="modal-n-copy-btn" style="padding:4px 10px;background:var(--primary);color:#fff;border:none;border-radius:var(--radius);font-size:11px;cursor:pointer;font-family:var(--font);">📋 Copiar</button>'+
+            '</div>'+
+          '</div>'+
+          '<div id="modal-n-error" style="display:none;margin-top:10px;font-size:12px;color:var(--red);background:var(--red-light);padding:8px 10px;border-radius:var(--radius);"></div>'+
+          '<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:1.25rem;">'+
+            '<button onclick="document.getElementById(\'modal-modelo-n\').style.display=\'none\'" style="padding:8px 18px;border:1px solid var(--border-md);border-radius:var(--radius);background:transparent;color:var(--text-2);font-family:var(--font);font-size:13px;cursor:pointer;">Fechar</button>'+
+            '<button onclick="msModeloSalvarN()" id="modal-n-save-btn" style="padding:8px 18px;background:var(--primary);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:13px;font-weight:500;cursor:pointer;">Salvar e ler U</button>'+
+          '</div>'+
+        '</div>'+
+      '</div>';
     window._msOfertaData=data;
   }
 
@@ -5520,6 +5694,114 @@ async function renderCodigosOferta(mc){
   window.msOfertaRecarregar=async function(){showToast('Atualizando...');await loadAndRender();};
   window.msOfertaSetSheet=async function(sheet){activeSheet=sheet;const data=window._msOfertaData||JSON.parse(sessionStorage.getItem('ms_oferta_data')||'{}');const q=document.getElementById('oferta-search')?.value||'';await renderPage(data,q);};
   window.msOfertaBuscar=function(q){const data=window._msOfertaData||JSON.parse(sessionStorage.getItem('ms_oferta_data')||'{}');const rows=data[activeSheet]||[];document.getElementById('oferta-table').innerHTML=buildTable(rows,q);};
+
+  // ── Novo Registro TURMAS ──
+  window.msOfertaNovoRegistro=function(){
+    // Limpa campos do modal
+    TURMAS_COLS.forEach((_,i)=>{const el=document.getElementById('turma-field-'+i);if(el)el.value='';});
+    document.getElementById('modal-turma').style.display='flex';
+    setTimeout(()=>document.getElementById('turma-field-0')?.focus(),50);
+  };
+
+  window.msOfertaSalvarTurma=async function(){
+    const btn=document.querySelector('#modal-turma button[onclick="msOfertaSalvarTurma()"]');
+    const values=TURMAS_COLS.map((_,i)=>(document.getElementById('turma-field-'+i)?.value||''));
+    const allEmpty=values.every(v=>v==='');
+    if(allEmpty){showToast('Preencha ao menos um campo.');return;}
+    if(btn){btn.textContent='Salvando...';btn.disabled=true;}
+    try{
+      await appendRow('Turmas',values);
+      document.getElementById('modal-turma').style.display='none';
+      showToast('Registro adicionado!');
+      await loadAndRender();
+    }catch(e){
+      showToast('Erro: '+e.message);
+    }finally{
+      if(btn){btn.textContent='Salvar';btn.disabled=false;}
+    }
+  };
+
+  // ── Editar coluna N (Modelo) ──
+  window.msModeloEditarN=function(rowIdx){
+    document.getElementById('modal-n-rowIdx').value=rowIdx;
+    // Preenche com valor atual se existir
+    const data=window._msOfertaData||JSON.parse(sessionStorage.getItem('ms_oferta_data')||'{}');
+    const rows=(data['Modelo']||[]);
+    const row=rows[rowIdx]||[];
+    document.getElementById('modal-n-input').value=row[MODELO_COL_N]||'';
+    document.getElementById('modal-n-result').style.display='none';
+    document.getElementById('modal-n-error').style.display='none';
+    document.getElementById('modal-n-save-btn').textContent='Salvar e ler U';
+    document.getElementById('modal-n-save-btn').disabled=false;
+    document.getElementById('modal-modelo-n').style.display='flex';
+    setTimeout(()=>document.getElementById('modal-n-input')?.focus(),50);
+  };
+
+  window.msModeloSalvarN=async function(){
+    const rowIdx=parseInt(document.getElementById('modal-n-rowIdx').value);
+    const valor=document.getElementById('modal-n-input').value.trim();
+    const btn=document.getElementById('modal-n-save-btn');
+    const errEl=document.getElementById('modal-n-error');
+    const resultEl=document.getElementById('modal-n-result');
+    errEl.style.display='none';
+    resultEl.style.display='none';
+    if(!valor){showToast('Cole o código antes de salvar.');return;}
+    btn.textContent='Salvando...';btn.disabled=true;
+    try{
+      // Grava na coluna N (índice 13), rowIdx+1 porque row 0 = header na planilha
+      await writeCellValue('Modelo',rowIdx,MODELO_COL_N,valor);
+      btn.textContent='Aguardando fórmula...';
+      // Aguarda 1.5s para a fórmula calcular e lê a coluna U
+      await new Promise(r=>setTimeout(r,1500));
+      // Lê a linha inteira para pegar U
+      const base=await resolveBase();
+      // Linha na planilha: rowIdx+1 (1-based, rowIdx já considera header como 0)
+      const excelRow=rowIdx+1;
+      const rangeAddr='A'+excelRow+':U'+excelRow;
+      const url=base+'/workbook/worksheets/Modelo/range(address=\''+rangeAddr+'\')';
+      const res=await fetch(url,{headers:{Authorization:'Bearer '+msToken}});
+      if(!res.ok){const e=await res.json();throw new Error(e.error?.message||'Erro ao ler linha');}
+      const lineData=await res.json();
+      const rowValues=(lineData.values||[[]])[0];
+      const uValue=rowValues[MODELO_COL_U]??'';
+
+      // Atualiza cache local
+      const data=window._msOfertaData||JSON.parse(sessionStorage.getItem('ms_oferta_data')||'{}');
+      if(data['Modelo']&&data['Modelo'][rowIdx]){
+        data['Modelo'][rowIdx][MODELO_COL_N]=valor;
+        data['Modelo'][rowIdx][MODELO_COL_U]=uValue;
+        window._msOfertaData=data;
+        sessionStorage.setItem('ms_oferta_data',JSON.stringify(data));
+      }
+
+      // Atualiza a tabela visualmente sem reload
+      const nEl=document.getElementById('modelo-n-val-'+rowIdx);
+      if(nEl) nEl.textContent=valor||'—';
+      const uEl=document.getElementById('modelo-u-val-'+rowIdx);
+      if(uEl){
+        if(uValue){
+          uEl.innerHTML='<span style="display:flex;align-items:center;gap:6px;">'+uValue+
+            '<button onclick="navigator.clipboard.writeText(\''+String(uValue).replace(/'/g,"\\'")+'\')" title="Copiar" style="background:none;border:none;cursor:pointer;font-size:11px;color:var(--text-3);">📋</button></span>';
+        }else{
+          uEl.innerHTML='<span style="color:var(--text-3);">—</span>';
+        }
+      }
+
+      // Exibe resultado no modal
+      document.getElementById('modal-n-u-value').textContent=uValue||'(vazio)';
+      document.getElementById('modal-n-copy-btn').onclick=function(){
+        navigator.clipboard.writeText(uValue||'');
+        showToast('Código copiado!');
+      };
+      resultEl.style.display='block';
+      btn.textContent='✓ Salvo';
+    }catch(e){
+      errEl.textContent='Erro: '+e.message;
+      errEl.style.display='block';
+      btn.textContent='Salvar e ler U';
+      btn.disabled=false;
+    }
+  };
 }
 // ── /CONTROLE CÓDIGO DE OFERTA ──────────────────────────────────────────
 
