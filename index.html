@@ -764,12 +764,12 @@ function buildNav(){
     {id:'copys',label:'Banco de Copys'},{id:'links',label:'Links de Reneg.'},{id:'escala',label:'Escala de Roteamento'},
     {id:'calc',label:'🧮 Calculadoras'},
     {id:'infos',label:'💡 Informacoes Uteis'},
+    {id:'codigosoferta',label:'📊 Cód. de Oferta'},
     {sep:true,label:'CONTA'},
     {id:'perfil',label:'Pagina Inicial'},
     {id:'agenda',label:'📅 Agenda'},
     {id:'caderno',label:'📓 Caderno'},
     {id:'basilisco',label:'Basilisco'},
-    {id:'codigosoferta',label:'📊 Cód. de Oferta'},
     {id:'feedback',label:'Feedbacks'},
   ];
   const opNavs=[
@@ -5375,78 +5375,60 @@ async function renderAgenda(mc){
 async function renderCodigosOferta(mc){
   const MS_CLIENT_ID = '48d20a5c-edc2-4109-8c74-b9169a0e5b98';
   const MS_TENANT_ID = '56f958aa-959f-40ce-9f84-8186316b3219';
-  const MS_SCOPE = 'https://graph.microsoft.com/Files.Read https://graph.microsoft.com/Sites.Read.All';
-  // SharePoint file info extracted from the provided URL
-  const SITE_USER = 'diego_hashtagtreinamentos_com';
-  const FILE_ID = 'A63AE1B4-7478-42F5-BBA1-B2FE7DBF8B9B';
+  const MS_REDIRECT  = 'https://serpentis.vercel.app';
 
   let msToken = sessionStorage.getItem('ms_token') || null;
   let activeSheet = 'Turmas';
 
   async function fetchSheetData(sheetName){
-    // First get the drive item via personal OneDrive
-    const meRes = await fetch('https://graph.microsoft.com/v1.0/me/drive/root/search(q=%27Controle%20C%C3%B3digos%20de%20Oferta%27)?$top=5',{
-      headers:{Authorization:'Bearer '+msToken}
-    });
-    const meData = await meRes.json();
-    // Try to find by searching
+    // Search in personal drive first
+    const searchRes = await fetch(
+      'https://graph.microsoft.com/v1.0/me/drive/root/search(q=%27Controle%27)?$top=10',
+      {headers:{Authorization:'Bearer '+msToken}}
+    );
+    const searchData = await searchRes.json();
     let driveId, itemId;
-    if(meData.value && meData.value.length > 0){
-      const f = meData.value.find(x => x.name && x.name.includes('Controle'));
-      if(f){ driveId = f.parentReference?.driveId; itemId = f.id; }
-    }
-    // If not found via search, use shared with me
+    const f = (searchData.value||[]).find(x=>x.name&&x.name.toLowerCase().includes('controle')&&x.name.toLowerCase().includes('oferta'));
+    if(f){ driveId=f.parentReference?.driveId; itemId=f.id; }
+
+    // Try sharedWithMe if not found
     if(!itemId){
-      const sharedRes = await fetch('https://graph.microsoft.com/v1.0/me/drive/sharedWithMe',{
-        headers:{Authorization:'Bearer '+msToken}
-      });
+      const sharedRes = await fetch('https://graph.microsoft.com/v1.0/me/drive/sharedWithMe',{headers:{Authorization:'Bearer '+msToken}});
       const sharedData = await sharedRes.json();
-      const f = (sharedData.value||[]).find(x => x.name && x.name.includes('Controle'));
-      if(f){ driveId = f.remoteItem?.parentReference?.driveId || f.parentReference?.driveId; itemId = f.remoteItem?.id || f.id; }
+      const sf=(sharedData.value||[]).find(x=>x.name&&x.name.toLowerCase().includes('controle')&&x.name.toLowerCase().includes('oferta'));
+      if(sf){ driveId=sf.remoteItem?.parentReference?.driveId||sf.parentReference?.driveId; itemId=sf.remoteItem?.id||sf.id; }
     }
     if(!itemId) throw new Error('Arquivo não encontrado. Verifique se está compartilhado com esta conta.');
 
-    const base = driveId
-      ? 'https://graph.microsoft.com/v1.0/drives/'+driveId+'/items/'+itemId
-      : 'https://graph.microsoft.com/v1.0/me/drive/items/'+itemId;
+    const base=driveId
+      ?'https://graph.microsoft.com/v1.0/drives/'+driveId+'/items/'+itemId
+      :'https://graph.microsoft.com/v1.0/me/drive/items/'+itemId;
 
-    const wsRes = await fetch(base+'/workbook/worksheets/'+encodeURIComponent(sheetName)+'/usedRange?$select=values',{
-      headers:{Authorization:'Bearer '+msToken}
-    });
-    if(!wsRes.ok){
-      const err = await wsRes.json();
-      throw new Error(err.error?.message || 'Erro ao ler aba '+sheetName);
-    }
-    const wsData = await wsRes.json();
-    return wsData.values || [];
+    const wsRes=await fetch(base+'/workbook/worksheets/'+encodeURIComponent(sheetName)+'/usedRange?$select=values',{headers:{Authorization:'Bearer '+msToken}});
+    if(!wsRes.ok){const err=await wsRes.json();throw new Error(err.error?.message||'Erro ao ler aba '+sheetName);}
+    return (await wsRes.json()).values||[];
   }
 
-  function buildTable(rows, query=''){
-    if(!rows||rows.length===0) return '<div class="empty">Nenhum dado encontrado.</div>';
-    const headers = rows[0];
-    const data = rows.slice(1).filter(r => r.some(c => c !== '' && c !== null));
-    const filtered = query
-      ? data.filter(r => r.some(c => (c+'').toLowerCase().includes(query.toLowerCase())))
-      : data;
+  function buildTable(rows,query=''){
+    if(!rows||rows.length===0) return '<div class="empty">Nenhum dado.</div>';
+    const headers=rows[0];
+    const data=rows.slice(1).filter(r=>r.some(c=>c!==''&&c!==null));
+    const filtered=query?data.filter(r=>r.some(c=>(c+'').toLowerCase().includes(query.toLowerCase()))):data;
     if(filtered.length===0) return '<div class="empty">Nenhum resultado para "'+query+'".</div>';
     return '<div style="overflow-x:auto;">'+
       '<table class="hist-table" style="min-width:600px;">'+
-        '<thead><tr>'+headers.map(h=>'<th>'+h+'</th>').join('')+'</tr></thead>'+
-        '<tbody>'+filtered.map(r=>'<tr>'+r.map(c=>'<td>'+c+'</td>').join('')+'</tr>').join('')+'</tbody>'+
+        '<thead><tr>'+headers.map(h=>'<th>'+(h||'')+'</th>').join('')+'</tr></thead>'+
+        '<tbody>'+filtered.map(r=>'<tr>'+r.map(c=>'<td>'+(c??'')+'</td>').join('')+'</tr>').join('')+'</tbody>'+
       '</table>'+
       '<div style="font-size:11px;color:var(--text-3);margin-top:8px;">'+filtered.length+' registro(s)</div>'+
     '</div>';
   }
 
-  async function renderPage(data, query=''){
-    const rows = data[activeSheet] || [];
-    mc.innerHTML = snakeHtml()+
+  async function renderPage(data,query=''){
+    const rows=data[activeSheet]||[];
+    mc.innerHTML=snakeHtml()+
       '<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">'+
-        '<div>'+
-          '<div class="page-eyebrow">📊 UTILIDADES</div>'+
-          '<div class="page-title">Controle Código de Oferta</div>'+
-          '<div class="page-sub">Dados sincronizados do OneDrive</div>'+
-        '</div>'+
+        '<div><div class="page-eyebrow">📊 UTILIDADES</div><div class="page-title">Controle Código de Oferta</div><div class="page-sub">Dados sincronizados do OneDrive</div></div>'+
         '<div style="display:flex;align-items:center;gap:8px;">'+
           '<div style="width:8px;height:8px;border-radius:50%;background:#22c55e;box-shadow:0 0 6px #22c55e;"></div>'+
           '<span style="font-size:12px;color:var(--text-2);">Conectado</span>'+
@@ -5454,130 +5436,82 @@ async function renderCodigosOferta(mc){
           '<button onclick="msOfertaRecarregar()" style="padding:4px 10px;border:1px solid var(--primary);border-radius:var(--radius);background:transparent;color:var(--primary);font-size:11px;cursor:pointer;font-family:var(--font);">↻ Atualizar</button>'+
         '</div>'+
       '</div>'+
-      // Tabs
       '<div style="display:flex;gap:0;margin-bottom:1rem;border-bottom:2px solid var(--border);">'+
-        ['Turmas','Modelo'].map(s=>
-          '<button data-sheet="'+s+'" onclick="msOfertaSetSheet(this.dataset.sheet)" style="padding:10px 20px;background:none;border:none;border-bottom:'+(activeSheet===s?'2px solid var(--primary)':'2px solid transparent')+';color:'+(activeSheet===s?'var(--primary)':'var(--text-2)')+';font-family:var(--font);font-size:13px;font-weight:'+(activeSheet===s?'600':'400')+';cursor:pointer;margin-bottom:-2px;">'+s+'</button>'
-        ).join('')+
+        ['Turmas','Modelo'].map(s=>'<button data-sheet="'+s+'" onclick="msOfertaSetSheet(this.dataset.sheet)" style="padding:10px 20px;background:none;border:none;border-bottom:'+(activeSheet===s?'2px solid var(--primary)':'2px solid transparent')+';color:'+(activeSheet===s?'var(--primary)':'var(--text-2)')+';font-family:var(--font);font-size:13px;font-weight:'+(activeSheet===s?'600':'400')+';cursor:pointer;margin-bottom:-2px;">'+s+'</button>').join('')+
       '</div>'+
-      // Search
       '<div style="position:relative;margin-bottom:1rem;">'+
         '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="2" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>'+
         '<input id="oferta-search" type="text" value="'+query+'" placeholder="Buscar..." oninput="msOfertaBuscar(this.value)" style="width:100%;padding:10px 14px 10px 38px;border:1px solid var(--border-md);border-radius:var(--radius);background:var(--surface);color:var(--text);font-family:var(--font);font-size:13px;box-sizing:border-box;"/>'+
       '</div>'+
-      '<div class="panel" id="oferta-table">'+buildTable(rows, query)+'</div>';
-
-    window._msOfertaData = data;
+      '<div class="panel" id="oferta-table">'+buildTable(rows,query)+'</div>';
+    window._msOfertaData=data;
   }
 
-  function showLogin(){
-    mc.innerHTML = snakeHtml()+
+  function showLogin(msg){
+    mc.innerHTML=snakeHtml()+
       '<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;">'+
-        '<div class="page-eyebrow">📊 UTILIDADES</div>'+
-        '<div class="page-title">Controle Código de Oferta</div>'+
-        '<div class="page-sub">Conecte sua conta Microsoft para acessar</div>'+
+        '<div class="page-eyebrow">📊 UTILIDADES</div><div class="page-title">Controle Código de Oferta</div><div class="page-sub">Conecte sua conta Microsoft para acessar</div>'+
       '</div>'+
       '<div class="panel" style="text-align:center;padding:3rem;">'+
         '<svg width="48" height="48" viewBox="0 0 23 23" style="margin-bottom:1rem;"><path fill="#f35325" d="M1 1h10v10H1z"/><path fill="#81bc06" d="M12 1h10v10H12z"/><path fill="#05a6f0" d="M1 12h10v10H1z"/><path fill="#ffba08" d="M12 12h10v10H12z"/></svg>'+
         '<div style="font-size:16px;font-weight:500;margin-bottom:8px;">Conectar com Microsoft</div>'+
-        '<div style="font-size:13px;color:var(--text-2);margin-bottom:1.5rem;">Faça login com sua conta da Hashtag Treinamentos para acessar a planilha de Controle de Ofertas.</div>'+
+        '<div style="font-size:13px;color:var(--text-2);margin-bottom:1.5rem;">Faça login com sua conta da Hashtag Treinamentos.</div>'+
         '<button onclick="msOfertaLogin()" style="display:inline-flex;align-items:center;gap:10px;padding:12px 28px;background:#0078d4;color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:14px;font-weight:500;cursor:pointer;">'+
           '<svg width="18" height="18" viewBox="0 0 23 23"><path fill="#f35325" d="M1 1h10v10H1z"/><path fill="#81bc06" d="M12 1h10v10H12z"/><path fill="#05a6f0" d="M1 12h10v10H1z"/><path fill="#ffba08" d="M12 12h10v10H12z"/></svg>'+
           'Entrar com conta Microsoft'+
         '</button>'+
+        (msg?'<div style="margin-top:1rem;font-size:12px;color:#ef4444;">'+msg+'</div>':'')+
         '<div id="ms-login-status" style="margin-top:1rem;font-size:12px;color:var(--text-3);"></div>'+
       '</div>';
   }
 
   async function loadAndRender(){
-    const status = document.getElementById('ms-login-status');
-    if(status) status.textContent = '⏳ Carregando dados...';
     try{
-      const [turmas, modelo] = await Promise.all([
-        fetchSheetData('Turmas'),
-        fetchSheetData('Modelo'),
-      ]);
-      const data = {Turmas: turmas, Modelo: modelo};
-      sessionStorage.setItem('ms_oferta_data', JSON.stringify(data));
+      const [turmas,modelo]=await Promise.all([fetchSheetData('Turmas'),fetchSheetData('Modelo')]);
+      const data={Turmas:turmas,Modelo:modelo};
+      sessionStorage.setItem('ms_oferta_data',JSON.stringify(data));
       await renderPage(data);
     }catch(e){
-      const cached = sessionStorage.getItem('ms_oferta_data');
-      if(cached){
-        await renderPage(JSON.parse(cached));
-        showToast('Dados do cache — '+e.message);
-      } else {
-        if(status) status.textContent = '❌ '+e.message;
-        else showToast('Erro: '+e.message);
-        if(e.message.includes('token')||e.message.includes('401')||e.message.includes('Unauthorized')){
-          msToken=null; sessionStorage.removeItem('ms_token');
-          showLogin();
-        }
-      }
+      const cached=sessionStorage.getItem('ms_oferta_data');
+      if(cached){await renderPage(JSON.parse(cached));showToast('Cache — '+e.message);}
+      else{msToken=null;sessionStorage.removeItem('ms_token');showLogin('Erro: '+e.message);}
     }
   }
 
-  // Show cached data immediately if available
-  const cachedData = sessionStorage.getItem('ms_oferta_data');
-  if(msToken){
-    if(cachedData) renderPage(JSON.parse(cachedData));
-    else showLogin();
-    loadAndRender();
-  } else {
-    showLogin();
-  }
+  const cachedData=sessionStorage.getItem('ms_oferta_data');
+  if(msToken){if(cachedData)renderPage(JSON.parse(cachedData));loadAndRender();}
+  else showLogin();
 
-  window.msOfertaLogin = function(){
+  window.msOfertaLogin=function(){
     if(!window.msal){
       const s=document.createElement('script');
       s.src='https://alcdn.msauth.net/browser/2.38.1/js/msal-browser.min.js';
       s.onload=()=>window._msalDoLogin();
       document.head.appendChild(s);
-    } else { window._msalDoLogin(); }
+    } else window._msalDoLogin();
   };
 
-  window._msalDoLogin = async function(){
+  window._msalDoLogin=async function(){
     const status=document.getElementById('ms-login-status');
-    if(status) status.textContent='⏳ Abrindo janela de login...';
+    if(status) status.textContent='⏳ Abrindo login...';
     try{
-      const pca = new msal.PublicClientApplication({
-        auth:{clientId:MS_CLIENT_ID,authority:'https://login.microsoftonline.com/'+MS_TENANT_ID,redirectUri:window.location.origin},
+      const pca=new msal.PublicClientApplication({
+        auth:{clientId:MS_CLIENT_ID,authority:'https://login.microsoftonline.com/'+MS_TENANT_ID,redirectUri:MS_REDIRECT},
         cache:{cacheLocation:'sessionStorage'}
       });
       await pca.initialize();
-      const resp = await pca.loginPopup({scopes:['User.Read','Files.Read','Sites.Read.All']});
-      const tokenResp = await pca.acquireTokenSilent({scopes:['Files.Read','Sites.Read.All'],account:resp.account});
-      msToken = tokenResp.accessToken;
-      sessionStorage.setItem('ms_token', msToken);
+      const resp=await pca.loginPopup({scopes:['User.Read','Files.Read','Sites.Read.All']});
+      const tokenResp=await pca.acquireTokenSilent({scopes:['Files.Read','Sites.Read.All'],account:resp.account});
+      msToken=tokenResp.accessToken;
+      sessionStorage.setItem('ms_token',msToken);
       await loadAndRender();
-    }catch(e){
-      if(status) status.textContent='❌ '+e.message;
-    }
+    }catch(e){if(status) status.textContent='❌ '+e.message;}
   };
 
-  window.msOfertaDesconectar = function(){
-    msToken=null;
-    sessionStorage.removeItem('ms_token');
-    sessionStorage.removeItem('ms_oferta_data');
-    showLogin();
-  };
-
-  window.msOfertaRecarregar = async function(){
-    showToast('Atualizando...');
-    await loadAndRender();
-  };
-
-  window.msOfertaSetSheet = async function(sheet){
-    activeSheet=sheet;
-    const data=window._msOfertaData||JSON.parse(sessionStorage.getItem('ms_oferta_data')||'{}');
-    const q=document.getElementById('oferta-search')?.value||'';
-    await renderPage(data,q);
-  };
-
-  window.msOfertaBuscar = function(q){
-    const data=window._msOfertaData||JSON.parse(sessionStorage.getItem('ms_oferta_data')||'{}');
-    const rows=data[activeSheet]||[];
-    document.getElementById('oferta-table').innerHTML=buildTable(rows,q);
-  };
+  window.msOfertaDesconectar=function(){msToken=null;sessionStorage.removeItem('ms_token');sessionStorage.removeItem('ms_oferta_data');showLogin();};
+  window.msOfertaRecarregar=async function(){showToast('Atualizando...');await loadAndRender();};
+  window.msOfertaSetSheet=async function(sheet){activeSheet=sheet;const data=window._msOfertaData||JSON.parse(sessionStorage.getItem('ms_oferta_data')||'{}');const q=document.getElementById('oferta-search')?.value||'';await renderPage(data,q);};
+  window.msOfertaBuscar=function(q){const data=window._msOfertaData||JSON.parse(sessionStorage.getItem('ms_oferta_data')||'{}');const rows=data[activeSheet]||[];document.getElementById('oferta-table').innerHTML=buildTable(rows,q);};
 }
 // ── /CONTROLE CÓDIGO DE OFERTA ──────────────────────────────────────────
 
