@@ -1773,7 +1773,7 @@ window.exportarImagemReneg=async function(tipo='vertical'){
   const H=isVert?1536:1024;
   const bgUrl=isVert
     ?'https://res.cloudinary.com/dbd9hpwyb/image/upload/v1781226011/fundo_iso7qh.png'
-    :'https://res.cloudinary.com/dbd9hpwyb/image/upload/v1781226701/3aa62c4e-eacc-43c5-9de9-76353cd30a62_zqkzay.png';
+    :'https://res.cloudinary.com/dbd9hpwyb/image/upload/v1781228115/foto_horizontal_icvrof.png';
 
   const canvas=document.createElement('canvas');
   canvas.width=W;canvas.height=H;
@@ -1861,82 +1861,102 @@ window.exportarImagemReneg=async function(tipo='vertical'){
 
   } else {
     // ── HORIZONTAL 1792×1024 ──
-    // Background has art on right side + big text bottom-left
-    // Data zone: right panel (x>380) with dark overlay only there
-    const dataX=380;const dataW=W-dataX-40;
+    // Left half: photo. Right half: clean/dark — all data goes here.
+    const splitX = 896; // exact midpoint
+    const PAD = 48;
+    const dataX = splitX + PAD;
+    const dataW = W - dataX - PAD;
 
-    // Dark overlay only on data area
-    ctx.fillStyle='rgba(0,0,0,0.78)';
-    roundRect(ctx,dataX,0,W-dataX,H,0);ctx.fill();
+    // Dark gradient overlay on right half only
+    const grad = ctx.createLinearGradient(splitX, 0, W, 0);
+    grad.addColorStop(0,   'rgba(8,8,12,0.92)');
+    grad.addColorStop(0.15,'rgba(8,8,12,0.97)');
+    grad.addColorStop(1,   'rgba(8,8,12,0.97)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(splitX, 0, W - splitX, H);
 
-    // Subtle left overlay so valor box sits cleanly
-    ctx.fillStyle='rgba(0,0,0,0.45)';
-    roundRect(ctx,0,0,380,280,0);ctx.fill();
+    // Soft feather on left edge of overlay
+    const feather = ctx.createLinearGradient(splitX - 80, 0, splitX + 40, 0);
+    feather.addColorStop(0, 'rgba(8,8,12,0)');
+    feather.addColorStop(1, 'rgba(8,8,12,0.92)');
+    ctx.fillStyle = feather;
+    ctx.fillRect(splitX - 80, 0, 120, H);
 
-    // Valor box — top left, above the big art text
-    ctx.fillStyle='rgba(74,222,128,0.2)';
-    roundRect(ctx,40,36,300,90,14);ctx.fill();
-    ctx.strokeStyle='rgba(74,222,128,0.3)';ctx.lineWidth=1.5;
-    roundRect(ctx,40,36,300,90,14);ctx.stroke();
+    // ── Header ──
+    const headerY = 52;
 
-    ctx.fillStyle='rgba(255,255,255,0.55)';
-    ctx.font='600 14px Arial';ctx.textAlign='left';
-    ctx.fillText('VALOR A QUITAR',60,62);
+    // "PARCELAMENTO" tag pill
+    ctx.fillStyle = 'rgba(74,222,128,0.18)';
+    roundRect(ctx, dataX, headerY, 188, 30, 15); ctx.fill();
+    ctx.strokeStyle = 'rgba(74,222,128,0.35)'; ctx.lineWidth = 1;
+    roundRect(ctx, dataX, headerY, 188, 30, 15); ctx.stroke();
+    ctx.fillStyle = '#4ade80';
+    ctx.font = 'bold 12px Arial'; ctx.textAlign = 'left';
+    ctx.fillText('OPÇÕES DE PARCELAMENTO', dataX + 14, headerY + 20);
 
-    ctx.fillStyle='#4ade80';
-    ctx.font='bold 34px Arial';
-    ctx.fillText(fmt(vista),60,96);
+    // Valor a quitar
+    ctx.fillStyle = 'rgba(255,255,255,0.45)';
+    ctx.font = '500 13px Arial';
+    ctx.fillText('VALOR A QUITAR', dataX, headerY + 56);
 
-    // Vertical separator
-    ctx.fillStyle='rgba(74,222,128,0.3)';
-    ctx.fillRect(dataX-1,30,1.5,H-60);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 42px Arial';
+    ctx.fillText(fmt(vista), dataX, headerY + 100);
 
-    // Header right panel
-    ctx.fillStyle='rgba(255,255,255,0.4)';
-    ctx.font='600 13px Arial';ctx.textAlign='left';
-    ctx.fillText(limite+' OPÇÃO(ÕES) DE PARCELAMENTO',dataX+28,40);
+    // Subtexto parcelas restantes
+    ctx.fillStyle = 'rgba(255,255,255,0.3)';
+    ctx.font = '14px Arial';
+    ctx.fillText(restantes + ' parcelas restantes de ' + fmtSimple(valorParc) + ' cada', dataX, headerY + 124);
 
-    ctx.fillStyle='rgba(255,255,255,0.12)';
-    ctx.fillRect(dataX+28,46,dataW-28,1);
+    // Thin green divider
+    ctx.fillStyle = 'rgba(74,222,128,0.5)';
+    ctx.fillRect(dataX, headerY + 138, dataW, 1.5);
 
-    // Cards grid
-    const cols=limite<=4?1:2;
-    const cardW=cols===1?dataW-56:(dataW-56-14)/2;
-    const cardH=90;const cardGap=10;
-    const startY=62;
+    // ── Cards grid ──
+    const cols = 2;
+    const cardGap = 12;
+    const cardW = (dataW - cardGap) / 2;
+    const cardH = 82;
+    const rowGap = 10;
+    const startY = headerY + 154;
 
-    items.forEach((p,i)=>{
-      const col=cols===1?0:i%cols;
-      const row=cols===1?i:Math.floor(i/cols);
-      const x=dataX+28+col*(cardW+14);
-      const y=startY+row*(cardH+cardGap);
-      if(y+cardH>H-30) return;
+    items.forEach((p, i) => {
+      const col = i % cols;
+      const row = Math.floor(i / cols);
+      const x = dataX + col * (cardW + cardGap);
+      const y = startY + row * (cardH + rowGap);
+      if (y + cardH > H - 28) return;
 
-      ctx.fillStyle='rgba(255,255,255,0.07)';
-      roundRect(ctx,x,y,cardW,cardH,12);ctx.fill();
-      ctx.strokeStyle='rgba(255,255,255,0.14)';ctx.lineWidth=1;
-      roundRect(ctx,x,y,cardW,cardH,12);ctx.stroke();
+      // Card bg with subtle glass effect
+      ctx.fillStyle = 'rgba(255,255,255,0.055)';
+      roundRect(ctx, x, y, cardW, cardH, 12); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.10)'; ctx.lineWidth = 1;
+      roundRect(ctx, x, y, cardW, cardH, 12); ctx.stroke();
 
-      ctx.fillStyle='#4ade80';
-      ctx.fillRect(x,y+18,3,cardH-36);
+      // Left green accent
+      ctx.fillStyle = '#4ade80';
+      roundRect(ctx, x, y + 18, 3, cardH - 36, 2); ctx.fill();
 
-      ctx.fillStyle='rgba(255,255,255,0.45)';
-      ctx.font='500 15px Arial';ctx.textAlign='left';
-      ctx.fillText(p+'x de',x+18,y+36);
+      // "Nx" number
+      ctx.fillStyle = 'rgba(255,255,255,0.4)';
+      ctx.font = '500 13px Arial'; ctx.textAlign = 'left';
+      ctx.fillText(p + 'x', x + 18, y + 30);
 
-      ctx.fillStyle='#ffffff';
-      ctx.font='bold 30px Arial';
-      ctx.fillText(fmtSimple(vista/p),x+18,y+68);
+      // Valor em destaque
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 26px Arial';
+      ctx.fillText(fmtSimple(vista / p), x + 18, y + 58);
 
-      ctx.fillStyle='rgba(255,255,255,0.3)';
-      ctx.font='13px Arial';ctx.textAlign='right';
-      ctx.fillText('Total '+fmt(vista),x+cardW-12,y+66);
+      // Total — direita, menor
+      ctx.fillStyle = 'rgba(255,255,255,0.28)';
+      ctx.font = '12px Arial'; ctx.textAlign = 'right';
+      ctx.fillText('Total ' + fmt(vista), x + cardW - 12, y + 56);
     });
 
-    // Footer
-    ctx.fillStyle='rgba(255,255,255,0.2)';
-    ctx.font='14px Arial';ctx.textAlign='center';
-    ctx.fillText('Hashtag Treinamentos',W/2,H-16);
+    // ── Footer ──
+    ctx.fillStyle = 'rgba(255,255,255,0.18)';
+    ctx.font = '13px Arial'; ctx.textAlign = 'left';
+    ctx.fillText('Hashtag Treinamentos', dataX, H - 20);
   }
 
   canvas.toBlob(blob=>{
