@@ -1145,15 +1145,147 @@ window.editarReuniao=async function(){
 };
 
 async function renderHistorico(mc,op){
+  const isCoord=userProfile.role==='coord';
   const snap=await getDocs(collection(db,'historico',op.uid,'semanas'));
-  const rows=[];snap.forEach(d=>rows.push(d.data()));rows.sort((a,b)=>(b.ordem||0)-(a.ordem||0));
-  mc.innerHTML=snakeHtml()+'<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;"><div class="page-eyebrow">* '+(userProfile.role==='coord'?op.nome+' · ':'')+'Historico</div>'+
-    '<div class="page-title">Historico de recuperacao</div><div class="page-sub">Semana a semana</div></div>'+
-    '<div class="page-title">Historico de recuperacao</div><div class="page-sub">Semana a semana</div>'+
-    '<div class="panel">'+(rows.length===0?'<div class="empty">Nenhum registro ainda.</div>':
-    '<table class="hist-table"><thead><tr><th>Semana</th><th>Valor recuperado</th><th>Variacao</th></tr></thead><tbody>'+
-    rows.map(r=>'<tr><td>'+r.semana+'</td><td style="font-weight:500">'+r.valor+'</td><td><span class="pill '+(r.up?'pill-up':'pill-dn')+'">'+r.delta+'</span></td></tr>').join('')+
-    '</tbody></table>')+'</div>';
+  const rows=[];
+  snap.forEach(d=>rows.push({_id:d.id,...d.data()}));
+  rows.sort((a,b)=>(b.ordem||0)-(a.ordem||0));
+
+  function buildHistHtml(){
+    return snakeHtml()+
+    '<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">'+
+      '<div><div class="page-eyebrow">* '+(isCoord?op.nome+' · ':'')+'Historico</div>'+
+      '<div class="page-title">Historico de recuperacao</div>'+
+      '<div class="page-sub">Semana a semana</div></div>'+
+      (isCoord?'<button onclick="histAddSemana()" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:var(--primary);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:12px;font-weight:500;cursor:pointer;">'+
+        '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Nova semana</button>':'')+
+    '</div>'+
+    '<div class="panel">'+
+      (rows.length===0?'<div class="empty">Nenhum registro ainda.</div>':
+      '<table class="hist-table"><thead><tr><th>Semana</th><th>Valor recuperado</th>'+
+        (isCoord?'<th>Atend.</th><th>Cobr.</th><th>Média/dia</th><th>Ticket</th>':'')+
+        '<th>Variação</th>'+
+        (isCoord?'<th style="width:80px;"></th>':'')+
+      '</tr></thead><tbody>'+
+      rows.map(r=>'<tr>'+
+        '<td>'+r.semana+'</td>'+
+        '<td style="font-weight:500">'+r.valor+'</td>'+
+        (isCoord?
+          '<td>'+(r.atend||'—')+'</td>'+
+          '<td>'+(r.cobr||'—')+'</td>'+
+          '<td>'+(r.media||'—')+'</td>'+
+          '<td>'+(r.ticketFmt||r.ticket||'—')+'</td>'
+        :'')+
+        '<td><span class="pill '+(r.up?'pill-up':'pill-dn')+'">'+r.delta+'</span></td>'+
+        (isCoord?
+          '<td style="white-space:nowrap;">'+
+            '<button data-id="'+r._id+'" onclick="histEditSemana(this.dataset.id)" title="Editar" style="padding:3px 8px;border:1px solid var(--border-md);border-radius:5px;background:transparent;cursor:pointer;font-size:11px;color:var(--text-2);margin-right:4px;">✎</button>'+
+            '<button data-id="'+r._id+'" onclick="histDelSemana(this.dataset.id)" title="Excluir" style="padding:3px 8px;border:1px solid rgba(239,68,68,0.3);border-radius:5px;background:transparent;cursor:pointer;font-size:11px;color:#ef4444;">✕</button>'+
+          '</td>'
+        :'')+
+      '</tr>').join('')+
+      '</tbody></table>')+
+    '</div>'+
+    // Edit/Add modal
+    '<div id="hist-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:2000;align-items:center;justify-content:center;">'+
+      '<div style="background:var(--surface);border-radius:var(--radius-lg);padding:1.75rem;width:100%;max-width:480px;box-shadow:0 20px 60px rgba(0,0,0,0.3);">'+
+        '<div style="font-size:16px;font-weight:500;margin-bottom:1.25rem;" id="hist-modal-title">Editar semana</div>'+
+        '<input type="hidden" id="hist-modal-id"/>'+
+        '<input type="hidden" id="hist-modal-uid" value="'+op.uid+'"/>'+
+        '<div class="field"><label>Descrição da semana</label><input id="hm-desc" type="text" placeholder="Semana 24 – 09 a 13 de Jun"/></div>'+
+        '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">'+
+          '<div class="field"><label>Valor (R$)</label><input id="hm-valor" type="number" placeholder="48320"/></div>'+
+          '<div class="field"><label>Atendimentos</label><input id="hm-atend" type="number" placeholder="87"/></div>'+
+          '<div class="field"><label>Cobranças</label><input id="hm-cobr" type="number" placeholder="124"/></div>'+
+        '</div>'+
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">'+
+          '<div class="field"><label>Média atend./dia</label><input id="hm-media" type="number" step="0.1" placeholder="17.4"/></div>'+
+          '<div class="field"><label>Ticket Médio (R$)</label><input id="hm-ticket" type="number" step="0.01" placeholder="555.40"/></div>'+
+        '</div>'+
+        '<div style="display:flex;gap:10px;margin-top:4px;">'+
+          '<button onclick="histModalClose()" style="flex:1;padding:9px;border:1px solid var(--border-md);border-radius:var(--radius);background:transparent;color:var(--text-2);font-family:var(--font);font-size:13px;cursor:pointer;">Cancelar</button>'+
+          '<button onclick="histModalSave()" class="btn-primary" style="flex:2;margin-top:0;">Salvar</button>'+
+        '</div>'+
+      '</div>'+
+    '</div>';
+  }
+
+  mc.innerHTML = buildHistHtml();
+
+  window.histModalClose=function(){ document.getElementById('hist-modal').style.display='none'; };
+
+  window.histEditSemana=function(id){
+    const r=rows.find(x=>x._id===id); if(!r) return;
+    document.getElementById('hist-modal-title').textContent='Editar semana';
+    document.getElementById('hist-modal-id').value=id;
+    document.getElementById('hm-desc').value=r.semana||'';
+    document.getElementById('hm-valor').value=r.raw||'';
+    document.getElementById('hm-atend').value=r.atend||'';
+    document.getElementById('hm-cobr').value=r.cobr||'';
+    document.getElementById('hm-media').value=r.media||'';
+    document.getElementById('hm-ticket').value=r.ticket||'';
+    document.getElementById('hist-modal').style.display='flex';
+  };
+
+  window.histAddSemana=function(){
+    document.getElementById('hist-modal-title').textContent='Nova semana';
+    document.getElementById('hist-modal-id').value='';
+    ['hm-desc','hm-valor','hm-atend','hm-cobr','hm-media','hm-ticket'].forEach(id=>{document.getElementById(id).value='';});
+    document.getElementById('hist-modal').style.display='flex';
+  };
+
+  window.histModalSave=async function(){
+    const semana=document.getElementById('hm-desc').value.trim();
+    const raw=parseFloat(document.getElementById('hm-valor').value)||0;
+    const atend=parseInt(document.getElementById('hm-atend').value)||0;
+    const cobr=parseInt(document.getElementById('hm-cobr').value)||0;
+    const media=parseFloat(document.getElementById('hm-media').value)||0;
+    const ticket=parseFloat(document.getElementById('hm-ticket').value)||0;
+    if(!semana||!raw){showToast('Preencha ao menos descrição e valor.');return;}
+    const valor=raw.toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0});
+    const ticketFmt=ticket?ticket.toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:2}):'';
+    const uid=document.getElementById('hist-modal-uid').value;
+    const id=document.getElementById('hist-modal-id').value;
+    try{
+      if(id){
+        // Edit existing — recalc delta against previous entry
+        const idx=rows.findIndex(x=>x._id===id);
+        const prev=rows[idx+1]; // older entry (rows sorted desc)
+        const pRaw=prev?prev.raw||0:0;
+        const diff=raw-pRaw; const pct=pRaw?((diff/pRaw)*100).toFixed(1):'0.0'; const up=diff>=0;
+        await setDoc(doc(db,'historico',uid,'semanas',id),{semana,valor,raw,atend,cobr,media,ticket,ticketFmt,delta:(up?'+':'')+pct+'%',up,ordem:rows[idx].ordem||0},{merge:true});
+        // Update in local array
+        const r=rows.find(x=>x._id===id);
+        Object.assign(r,{semana,valor,raw,atend,cobr,media,ticket,ticketFmt});
+      } else {
+        // New entry
+        const ordemSnap=await getDocs(collection(db,'historico',uid,'semanas'));
+        const ordem=ordemSnap.size+1;
+        const prev=rows[0]; const pRaw=prev?prev.raw||0:0;
+        const diff=raw-pRaw; const pct=pRaw?((diff/pRaw)*100).toFixed(1):'0.0'; const up=diff>=0;
+        const newRef=doc(collection(db,'historico',uid,'semanas'));
+        await setDoc(newRef,{semana,valor,raw,atend,cobr,media,ticket,ticketFmt,delta:(up?'+':'')+pct+'%',up,ordem});
+        rows.unshift({_id:newRef.id,semana,valor,raw,atend,cobr,media,ticket,ticketFmt,delta:(up?'+':'')+pct+'%',up,ordem});
+      }
+      showToast('Salvo!');
+      document.getElementById('hist-modal').style.display='none';
+      mc.innerHTML=buildHistHtml();
+      // Re-bind events after re-render
+      window.histEditSemana=window.histEditSemana;
+    }catch(e){showToast('Erro ao salvar.');}
+  };
+
+  window.histDelSemana=async function(id){
+    if(!confirm('Excluir esta semana do histórico?')) return;
+    const uid=op.uid;
+    try{
+      await deleteDoc(doc(db,'historico',uid,'semanas',id));
+      const idx=rows.findIndex(x=>x._id===id);
+      if(idx>-1) rows.splice(idx,1);
+      mc.innerHTML=buildHistHtml();
+      showToast('Semana excluída!');
+    }catch(e){showToast('Erro ao excluir.');}
+  };
 }
 
 async function renderNotas(mc,op){
@@ -1255,11 +1387,63 @@ window.deletarFeedback=async function(opUid,fbId){if(!confirm('Excluir?'))return
 async function renderCopys(mc){
   const {canBanco} = getPerms();
   const isCoord = canBanco;
-  const snap=await getDocs(collection(db,'copys'));const items=[];snap.forEach(d=>items.push({id:d.id,...d.data()}));
-  mc.innerHTML=snakeHtml()+'<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;"><div class="page-eyebrow">* Banco de Copys</div><div class="page-title">Copys mais utilizadas</div><div class="page-sub">Textos prontos para uso</div></div>'+
-    (isCoord?'<div class="panel"><div class="panel-title">Adicionar nova copy</div><div style="margin-bottom:10px;"><label class="inp-label">Titulo</label><input type="text" class="inp" id="copy-titulo" placeholder="Ex: Abertura de atendimento"/></div><div style="margin-bottom:8px;"><label class="inp-label">Texto</label><textarea class="inp" id="copy-texto" rows="4" style="resize:vertical;"></textarea></div><div style="margin-bottom:12px;display:flex;align-items:center;gap:8px;"><label style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border:1px solid var(--border-md);border-radius:var(--radius);cursor:pointer;font-size:12px;color:var(--text-2);background:var(--surface);"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>Upload .txt / .docx<input type="file" id="copy-file" accept=".txt,.doc,.docx" onchange="copyFileRead(this)" style="display:none;"/></label><span id="copy-file-label" style="font-size:11px;color:var(--text-3);">Nenhum arquivo</span></div><button class="btn-blue" onclick="salvarCopy()">Adicionar copy</button></div>':'')+
-    (items.length===0?'<div class="panel"><div class="empty">Nenhuma copy ainda.</div></div>':
-    items.map(item=>'<div class="copy-card"><button class="copy-btn" onclick="copiarTexto(\''+item.id+'\')">Copiar</button><div class="copy-card-title">'+item.titulo+'</div><div class="copy-card-body" id="copy-text-'+item.id+'">'+item.texto+'</div>'+(isCoord?'<button class="btn-ghost" style="margin-top:10px;" onclick="deletarCopy(\''+item.id+'\')">Excluir</button>':'')+'</div>').join(''));
+  const snap=await getDocs(collection(db,'copys'));
+  const allItems=[];snap.forEach(d=>allItems.push({id:d.id,...d.data()}));
+  allItems.sort((a,b)=>a.titulo.localeCompare(b.titulo));
+
+  function buildList(q){
+    const filtered=q?allItems.filter(i=>
+      i.titulo.toLowerCase().includes(q.toLowerCase())||
+      i.texto.toLowerCase().includes(q.toLowerCase())
+    ):allItems;
+    if(filtered.length===0) return '<div class="panel"><div class="empty">'+(q?'Nenhuma copy encontrada para "'+q+'"':'Nenhuma copy ainda.')+'</div></div>';
+    return filtered.map(item=>
+      '<div class="copy-card">'+
+        '<button class="copy-btn" onclick="copiarTexto(\''+item.id+'\')" >Copiar</button>'+
+        '<div class="copy-card-title">'+item.titulo+'</div>'+
+        '<div class="copy-card-body" id="copy-text-'+item.id+'">'+item.texto+'</div>'+
+        (isCoord?'<button class="btn-ghost" style="margin-top:10px;" onclick="deletarCopy(\''+item.id+'\')" >Excluir</button>':'')+
+      '</div>'
+    ).join('');
+  }
+
+  mc.innerHTML=snakeHtml()+
+    '<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;">'+
+      '<div class="page-eyebrow">* Banco de Copys</div>'+
+      '<div class="page-title">Copys mais utilizadas</div>'+
+      '<div class="page-sub">Textos prontos para uso</div>'+
+    '</div>'+
+    '<div style="position:relative;margin-bottom:1.25rem;">'+
+      '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="2" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);pointer-events:none;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>'+
+      '<input id="copy-search" type="text" placeholder="Buscar por título ou conteúdo..." oninput="copyFiltrar(this.value)" style="width:100%;padding:11px 14px 11px 40px;border:1px solid var(--border-md);border-radius:var(--radius);background:var(--surface);color:var(--text);font-family:var(--font);font-size:14px;box-sizing:border-box;"/>'+
+      '<span id="copy-count" style="position:absolute;right:14px;top:50%;transform:translateY(-50%);font-size:11px;color:var(--text-3);">'+allItems.length+' copys</span>'+
+    '</div>'+
+    (isCoord?
+      '<div class="panel" style="margin-bottom:1.25rem;"><div class="panel-title">Adicionar nova copy</div>'+
+        '<div style="margin-bottom:10px;"><label class="inp-label">Titulo</label><input type="text" class="inp" id="copy-titulo" placeholder="Ex: Abertura de atendimento"/></div>'+
+        '<div style="margin-bottom:8px;"><label class="inp-label">Texto</label><textarea class="inp" id="copy-texto" rows="4" style="resize:vertical;"></textarea></div>'+
+        '<div style="margin-bottom:12px;display:flex;align-items:center;gap:8px;">'+
+          '<label style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border:1px solid var(--border-md);border-radius:var(--radius);cursor:pointer;font-size:12px;color:var(--text-2);background:var(--surface);">'+
+            '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>'+
+            'Upload .txt / .docx'+
+            '<input type="file" id="copy-file" accept=".txt,.doc,.docx" onchange="copyFileRead(this)" style="display:none;"/>'+
+          '</label>'+
+          '<span id="copy-file-label" style="font-size:11px;color:var(--text-3);">Nenhum arquivo</span>'+
+        '</div>'+
+        '<button class="btn-blue" onclick="salvarCopy()">Adicionar copy</button>'+
+      '</div>'
+    :'')+
+    '<div id="copy-list">'+buildList('')+'</div>';
+
+  window.copyFiltrar=function(q){
+    const list=document.getElementById('copy-list');
+    const countEl=document.getElementById('copy-count');
+    if(list) list.innerHTML=buildList(q);
+    if(countEl){
+      const n=q?allItems.filter(i=>i.titulo.toLowerCase().includes(q.toLowerCase())||i.texto.toLowerCase().includes(q.toLowerCase())).length:allItems.length;
+      countEl.textContent=n+' cop'+(n===1?'y':'ys')+(q?' encontrada'+(n!==1?'s':''):'');
+    }
+  };
 }
 window.copiarTexto=function(id){const el=document.getElementById('copy-text-'+id);navigator.clipboard.writeText(el.textContent).then(()=>showToast('Copiado!')).catch(()=>showToast('Erro.'));};
 window.salvarCopy=async function(){const titulo=document.getElementById('copy-titulo').value.trim();const texto=document.getElementById('copy-texto').value.trim();if(!titulo||!texto){showToast('Preencha titulo e texto.');return;}try{await addDoc(collection(db,'copys'),{titulo,texto,ts:Date.now()});showToast('Copy adicionada!');await renderCopys(document.getElementById('mainContent'));}catch(e){showToast('Erro.');}};
@@ -4836,8 +5020,8 @@ async function renderAgenda(mc){
       const isToday = (d===now.getDate() && viewMonth===now.getMonth() && viewYear===now.getFullYear());
       const key = d+'-'+viewMonth+'-'+viewYear;
       const evs = evMap[key]||[];
-      const dotColors = {semanal:'#22c55e', mensal:'#ef4444', adicional:'#9333ea', pessoal:'#3b82f6', gcal:'#a855f7'};
-      const dotShadows = {semanal:'0 0 5px #22c55e', mensal:'0 0 5px #ef4444', adicional:'0 0 5px #9333ea', pessoal:'0 0 5px #3b82f6', gcal:'0 0 5px #a855f7'};
+      const dotColors = {semanal:'#22c55e', mensal:'#ef4444', adicional:'#9333ea', pessoal:'#3b82f6', gcal:'#eab308'};
+      const dotShadows = {semanal:'0 0 5px #22c55e', mensal:'0 0 5px #ef4444', adicional:'0 0 5px #9333ea', pessoal:'0 0 5px #3b82f6', gcal:'0 0 5px #eab308'};
       const dots = evs.map(e=>'<span style="width:6px;height:6px;border-radius:50%;background:'+(dotColors[e.tipo]||'#fff')+';box-shadow:'+(dotShadows[e.tipo]||'none')+';display:inline-block;margin:0 1px;"></span>').join('');
       const todayBg = isToday?'rgba(76,175,106,0.35)':'transparent';
       calCells += '<div onclick="agendaSelectDay('+d+','+viewMonth+','+viewYear+')" oncontextmenu="agendaContextMenu(event,'+d+','+viewMonth+','+viewYear+')" data-today="'+(isToday?'1':'0')+'" style="cursor:pointer;border-radius:8px;padding:4px 2px;text-align:center;background:'+todayBg+';border:'+(isToday?'1px solid rgba(76,175,106,0.6)':'1px solid transparent')+';transition:background 0.12s;" onmouseover="this.style.background=\'rgba(255,255,255,0.08)\'" onmouseout="this.style.background=(this.dataset.today===\'1\'?\'rgba(76,175,106,0.35)\':\'transparent\')">'+
@@ -4912,7 +5096,7 @@ async function renderAgenda(mc){
               '<div style="display:flex;align-items:center;gap:5px;font-size:11px;color:rgba(255,255,255,0.6);"><span style="width:8px;height:8px;border-radius:50%;background:#ef4444;box-shadow:0 0 6px #ef4444;display:inline-block;"></span>Mensal</div>'+
               '<div style="display:flex;align-items:center;gap:5px;font-size:11px;color:rgba(255,255,255,0.6);"><span style="width:8px;height:8px;border-radius:50%;background:#9333ea;box-shadow:0 0 6px #9333ea;display:inline-block;"></span>Adicionais</div>'+
               '<div style="display:flex;align-items:center;gap:5px;font-size:11px;color:rgba(255,255,255,0.6);"><span style="width:8px;height:8px;border-radius:50%;background:#3b82f6;box-shadow:0 0 6px #3b82f6;display:inline-block;"></span>Pessoal</div>'+
-              '<div style="display:flex;align-items:center;gap:5px;font-size:11px;color:rgba(255,255,255,0.6);"><span style="width:8px;height:8px;border-radius:50%;background:#a855f7;box-shadow:0 0 6px #a855f7;display:inline-block;"></span>Google</div>'+
+              '<div style="display:flex;align-items:center;gap:5px;font-size:11px;color:rgba(255,255,255,0.6);"><span style="width:8px;height:8px;border-radius:50%;background:#eab308;box-shadow:0 0 6px #eab308;display:inline-block;"></span>Google</div>'+
             '</div>'+
           '</div>'+
 
@@ -4928,7 +5112,7 @@ async function renderAgenda(mc){
             // Google Calendar connect button
             '<div style="'+glassStyle+'padding:12px 16px;">'+
               (gcalToken
-                ? '<div style="display:flex;align-items:center;gap:8px;"><span style="width:8px;height:8px;border-radius:50%;background:#a855f7;box-shadow:0 0 6px #a855f7;flex-shrink:0;"></span><span style="font-size:12px;color:rgba(255,255,255,0.7);">Google Agenda conectada</span><button onclick="gcalDesconectar()" style="margin-left:auto;padding:3px 8px;border:1px solid rgba(255,255,255,0.15);border-radius:6px;background:transparent;color:rgba(255,255,255,0.35);font-size:10px;cursor:pointer;font-family:var(--font);">Desconectar</button></div>'
+                ? '<div style="display:flex;align-items:center;gap:8px;"><span style="width:8px;height:8px;border-radius:50%;background:#eab308;box-shadow:0 0 6px #eab308;flex-shrink:0;"></span><span style="font-size:12px;color:rgba(255,255,255,0.7);">Google Agenda conectada</span><button onclick="gcalDesconectar()" style="margin-left:auto;padding:3px 8px;border:1px solid rgba(255,255,255,0.15);border-radius:6px;background:transparent;color:rgba(255,255,255,0.35);font-size:10px;cursor:pointer;font-family:var(--font);">Desconectar</button></div>'
                 : '<button onclick="gcalConectar()" style="width:100%;padding:9px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);border-radius:10px;color:rgba(255,255,255,0.7);font-family:var(--font);font-size:12px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;"><svg width=\'14\' height=\'14\' viewBox=\'0 0 24 24\'><path fill=\'#4285F4\' d=\'M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z\'/><path fill=\'#34A853\' d=\'M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z\'/><path fill=\'#FBBC05\' d=\'M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z\'/><path fill=\'#EA4335\' d=\'M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z\'/></svg>Conectar Google Agenda</button>'
               )+
             '</div>'+
@@ -5003,7 +5187,7 @@ async function renderAgenda(mc){
       list.innerHTML='<div style="font-size:12px;color:rgba(255,255,255,0.3);padding:8px 0;">Nenhum evento neste dia.</div>';
       return;
     }
-    const colors = {semanal:'#22c55e', mensal:'#ef4444', adicional:'#9333ea', pessoal:'#3b82f6', gcal:'#a855f7'};
+    const colors = {semanal:'#22c55e', mensal:'#ef4444', adicional:'#9333ea', pessoal:'#3b82f6', gcal:'#eab308'};
     const meetBtn = (url) => url
       ? '<a href="'+url+'" target="_blank" style="display:inline-flex;align-items:center;gap:4px;margin-top:6px;padding:4px 10px;background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.5);border-radius:20px;color:#4ade80;text-decoration:none;font-size:11px;font-weight:600;text-shadow:0 0 8px rgba(74,222,128,0.6);letter-spacing:0.01em;"><span style="width:5px;height:5px;border-radius:50%;background:#22c55e;box-shadow:0 0 5px #22c55e;display:inline-block;"></span>Entrar no Meet</a>'
       : '';
@@ -5062,7 +5246,7 @@ async function renderAgenda(mc){
       item.onmouseover = ()=>{ item.style.background='rgba(239,68,68,0.15)'; item.style.color='#f87171'; };
       item.onmouseout  = ()=>{ item.style.background=''; item.style.color='rgba(255,255,255,0.75)'; };
 
-      const dotColor = {semanal:'#22c55e',mensal:'#ef4444',pessoal:'#3b82f6',gcal:'#a855f7'}[ev.tipo]||'#fff';
+      const dotColor = {semanal:'#22c55e',mensal:'#ef4444',pessoal:'#3b82f6',gcal:'#eab308'}[ev.tipo]||'#fff';
       const isEditable = ev.tipo==='semanal'||ev.tipo==='mensal'||ev.tipo==='adicional';
       const isGcal = ev.tipo==='gcal';
       item.innerHTML =
