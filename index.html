@@ -5418,15 +5418,28 @@ window.renderFormsplanilhas=function renderFormsplanilhas(mc,activeTab){
   } else if(tabPlanilha){
     bodyHtml='<iframe src="https://docs.google.com/spreadsheets/d/1O7ROraHF_3UQkMBs974-ouUZwD9uJSTJzGt8EQGrCEQ/edit?gid=50821618#gid=50821618" width="100%" height="900" frameborder="0" style="display:block;border:none;border-radius:14px;">Carregando...</iframe>';
   } else if(tabCobranca){
-    bodyHtml='<div style="padding:1.5rem;"><div style="font-size:13px;color:var(--text-2);margin-bottom:1.25rem;">Clique no botao abaixo para abrir o widget flutuante. Arraste-o para qualquer canto da tela.</div>'+
-      '<button onclick="pipCobrancaAbrir()" style="padding:10px 20px;background:var(--primary);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:13px;font-weight:500;cursor:pointer;">Abrir Widget Cobranca Ativa</button>'+
-      '<div style="margin-top:1.5rem;padding:1rem;background:var(--surface);border-radius:var(--radius);border:1px solid var(--border-md);font-size:12px;color:var(--text-3);">'+
-        '<strong style="color:var(--text-2);">Como funciona:</strong><br>'+
-        '1. Clique em Abrir Widget - aparece uma caixa flutuante na tela<br>'+
-        '2. Digite o email do aluno e pressione Enter ou clique em Salvar<br>'+
-        '3. O email e registrado automaticamente na proxima linha vazia da coluna A<br>'+
-        '4. Arraste o widget para qualquer posicao na tela'+
-      '</div></div>';
+    var pipUrl=(window.userProfile&&window.userProfile.pip_url)||'';
+    bodyHtml=
+      '<div style="padding:1.5rem;">'+
+        '<div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px;">Sua URL do Apps Script</div>'+
+        '<div style="font-size:12px;color:var(--text-2);margin-bottom:10px;">Cole aqui a URL do Apps Script da sua planilha de cobranca. Sera salva automaticamente.</div>'+
+        '<div style="display:flex;gap:8px;margin-bottom:1.25rem;">'+
+          '<input id="pip-url-input" type="url" value="'+pipUrl+'" placeholder="https://script.google.com/macros/s/.../exec" style="flex:1;padding:9px 11px;border:1px solid var(--border-md);border-radius:var(--radius);background:var(--bg);color:var(--text);font-family:var(--font);font-size:12px;" onkeydown="if(event.key===\'Enter\')pipSalvarUrl()"/>'+
+          '<button onclick="pipSalvarUrl()" style="padding:9px 16px;background:var(--primary);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap;">Salvar URL</button>'+
+        '</div>'+
+        '<div id="pip-url-status" style="font-size:12px;margin-bottom:1rem;min-height:16px;"></div>'+
+        (pipUrl
+          ? '<button onclick="pipCobrancaAbrir()" style="padding:10px 20px;background:var(--primary);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:13px;font-weight:500;cursor:pointer;">Abrir Widget Cobranca Ativa</button>'
+          : '<div style="padding:10px 16px;background:var(--surface);border:1px dashed var(--border-md);border-radius:var(--radius);font-size:12px;color:var(--text-3);">Cole sua URL acima e salve para liberar o widget.</div>'
+        )+
+        '<div style="margin-top:1.5rem;padding:1rem;background:var(--surface);border-radius:var(--radius);border:1px solid var(--border-md);font-size:12px;color:var(--text-3);">'+
+          '<strong style="color:var(--text-2);">Como funciona:</strong><br>'+
+          '1. Cole a URL do Apps Script da SUA planilha e clique em Salvar URL<br>'+
+          '2. Clique em Abrir Widget - aparece uma caixa flutuante arrastavel<br>'+
+          '3. Digite o email do aluno e pressione Enter ou clique em Salvar<br>'+
+          '4. O email vai para a proxima linha vazia da coluna A da sua planilha'+
+        '</div>'+
+      '</div>';
   }
   mc.innerHTML=snakeHtml()+
     '<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;">'+
@@ -5445,7 +5458,30 @@ window.renderFormsplanilhas=function renderFormsplanilhas(mc,activeTab){
 }
 
 var PIP_APPS_URL='https://script.google.com/macros/s/AKfycbxXK3B7vAvkZXPgpLs1g_9tXr-v-xWQAFq7KkOGI4U8m53Kee_a5mL04KCYAB5bo-e6uA/exec';
+
+window.pipSalvarUrl=async function(){
+  var input=document.getElementById('pip-url-input');
+  var status=document.getElementById('pip-url-status');
+  var url=(input?input.value.trim():'');
+  if(!url||!url.startsWith('https://script.google.com')){
+    if(status){status.style.color='var(--red)';status.textContent='URL invalida. Deve comecar com https://script.google.com';}
+    return;
+  }
+  if(status){status.style.color='var(--text-2)';status.textContent='Salvando...';}
+  try{
+    await setDoc(doc(db,'usuarios',auth.currentUser.uid),{pip_url:url},{merge:true});
+    if(window.userProfile) window.userProfile.pip_url=url;
+    PIP_APPS_URL=url;
+    if(status){status.style.color='#22c55e';status.textContent='URL salva!';}
+    setTimeout(function(){renderFormsplanilhas(document.getElementById('mainContent'),'cobranca');},800);
+  }catch(e){
+    if(status){status.style.color='var(--red)';status.textContent='Erro ao salvar: '+e.message;}
+  }
+};
+
 window.pipCobrancaAbrir=function(){
+  var url=(window.userProfile&&window.userProfile.pip_url)||PIP_APPS_URL;
+  if(!url){showToast('Configure sua URL do Apps Script primeiro.');return;}
   if(document.getElementById('pip-cobranca'))return;
   var pip=document.createElement('div');
   pip.id='pip-cobranca';
@@ -5455,11 +5491,17 @@ window.pipCobrancaAbrir=function(){
       '<span style="font-size:13px;font-weight:600;">Cobranca Ativa</span>'+
       '<button onclick="document.getElementById(\'pip-cobranca\').remove()" style="background:none;border:none;color:#fff;font-size:16px;cursor:pointer;padding:0;line-height:1;">x</button>'+
     '</div>'+
-    '<div style="padding:14px;">'+
-      '<div style="font-size:11px;color:var(--text-2);margin-bottom:8px;">Digite o email e pressione Enter ou clique em Salvar</div>'+
-      '<input id="pip-email-input" type="email" placeholder="email@aluno.com" style="width:100%;padding:9px 11px;border:1px solid var(--border-md);border-radius:var(--radius);background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px;box-sizing:border-box;" onkeydown="if(event.key===\'Enter\')pipCobrancaSalvar()"/>'+
-      '<div id="pip-status" style="font-size:11px;margin-top:6px;min-height:16px;"></div>'+
-      '<button onclick="pipCobrancaSalvar()" style="width:100%;margin-top:10px;padding:9px;background:var(--primary);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:13px;font-weight:500;cursor:pointer;">Salvar na planilha</button>'+
+    '<div style="padding:14px;display:flex;flex-direction:column;gap:10px;">'+
+      '<div>'+
+        '<div style="font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-2);margin-bottom:4px;">Email (Coluna A)</div>'+
+        '<input id="pip-email-input" type="email" placeholder="email@aluno.com" style="width:100%;padding:9px 11px;border:1px solid var(--border-md);border-radius:var(--radius);background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px;box-sizing:border-box;" onkeydown="if(event.key===\'Enter\')pipCobrancaSalvar()"/>'+
+      '</div>'+
+      '<div>'+
+        '<div style="font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-2);margin-bottom:4px;">Cod. de Transacao (Coluna B)</div>'+
+        '<input id="pip-codigo-input" type="text" placeholder="HP0000000000" style="width:100%;padding:9px 11px;border:1px solid var(--border-md);border-radius:var(--radius);background:var(--bg);color:var(--text);font-family:var(--font-mono);font-size:13px;box-sizing:border-box;" onkeydown="if(event.key===\'Enter\')pipCobrancaSalvar()"/>'+
+      '</div>'+
+      '<div id="pip-status" style="font-size:11px;min-height:16px;"></div>'+
+      '<button onclick="pipCobrancaSalvar()" style="width:100%;padding:9px;background:var(--primary);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:13px;font-weight:500;cursor:pointer;">Salvar na planilha</button>'+
     '</div>';
   document.body.appendChild(pip);
   var drag=document.getElementById('pip-drag');
@@ -5469,19 +5511,29 @@ window.pipCobrancaAbrir=function(){
   document.addEventListener('mouseup',function(){dragging=false;if(drag)drag.style.cursor='grab';});
   setTimeout(function(){var el=document.getElementById('pip-email-input');if(el)el.focus();},100);
 };
+
 window.pipCobrancaSalvar=async function(){
-  var input=document.getElementById('pip-email-input');
+  var url=(window.userProfile&&window.userProfile.pip_url)||PIP_APPS_URL;
+  var emailInput=document.getElementById('pip-email-input');
+  var codigoInput=document.getElementById('pip-codigo-input');
   var status=document.getElementById('pip-status');
-  var valor=input?input.value.trim():'';
-  if(!valor){status.style.color='var(--red)';status.textContent='Digite um email antes de salvar.';return;}
+  var email=emailInput?emailInput.value.trim():'';
+  var codigo=codigoInput?codigoInput.value.trim():'';
+  if(!email&&!codigo){status.style.color='var(--red)';status.textContent='Preencha ao menos um campo.';return;}
   status.style.color='var(--text-2)';status.textContent='Salvando...';
   try{
-    var resp=await fetch(PIP_APPS_URL,{method:'POST',body:JSON.stringify({valor:valor}),headers:{'Content-Type':'application/json'}});
+    var resp=await fetch(url,{method:'POST',body:JSON.stringify({email:email,codigo:codigo}),headers:{'Content-Type':'application/json'}});
     var data=await resp.json();
-    if(data.ok){status.style.color='#22c55e';status.textContent='Salvo na linha '+data.linha+'!';input.value='';setTimeout(function(){var s=document.getElementById('pip-status');if(s)s.textContent='';},3000);}
-    else{throw new Error('erro');}
+    if(data.ok){
+      status.style.color='#22c55e';
+      status.textContent='Salvo na linha '+data.linha+'!';
+      if(emailInput)emailInput.value='';
+      if(codigoInput)codigoInput.value='';
+      setTimeout(function(){var s=document.getElementById('pip-status');if(s)s.textContent='';},3000);
+    } else{throw new Error('erro');}
   }catch(e){status.style.color='var(--red)';status.textContent='Erro ao salvar. Tente novamente.';}
 };
+
 
 
 async function renderCodigosOferta(mc){
