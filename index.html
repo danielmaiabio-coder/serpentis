@@ -51,12 +51,47 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
 .btn-primary:hover{background:#0d3a19;}
 .btn-primary:disabled{background:var(--text-3);cursor:not-allowed;}
 .login-err{font-size:12px;color:var(--red);background:var(--red-light);border-radius:var(--radius);padding:8px 12px;margin-top:10px;display:none;}
-#appShell{display:none;height:100vh;flex-direction:row;}
-.sidebar{width:var(--sidebar-w);flex-shrink:0;background:#0d2e14;display:flex;flex-direction:column;height:100vh;overflow-y:auto;font-family:'Inter Tight',sans-serif;}
-.sb-brand{padding:1.25rem 1rem 1rem;border-bottom:1px solid rgba(255,255,255,0.1);}
+#appShell{display:none;height:100vh;flex-direction:column;}
+/* ── NAVBAR HORIZONTAL ── */
+.sidebar{display:none;}
+.navbar{width:100%;background:#0d2e14;display:flex;align-items:center;height:56px;padding:0 1.25rem;gap:1rem;position:relative;z-index:500;flex-shrink:0;}
+.nb-brand{display:flex;align-items:center;gap:10px;margin-right:8px;}
+.nb-brand-name{font-size:20px;font-weight:400;color:#fff;font-family:'UnifrakturMaguntia',serif;letter-spacing:1px;white-space:nowrap;}
+.nb-brand-sub{font-size:10px;color:rgba(255,255,255,0.45);}
+.nb-chocalho{width:36px;height:36px;object-fit:contain;cursor:pointer;transform-origin:center bottom;}
+.nb-chocalho.shaking{animation:chocalho-shake 0.6s ease;}
+.nb-nav{display:flex;align-items:center;gap:2px;flex:1;}
+.nb-item{position:relative;}
+.nb-btn{display:flex;align-items:center;gap:5px;padding:7px 12px;border:none;background:transparent;color:rgba(255,255,255,0.7);font-family:var(--font);font-size:13px;cursor:pointer;border-radius:8px;transition:all 0.15s;white-space:nowrap;}
+.nb-btn:hover,.nb-btn.open{background:rgba(255,255,255,0.1);color:#fff;}
+.nb-btn svg{transition:transform 0.2s;}
+.nb-btn.open svg{transform:rotate(180deg);}
+.nb-btn-single{display:flex;align-items:center;gap:5px;padding:7px 12px;border:none;background:transparent;color:rgba(255,255,255,0.7);font-family:var(--font);font-size:13px;cursor:pointer;border-radius:8px;transition:all 0.15s;white-space:nowrap;}
+.nb-btn-single:hover,.nb-btn-single.active{background:rgba(255,255,255,0.1);color:#fff;}
+.nb-dropdown{position:absolute;top:calc(100% + 8px);left:0;background:#0d2e14;border:1px solid rgba(255,255,255,0.12);border-radius:10px;min-width:200px;padding:6px;box-shadow:0 8px 32px rgba(0,0,0,0.4);display:none;z-index:600;}
+.nb-dropdown.open{display:block;}
+.nb-dd-item{display:flex;align-items:center;gap:9px;padding:8px 10px;font-size:13px;color:rgba(255,255,255,0.7);cursor:pointer;border-radius:7px;transition:all 0.15s;border:none;background:none;width:100%;text-align:left;font-family:var(--font);}
+.nb-dd-item:hover,.nb-dd-item.active{background:rgba(46,139,69,0.35);color:#fff;}
+.nb-dd-item.active{font-weight:500;}
+.nb-badge{display:inline-block;width:7px;height:7px;border-radius:50%;background:#4CAF6A;margin-left:auto;flex-shrink:0;box-shadow:0 0 4px #4CAF6A;}
+.nb-badge.red{background:#e53e3e;box-shadow:0 0 6px #e53e3e;}
+.nb-badge.pulse{animation:pulse-badge 1s infinite;}
+.nb-right{display:flex;align-items:center;gap:8px;margin-left:auto;}
+.nb-avatar{width:32px;height:32px;border-radius:50%;overflow:hidden;flex-shrink:0;cursor:pointer;}
+.nb-avatar img{width:100%;height:100%;object-fit:cover;}
+.nb-user-info{cursor:pointer;}
+.nb-user-name{font-size:13px;font-weight:500;color:#fff;line-height:1.2;}
+.nb-user-role{font-size:10px;color:rgba(255,255,255,0.45);}
+.nb-icon-btn{padding:6px 8px;border:none;background:rgba(255,255,255,0.08);border-radius:8px;cursor:pointer;font-size:15px;line-height:1;transition:background 0.15s;color:#fff;}
+.nb-icon-btn:hover{background:rgba(255,255,255,0.15);}
+.nb-separator{width:1px;height:20px;background:rgba(255,255,255,0.12);margin:0 4px;}
+.nb-notif-btn{position:relative;padding:6px 8px;border:none;background:rgba(255,255,255,0.08);border-radius:8px;cursor:pointer;font-size:15px;line-height:1;color:#fff;transition:background 0.15s;}
+.nb-notif-btn:hover{background:rgba(255,255,255,0.15);}
+.nb-notif-dot{position:absolute;top:4px;right:4px;width:8px;height:8px;border-radius:50%;background:#4CAF6A;box-shadow:0 0 4px #4CAF6A;display:none;}
+.nb-notif-dot.show{display:block;}
 .sb-brand-name{font-size:18px;font-weight:400;color:#fff;font-family:'UnifrakturMaguntia',serif;letter-spacing:1px;}
 .sb-brand-sub{font-size:11px;color:rgba(255,255,255,0.45);margin-top:2px;}
-.sb-label{font-size:9px;font-weight:600;color:rgba(255,255,255,0.28);letter-spacing:0.14em;text-transform:uppercase;padding:18px 1rem 4px;display:flex;align-items:center;gap:8px;}.sb-label::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,rgba(255,255,255,0.14),transparent);min-width:12px;}
+.sb-label{display:none;}
 .nav-item{display:flex;align-items:center;gap:9px;padding:8px 1rem;font-size:12.5px;letter-spacing:0.01em;color:rgba(255,255,255,0.6);cursor:pointer;border-left:2px solid transparent;transition:all 0.15s;user-select:none;}
 .nav-item:hover{background:rgba(255,255,255,0.08);color:#fff;}
 .nav-item.active{color:#fff;background:rgba(46,139,69,0.35);border-left-color:#4CAF6A;font-weight:500;}
@@ -381,26 +416,41 @@ body.dark-mode select{background:#22263a;color:#e8eaf0;border-color:rgba(255,255
   </div>
 </div>
 <div id="appShell">
-  <div class="sidebar">
-    <div class="sb-brand"><div style="display:flex;align-items:flex-end;justify-content:space-between;"><div style="padding-bottom:2px;"><div class="sb-brand-name">Chocalho</div><div class="sb-brand-sub" id="sbSub">—</div></div><img id="chocalho-logo" class="chocalho-img" src="https://res.cloudinary.com/dbd9hpwyb/image/upload/e_bgremoval/q_auto/f_auto/v1780780614/chocalho_1_in7jon.png" style="width:52px;height:52px;object-fit:contain;margin-top:-8px;margin-right:-4px;" onclick="balancaChocalho()"/></div></div>
-    <div id="navItems"></div>
-    <div class="sb-bottom">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-        <div class="sb-user" style="margin-bottom:0;">
-          <div class="sb-avatar" id="sbAvatar"></div>
-          <div><div class="sb-user-name" id="sbName">—</div><div class="sb-user-role" id="sbRole">—</div></div>
-        </div>
-        <a href="https://portal.hashtagtreinamentos.com/" target="_blank" style="display:flex;align-items:center;"><img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/e_bgremoval/q_auto/f_auto/v1780845570/hash_o8megr.jpg" style="width:32px;height:32px;object-fit:contain;opacity:0.85;cursor:pointer;transition:opacity 0.15s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.85"/></a>
-      </div>
-      <div style="display:flex;align-items:center;gap:8px;">
-        <button class="btn-logout" onclick="doLogout()" style="flex:1;">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-          Sair
-        </button>
-        <button id="btn-dark-mode" onclick="toggleDarkMode()" title="Modo noturno" style="padding:7px 10px;background:rgba(255,255,255,0.08);border:none;border-radius:var(--radius);cursor:pointer;font-size:16px;line-height:1;flex-shrink:0;transition:background 0.15s;" onmouseover="this.style.background='rgba(255,255,255,0.15)'" onmouseout="this.style.background='rgba(255,255,255,0.08)'">🌙</button>
+  <nav class="navbar">
+    <!-- Brand -->
+    <div class="nb-brand" onclick="goPage('perfil')" style="cursor:pointer;">
+      <img class="nb-chocalho" id="chocalho-logo" src="https://res.cloudinary.com/dbd9hpwyb/image/upload/e_bgremoval/q_auto/f_auto/v1780780614/chocalho_1_in7jon.png" onclick="event.stopPropagation();balancaChocalho()"/>
+      <div>
+        <div class="nb-brand-name">Chocalho</div>
+        <div class="nb-brand-sub" id="sbSub">—</div>
       </div>
     </div>
-  </div>
+    <!-- Nav groups -->
+    <div class="nb-nav" id="navItems"></div>
+    <!-- Right side -->
+    <div class="nb-right">
+      <div id="nb-notif-wrap"></div>
+      <div class="nb-separator"></div>
+      <a href="https://portal.hashtagtreinamentos.com/" target="_blank" style="display:flex;align-items:center;">
+        <img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/e_bgremoval/q_auto/f_auto/v1780845570/hash_o8megr.jpg" style="width:28px;height:28px;object-fit:contain;opacity:0.8;cursor:pointer;border-radius:6px;transition:opacity 0.15s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.8"/>
+      </a>
+      <div class="nb-separator"></div>
+      <button id="btn-dark-mode" class="nb-icon-btn" onclick="toggleDarkMode()" title="Modo noturno">🌙</button>
+      <button class="nb-icon-btn" onclick="doLogout()" title="Sair" style="display:flex;align-items:center;gap:5px;font-size:12px;padding:6px 10px;">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Sair
+      </button>
+      <div class="nb-separator"></div>
+      <div style="display:flex;align-items:center;gap:8px;cursor:pointer;" onclick="goPage('perfil')">
+        <div class="nb-avatar" id="sbAvatar"></div>
+        <div class="nb-user-info">
+          <div class="nb-user-name" id="sbName">—</div>
+          <div class="nb-user-role" id="sbRole">—</div>
+        </div>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+    </div>
+  </nav>
   <div class="main" id="mainContent">
   </div>
 </div>
@@ -751,70 +801,50 @@ function updateSidebarUser(){
 
 function buildNav(){
   const {isCoord, canLancar} = getPerms();
-  const coordNavs=[
-    {id:'equipe',label:'Minha Equipe'},{id:'lancar',label:'Lancar Resultados'},
-    {id:'escritorio',label:'🗂️ Escritorio'},{id:'relatorio_disparos',label:'📊 Relatorio de Disparos'},
-    {sep:true,label:'PAINEL BRILLE'},
-    {id:'resultado',label:'Resultado'},{id:'historico',label:'Historico'},{id:'notas',label:'Analise de Chat'},{id:'dashboard',label:'Dashboard'},
-    {sep:true,label:'SOCIAL'},
-    {id:'acido',label:'<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780767902/uol_dqoo8g.webp" style="width:16px;height:16px;object-fit:contain;vertical-align:middle;margin-right:4px;"/> Chat da Uol'},{id:'feed',label:'Feed da Cobranca'},
-    {id:'slack',label:'<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780945202/slack_z3jpfx.png" style="width:14px;height:14px;object-fit:contain;vertical-align:middle;margin-right:2px;"/> Slack'},
-    {id:'perfis',label:'👥 Perfis'},
-    {sep:true,label:'UTILIDADES'},
-    {id:'copys',label:'Banco de Copys'},{id:'links',label:'Links de Reneg.'},{id:'escala',label:'Escala de Roteamento'},
-    {id:'calc',label:'🧮 Calculadoras'},
-    {id:'infos',label:'💡 Informacoes Uteis'},
-    {id:'codigosoferta',label:'📊 Cód. de Oferta'},
-    {id:'formsplanilhas',label:'📋 Forms/Planilhas'},
-    {sep:true,label:'CONTA'},
-    {id:'perfil',label:'Pagina Inicial'},
-    {id:'agenda',label:'📅 Agenda'},
-    {id:'caderno',label:'📓 Caderno'},
-    {id:'basilisco',label:'Basilisco'},
-    {id:'feedback',label:'Feedbacks'},
-  ];
-  const opNavs=[
-    {id:'resultado',label:'Resultado'},{id:'historico',label:'Historico'},{id:'notas',label:'Analise de Chat'},{id:'dashboard',label:'Dashboard'},
-    ...(canLancar && !isCoord ? [{id:'lancar',label:'Lancar Resultados'}] : []),
-    {sep:true,label:'SOCIAL'},
-    {id:'acido',label:'<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780767902/uol_dqoo8g.webp" style="width:16px;height:16px;object-fit:contain;vertical-align:middle;margin-right:4px;"/> Chat da Uol'},{id:'feed',label:'Feed da Cobranca'},
-    {id:'slack',label:'<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780945202/slack_z3jpfx.png" style="width:14px;height:14px;object-fit:contain;vertical-align:middle;margin-right:2px;"/> Slack'},
-    {id:'perfis',label:'👥 Perfis'},
-    {sep:true,label:'UTILIDADES'},
-    {id:'copys',label:'Banco de Copys'},{id:'links',label:'Links de Reneg.'},{id:'escala',label:'Escala de Roteamento'},
-    {id:'calc',label:'🧮 Calculadoras'},
-    {id:'infos',label:'💡 Informacoes Uteis'},
-    {id:'codigosoferta',label:'📊 Cód. de Oferta'},
-    {id:'formsplanilhas',label:'📋 Forms/Planilhas'},
-    {sep:true,label:'CONTA'},
-    {id:'perfil',label:'Pagina Inicial'},
-    {id:'agenda',label:'📅 Agenda'},
-    {id:'caderno',label:'📓 Caderno'},
-    {id:'basilisco',label:'Basilisco'},
-    {id:'feedback',label:'Feedbacks'},
-  ];
-  const isViewer=userProfile.role==='viewer';
-  const viewerNavs=[
-    {sep:true,label:'SOCIAL'},
-    {id:'acido',label:'<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780767902/uol_dqoo8g.webp" style="width:16px;height:16px;object-fit:contain;vertical-align:middle;margin-right:4px;"/> Chat da Uol'},{id:'feed',label:'Feed da Cobranca'},
-    {id:'perfis',label:'👥 Perfis'},
-    {sep:true,label:'CONTA'},
-    {id:'perfil',label:'Pagina Inicial'},
-    {id:'agenda',label:'📅 Agenda'},
-    {id:'caderno',label:'📓 Caderno'},
-    {id:'basilisco',label:'Basilisco'},
-  ];
-  const navs=isCoord?coordNavs:(isViewer?viewerNavs:opNavs);
-  document.getElementById('navItems').innerHTML=navs.map(n=>
-    n.sep?'<div class="sb-label"><span>'+n.label+'</span></div>':
-    '<div class="nav-item" id="nav-'+n.id+'" onclick="navigate(\''+n.id+'\')">'+( SVG[n.id]||'')+' '+n.label+'<span class="nav-badge" id="badge-'+n.id+'" style="display:none;"></span></div>'
-  ).join('');
+  const isViewer = userProfile.role==='viewer';
+  const chev='<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>';
+  function ddItem(id,label){return '<button class="nb-dd-item" id="nav-'+id+'" onclick="nbClose();navigate(''+id+'')">'+label+'<span class="nav-badge" id="badge-'+id+'" style="display:none;"></span></button>';}
+  function singleItem(id,label){return '<button class="nb-btn-single" id="nav-'+id+'" onclick="navigate(''+id+'')">'+label+'<span class="nav-badge" id="badge-'+id+'" style="display:none;"></span></button>';}
+  function group(id,label,items){return '<div class="nb-item"><button class="nb-btn" id="nbg-'+id+'" onclick="nbToggle(''+id+'')">'+label+' '+chev+'</button><div class="nb-dropdown" id="nbd-'+id+'">'+items+'</div></div>';}
+  let html='';
+  let painelItems=ddItem('resultado','Resultado')+ddItem('historico','Historico')+ddItem('notas','Analise de Chat')+ddItem('dashboard','Dashboard');
+  html+=group('painel','Painel Brille',painelItems);
+  if(isCoord){
+    let equipeItems=ddItem('equipe','Minha Equipe')+ddItem('lancar','Lancar Resultados')+ddItem('escritorio','Escritorio')+ddItem('relatorio_disparos','Relatorio de Disparos');
+    html+=group('equipe','Visao da Equipe',equipeItems);
+  } else if(canLancar){
+    html+=singleItem('lancar','Lancar Resultados');
+  }
+  let socialItems=ddItem('acido','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780767902/uol_dqoo8g.webp" style="width:15px;height:15px;object-fit:contain;vertical-align:middle;margin-right:4px;"/>Chat da Uol')+ddItem('feed','Feed da Cobranca')+(isViewer?'':ddItem('slack','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780945202/slack_z3jpfx.png" style="width:13px;height:13px;object-fit:contain;vertical-align:middle;margin-right:3px;"/>Slack'))+ddItem('perfis','Perfis');
+  html+=group('social','Social',socialItems);
+  if(!isViewer){
+    let utilItems=ddItem('copys','Banco de Copys')+ddItem('links','Links de Reneg.')+ddItem('escala','Escala de Roteamento')+ddItem('calc','Calculadoras')+ddItem('infos','Informacoes Uteis')+ddItem('codigosoferta','Cod. de Oferta')+ddItem('formsplanilhas','Forms/Planilhas');
+    html+=group('utils','Utilidades',utilItems);
+  }
+  let contaItems=ddItem('perfil','Pagina Inicial')+ddItem('agenda','Agenda')+ddItem('caderno','Caderno')+ddItem('basilisco','Basilisco')+(!isViewer?ddItem('feedback','Feedbacks'):'');
+  html+=group('conta','Conta',contaItems);
+  document.getElementById('navItems').innerHTML=html;
 }
+function nbToggle(id){
+  const btn=document.getElementById('nbg-'+id);
+  const dd=document.getElementById('nbd-'+id);
+  const isOpen=dd.classList.contains('open');
+  nbClose();
+  if(!isOpen){dd.classList.add('open');if(btn)btn.classList.add('open');}
+}
+function nbClose(){
+  document.querySelectorAll('.nb-dropdown.open').forEach(el=>el.classList.remove('open'));
+  document.querySelectorAll('.nb-btn.open').forEach(el=>el.classList.remove('open'));
+}
+window.nbClose=nbClose;
 
+window.goPage=function(p){navigate(p);};
 window.navigate=async function(page){
   activePage=page;
-  document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
+  // Atualiza item ativo na navbar
+  document.querySelectorAll('.nav-item,.nb-dd-item,.nb-btn-single').forEach(el=>el.classList.remove('active'));
   const el=document.getElementById('nav-'+page);if(el)el.classList.add('active');
+  if(typeof nbClose==='function') nbClose();
   hideBadge(page);
   const mc=document.getElementById('mainContent');
   // Reset padding (Basilisco removes it)
