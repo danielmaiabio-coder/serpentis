@@ -5500,7 +5500,8 @@ async function renderCodigosOferta(mc){
     if(!rows||rows.length===0) return '<div class="empty">Nenhum dado.</div>';
     const headers=rows[0];
     const dataRows=rows.slice(1).filter(r=>r.some(c=>c!==''&&c!==null));
-    const filtered=query?dataRows.filter(r=>r.some(c=>(c+'').toLowerCase().includes(query.toLowerCase()))):dataRows;
+    // Turmas: busca só na coluna A (Curso). Modelo: busca em tudo
+    const filtered=query?dataRows.filter(r=>activeSheet==='Turmas'?(r[0]+'').toLowerCase().includes(query.toLowerCase()):r.some(c=>(c+'').toLowerCase().includes(query.toLowerCase()))):dataRows;
     if(filtered.length===0) return '<div class="empty">Nenhum resultado para "'+query+'".</div>';
 
     const isModelo=(activeSheet==='Modelo');
@@ -5547,9 +5548,17 @@ async function renderCodigosOferta(mc){
         }).join('')+'</tr>';
       }).join('')+'</tbody>';
     } else {
-      // TURMAS — tabela completa
-      headHtml='<thead><tr>'+headers.map(h=>'<th>'+(h||'')+'</th>').join('')+'</tr></thead>';
-      bodyHtml='<tbody>'+filtered.map(r=>'<tr>'+r.map(c=>'<td>'+(c??'')+'</td>').join('')+'</tr>').join('')+'</tbody>';
+      // TURMAS — tabela completa com botão Duplicar
+      headHtml='<thead><tr><th style="width:36px;"></th>'+headers.map(h=>'<th>'+(h||'')+'</th>').join('')+'</tr></thead>';
+      bodyHtml='<tbody>'+filtered.map(r=>{
+        const rowJson=JSON.stringify(r).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+        return '<tr>'+
+          '<td style="padding:4px 6px;">'+
+            '<button onclick="msOfertaDuplicar(\'' +rowJson+ '\')" title="Duplicar linha no formulário" style="background:none;border:1px solid var(--border-md);border-radius:4px;cursor:pointer;color:var(--primary);font-size:11px;padding:3px 7px;white-space:nowrap;font-family:var(--font);">⧉</button>'+
+          '</td>'+
+          r.map(c=>'<td>'+(c??'')+'</td>').join('')+
+        '</tr>';
+      }).join('')+'</tbody>';
     }
 
     return '<div style="overflow-x:auto;">'+
@@ -5583,7 +5592,7 @@ async function renderCodigosOferta(mc){
       '</div>'+
       '<div style="position:relative;margin-bottom:1rem;">'+
         '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="2" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>'+
-        '<input id="oferta-search" type="text" value="'+query+'" placeholder="Buscar..." oninput="msOfertaBuscar(this.value)" style="width:100%;padding:10px 14px 10px 38px;border:1px solid var(--border-md);border-radius:var(--radius);background:var(--surface);color:var(--text);font-family:var(--font);font-size:13px;box-sizing:border-box;"/>'+
+        '<input id="oferta-search" type="text" value="'+query+'" placeholder="'+(isTurmas?'Buscar por Curso (coluna A)...':'Buscar...')+'" oninput="msOfertaBuscar(this.value)" style="width:100%;padding:10px 14px 10px 38px;border:1px solid var(--border-md);border-radius:var(--radius);background:var(--surface);color:var(--text);font-family:var(--font);font-size:13px;box-sizing:border-box;"/>'+
       '</div>'+
       '<div class="panel" id="oferta-table">'+buildTable(rows,query)+'</div>'+
       // ── Modal Novo Registro TURMAS ──
@@ -5695,10 +5704,27 @@ async function renderCodigosOferta(mc){
   window.msOfertaSetSheet=async function(sheet){activeSheet=sheet;const data=window._msOfertaData||JSON.parse(sessionStorage.getItem('ms_oferta_data')||'{}');const q=document.getElementById('oferta-search')?.value||'';await renderPage(data,q);};
   window.msOfertaBuscar=function(q){const data=window._msOfertaData||JSON.parse(sessionStorage.getItem('ms_oferta_data')||'{}');const rows=data[activeSheet]||[];document.getElementById('oferta-table').innerHTML=buildTable(rows,q);};
 
+  // ── Duplicar linha: preenche modal com valores da linha clicada ──
+  window.msOfertaDuplicar=function(rowJsonStr){
+    try{
+      const row=JSON.parse(rowJsonStr);
+      TURMAS_COLS.forEach((_,i)=>{
+        const el=document.getElementById('turma-field-'+i);
+        if(el) el.value=(row[i]??'');
+      });
+      const titulo=document.querySelector('#modal-turma div[style*="font-size:15px"]');
+      if(titulo) titulo.textContent='⧉ Duplicar Registro — Turmas';
+      document.getElementById('modal-turma').style.display='flex';
+      setTimeout(()=>document.getElementById('turma-field-0')?.focus(),50);
+    }catch(e){showToast('Erro ao carregar linha: '+e.message);}
+  };
+
   // ── Novo Registro TURMAS ──
   window.msOfertaNovoRegistro=function(){
-    // Limpa campos do modal
+    // Limpa campos e reseta título do modal
     TURMAS_COLS.forEach((_,i)=>{const el=document.getElementById('turma-field-'+i);if(el)el.value='';});
+    const titulo=document.querySelector('#modal-turma div[style*="font-size:15px"]');
+    if(titulo) titulo.textContent='︋ Novo Registro — Turmas';
     document.getElementById('modal-turma').style.display='flex';
     setTimeout(()=>document.getElementById('turma-field-0')?.focus(),50);
   };
