@@ -803,9 +803,9 @@ function buildNav(){
   const {isCoord, canLancar} = getPerms();
   const isViewer = userProfile.role==='viewer';
   const chev='<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>';
-  function ddItem(id,label){return '<button class="nb-dd-item" id="nav-'+id+'" onclick="nbClose();navigate(''+id+'')">'+label+'<span class="nav-badge" id="badge-'+id+'" style="display:none;"></span></button>';}
-  function singleItem(id,label){return '<button class="nb-btn-single" id="nav-'+id+'" onclick="navigate(''+id+'')">'+label+'<span class="nav-badge" id="badge-'+id+'" style="display:none;"></span></button>';}
-  function group(id,label,items){return '<div class="nb-item"><button class="nb-btn" id="nbg-'+id+'" onclick="nbToggle(''+id+'')">'+label+' '+chev+'</button><div class="nb-dropdown" id="nbd-'+id+'">'+items+'</div></div>';}
+  function ddItem(id,label){return '<button class="nb-dd-item" id="nav-'+id+'" data-page="'+id+'" onclick="nbClose();navigate(this.dataset.page)">'+label+'<span class="nav-badge" id="badge-'+id+'" style="display:none;"></span></button>';}
+  function singleItem(id,label){return '<button class="nb-btn-single" id="nav-'+id+'" data-page="'+id+'" onclick="navigate(this.dataset.page)">'+label+'<span class="nav-badge" id="badge-'+id+'" style="display:none;"></span></button>';}
+  function group(id,label,items){return '<div class="nb-item"><button class="nb-btn" id="nbg-'+id+'" data-gid="'+id+'" onclick="nbToggle(this.dataset.gid)">'+label+' '+chev+'</button><div class="nb-dropdown" id="nbd-'+id+'">'+items+'</div></div>';}
   let html='';
   let painelItems=ddItem('resultado','Resultado')+ddItem('historico','Historico')+ddItem('notas','Analise de Chat')+ddItem('dashboard','Dashboard');
   html+=group('painel','Painel Brille',painelItems);
