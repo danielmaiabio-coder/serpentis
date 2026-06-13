@@ -5403,7 +5403,7 @@ async function renderAgenda(mc){
 // ── /AGENDA ───────────────────────────────────────────────────────────────
 
 // ── CONTROLE CÓDIGO DE OFERTA ────────────────────────────────────────────
-function renderFormsplanilhas(mc,activeTab){
+window.renderFormsplanilhas=function renderFormsplanilhas(mc,activeTab){
   activeTab=activeTab||'forms';
   const tabForms=activeTab==='forms';
   mc.innerHTML=snakeHtml()+
