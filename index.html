@@ -765,7 +765,7 @@ function buildNav(){
     {id:'calc',label:'🧮 Calculadoras'},
     {id:'infos',label:'💡 Informacoes Uteis'},
     {id:'codigosoferta',label:'📊 Cód. de Oferta'},
-    {id:'formscancelamentos',label:'📋 Forms - Cancelamentos/Reembolsos'},
+    {id:'formsplanilhas',label:'📋 Forms/Planilhas'},
     {sep:true,label:'CONTA'},
     {id:'perfil',label:'Pagina Inicial'},
     {id:'agenda',label:'📅 Agenda'},
@@ -784,7 +784,7 @@ function buildNav(){
     {id:'copys',label:'Banco de Copys'},{id:'links',label:'Links de Reneg.'},{id:'escala',label:'Escala de Roteamento'},
     {id:'calc',label:'🧮 Calculadoras'},
     {id:'infos',label:'💡 Informacoes Uteis'},
-    {id:'formscancelamentos',label:'📋 Forms - Cancelamentos/Reembolsos'},
+    {id:'formsplanilhas',label:'📋 Forms/Planilhas'},
     {sep:true,label:'CONTA'},
     {id:'perfil',label:'Pagina Inicial'},
     {id:'agenda',label:'📅 Agenda'},
@@ -840,7 +840,7 @@ window.navigate=async function(page){
   if(page==='slack'){await renderSlack(mc);return;}
   if(page==='agenda'){await renderAgenda(mc);return;}
   if(page==='codigosoferta'){await renderCodigosOferta(mc);return;}
-  if(page==='formscancelamentos'){renderFormsCancelamentos(mc);return;}
+  if(page==='formsplanilhas'){renderFormsplanilhas(mc);return;}
   if(page==='basilisco'){await renderBasilisco(mc);return;}
   if(page==='perfis'){await renderPerfis(mc);return;}
   if(page==='caderno'){await renderCaderno(mc);return;}
@@ -5403,15 +5403,24 @@ async function renderAgenda(mc){
 // ── /AGENDA ───────────────────────────────────────────────────────────────
 
 // ── CONTROLE CÓDIGO DE OFERTA ────────────────────────────────────────────
-function renderFormsCancelamentos(mc){
+function renderFormsplanilhas(mc,activeTab){
+  activeTab=activeTab||'forms';
+  const tabForms=activeTab==='forms';
   mc.innerHTML=snakeHtml()+
     '<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;">'+
       '<div class="page-eyebrow">📋 UTILIDADES</div>'+
-      '<div class="page-title">Forms - Cancelamentos / Reembolsos</div>'+
-      '<div class="page-sub">Preencha o formulário abaixo</div>'+
+      '<div class="page-title">Forms / Planilhas</div>'+
+      '<div class="page-sub">Formulários e planilhas do setor</div>'+
+    '</div>'+
+    '<div style="display:flex;gap:0;margin-bottom:1rem;border-bottom:2px solid var(--border);">'+
+      '<button onclick="renderFormsplanilhas(document.getElementById('main-content'),'forms')" style="padding:10px 20px;background:none;border:none;border-bottom:'+(tabForms?'2px solid var(--primary)':'2px solid transparent')+';color:'+(tabForms?'var(--primary)':'var(--text-2)')+';font-family:var(--font);font-size:13px;font-weight:'+(tabForms?'600':'400')+';cursor:pointer;margin-bottom:-2px;">Forms Cancelamentos/Reembolsos</button>'+
+      '<button onclick="renderFormsplanilhas(document.getElementById('main-content'),'planilha')" style="padding:10px 20px;background:none;border:none;border-bottom:'+(!tabForms?'2px solid var(--primary)':'2px solid transparent')+';color:'+(!tabForms?'var(--primary)':'var(--text-2)')+';font-family:var(--font);font-size:13px;font-weight:'+(!tabForms?'600':'400')+';cursor:pointer;margin-bottom:-2px;">Mapeamento de Cancelamento</button>'+
     '</div>'+
     '<div class="panel" style="padding:0;overflow:hidden;border-radius:14px;min-height:80vh;">'+
-      '<iframe src="https://docs.google.com/forms/d/e/1FAIpQLSdQgsfjOUOMaL9xbbRsEW-Z1bDma4GVP0tptxb6ryjuodQkmg/viewform?embedded=true" width="100%" height="900" frameborder="0" marginheight="0" marginwidth="0" style="display:block;border:none;border-radius:14px;">Carregando…</iframe>'+
+      (tabForms
+        ? '<iframe src="https://docs.google.com/forms/d/e/1FAIpQLSdQgsfjOUOMaL9xbbRsEW-Z1bDma4GVP0tptxb6ryjuodQkmg/viewform?embedded=true" width="100%" height="900" frameborder="0" marginheight="0" marginwidth="0" style="display:block;border:none;border-radius:14px;">Carregando…</iframe>'
+        : '<iframe src="https://docs.google.com/spreadsheets/d/1O7ROraHF_3UQkMBs974-ouUZwD9uJSTJzGt8EQGrCEQ/edit?gid=50821618#gid=50821618" width="100%" height="900" frameborder="0" style="display:block;border:none;border-radius:14px;">Carregando…</iframe>'
+      )+
     '</div>';
 }
 
