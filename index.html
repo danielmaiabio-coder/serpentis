@@ -5428,10 +5428,12 @@ window.renderFormsplanilhas=function renderFormsplanilhas(mc,activeTab){
           '<button onclick="pipSalvarUrl()" style="padding:9px 16px;background:var(--primary);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap;">Salvar URL</button>'+
         '</div>'+
         '<div id="pip-url-status" style="font-size:12px;margin-bottom:1rem;min-height:16px;"></div>'+
+        '<div id="pip-btn-area">'+
         (pipUrl
           ? '<button onclick="pipCobrancaAbrir()" style="padding:10px 20px;background:var(--primary);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:13px;font-weight:500;cursor:pointer;">Abrir Widget Cobranca Ativa</button>'
           : '<div style="padding:10px 16px;background:var(--surface);border:1px dashed var(--border-md);border-radius:var(--radius);font-size:12px;color:var(--text-3);">Cole sua URL acima e salve para liberar o widget.</div>'
         )+
+        '</div>'+
         '<div style="margin-top:1.5rem;padding:1rem;background:var(--surface);border-radius:var(--radius);border:1px solid var(--border-md);font-size:12px;color:var(--text-3);">'+
           '<strong style="color:var(--text-2);">Como funciona:</strong><br>'+
           '1. Cole a URL do Apps Script da SUA planilha e clique em Salvar URL<br>'+
@@ -5472,8 +5474,9 @@ window.pipSalvarUrl=async function(){
     await setDoc(doc(db,'usuarios',auth.currentUser.uid),{pip_url:url},{merge:true});
     if(window.userProfile) window.userProfile.pip_url=url;
     PIP_APPS_URL=url;
-    if(status){status.style.color='#22c55e';status.textContent='URL salva!';}
-    setTimeout(function(){renderFormsplanilhas(document.getElementById('mainContent'),'cobranca');},800);
+    if(status){status.style.color='#22c55e';status.textContent='URL salva com sucesso!';}
+    var btnArea=document.getElementById('pip-btn-area');
+    if(btnArea){btnArea.innerHTML='<button onclick="pipCobrancaAbrir()" style="padding:10px 20px;background:var(--primary);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:13px;font-weight:500;cursor:pointer;">Abrir Widget Cobranca Ativa</button>';}
   }catch(e){
     if(status){status.style.color='var(--red)';status.textContent='Erro ao salvar: '+e.message;}
   }
