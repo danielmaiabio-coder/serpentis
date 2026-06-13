@@ -765,6 +765,7 @@ function buildNav(){
     {id:'calc',label:'🧮 Calculadoras'},
     {id:'infos',label:'💡 Informacoes Uteis'},
     {id:'codigosoferta',label:'📊 Cód. de Oferta'},
+    {id:'formscancelamentos',label:'📋 Forms - Cancelamentos/Reembolsos'},
     {sep:true,label:'CONTA'},
     {id:'perfil',label:'Pagina Inicial'},
     {id:'agenda',label:'📅 Agenda'},
@@ -783,6 +784,7 @@ function buildNav(){
     {id:'copys',label:'Banco de Copys'},{id:'links',label:'Links de Reneg.'},{id:'escala',label:'Escala de Roteamento'},
     {id:'calc',label:'🧮 Calculadoras'},
     {id:'infos',label:'💡 Informacoes Uteis'},
+    {id:'formscancelamentos',label:'📋 Forms - Cancelamentos/Reembolsos'},
     {sep:true,label:'CONTA'},
     {id:'perfil',label:'Pagina Inicial'},
     {id:'agenda',label:'📅 Agenda'},
@@ -838,6 +840,7 @@ window.navigate=async function(page){
   if(page==='slack'){await renderSlack(mc);return;}
   if(page==='agenda'){await renderAgenda(mc);return;}
   if(page==='codigosoferta'){await renderCodigosOferta(mc);return;}
+  if(page==='formscancelamentos'){renderFormsCancelamentos(mc);return;}
   if(page==='basilisco'){await renderBasilisco(mc);return;}
   if(page==='perfis'){await renderPerfis(mc);return;}
   if(page==='caderno'){await renderCaderno(mc);return;}
@@ -1159,8 +1162,11 @@ async function renderHistorico(mc,op){
       '<div><div class="page-eyebrow">* '+(isCoord?op.nome+' · ':'')+'Historico</div>'+
       '<div class="page-title">Historico de recuperacao</div>'+
       '<div class="page-sub">Semana a semana</div></div>'+
+      '<div style="display:flex;align-items:center;gap:8px;">'+
+      '<button onclick="histExportarExcel()" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:transparent;color:var(--primary);border:1px solid var(--primary);border-radius:var(--radius);font-family:var(--font);font-size:12px;font-weight:500;cursor:pointer;">📥 Exportar Excel</button>'+
       (isCoord?'<button onclick="histAddSemana()" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:var(--primary);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:12px;font-weight:500;cursor:pointer;">'+
         '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Nova semana</button>':'')+
+      '</div>'+
     '</div>'+
     '<div class="panel">'+
       (rows.length===0?'<div class="empty">Nenhum registro ainda.</div>':
@@ -1213,6 +1219,31 @@ async function renderHistorico(mc,op){
   }
 
   mc.innerHTML = buildHistHtml();
+
+  window.histExportarExcel=function(){
+    if(!window.XLSX){showToast('SheetJS não carregado.');return;}
+    const nomeOp=(isCoord?op.nome:'Meu Histórico');
+    // Monta dados para a planilha
+    const cabecalho=['Semana','Valor Recuperado','Atendimentos','Cobranças','Média Atend./dia','Ticket Médio','Variação','Tendência'];
+    const dados=rows.map(r=>[
+      r.semana||'',
+      r.raw||'',
+      r.atend||'',
+      r.cobr||'',
+      r.media||'',
+      r.ticket||'',
+      r.delta||'',
+      r.up?'▲ Alta':'▼ Baixa'
+    ]);
+    const ws=XLSX.utils.aoa_to_sheet([cabecalho,...dados]);
+    // Largura das colunas
+    ws['!cols']=[{wch:30},{wch:18},{wch:14},{wch:12},{wch:16},{wch:14},{wch:12},{wch:10}];
+    const wb=XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb,ws,'Histórico');
+    const dataHoje=new Date().toLocaleDateString('pt-BR').replace(/\//g,'-');
+    XLSX.writeFile(wb,'Historico_'+nomeOp.replace(/\s/g,'_')+'_'+dataHoje+'.xlsx');
+    showToast('Excel exportado!');
+  };
 
   window.histModalClose=function(){ document.getElementById('hist-modal').style.display='none'; };
 
@@ -5372,6 +5403,18 @@ async function renderAgenda(mc){
 // ── /AGENDA ───────────────────────────────────────────────────────────────
 
 // ── CONTROLE CÓDIGO DE OFERTA ────────────────────────────────────────────
+function renderFormsCancelamentos(mc){
+  mc.innerHTML=snakeHtml()+
+    '<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;">'+
+      '<div class="page-eyebrow">📋 UTILIDADES</div>'+
+      '<div class="page-title">Forms - Cancelamentos / Reembolsos</div>'+
+      '<div class="page-sub">Preencha o formulário abaixo</div>'+
+    '</div>'+
+    '<div class="panel" style="padding:0;overflow:hidden;border-radius:14px;min-height:80vh;">'+
+      '<iframe src="https://docs.google.com/forms/d/e/1FAIpQLSdQgsfjOUOMaL9xbbRsEW-Z1bDma4GVP0tptxb6ryjuodQkmg/viewform?embedded=true" width="100%" height="900" frameborder="0" marginheight="0" marginwidth="0" style="display:block;border:none;border-radius:14px;">Carregando…</iframe>'+
+    '</div>';
+}
+
 async function renderCodigosOferta(mc){
   const MS_CLIENT_ID = '48d20a5c-edc2-4109-8c74-b9169a0e5b98';
   const MS_TENANT_ID = '56f958aa-959f-40ce-9f84-8186316b3219';
