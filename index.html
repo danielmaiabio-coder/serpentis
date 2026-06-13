@@ -5525,7 +5525,9 @@ window.pipCobrancaSalvar=async function(){
   if(!email&&!codigo){status.style.color='var(--red)';status.textContent='Preencha ao menos um campo.';return;}
   status.style.color='var(--text-2)';status.textContent='Salvando...';
   try{
-    var resp=await fetch(url,{method:'POST',body:JSON.stringify({email:email,codigo:codigo}),headers:{'Content-Type':'application/json'}});
+    // Apps Script nao aceita POST com JSON por CORS — usa GET com parametros
+    var params=new URLSearchParams({email:email,codigo:codigo});
+    var resp=await fetch(url+'?'+params.toString(),{method:'GET'});
     var data=await resp.json();
     if(data.ok){
       status.style.color='#22c55e';
