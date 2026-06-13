@@ -5550,11 +5550,12 @@ async function renderCodigosOferta(mc){
     } else {
       // TURMAS — tabela completa com botão Duplicar
       headHtml='<thead><tr><th style="width:36px;"></th>'+headers.map(h=>'<th>'+(h||'')+'</th>').join('')+'</tr></thead>';
-      bodyHtml='<tbody>'+filtered.map(r=>{
-        const rowJson=JSON.stringify(r).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+      // Guarda as linhas filtradas no window para o duplicar acessar por índice
+      window._turmasFiltered=filtered;
+      bodyHtml='<tbody>'+filtered.map((r,ri)=>{
         return '<tr>'+
           '<td style="padding:4px 6px;">'+
-            '<button onclick="msOfertaDuplicar(\'' +rowJson+ '\')" title="Duplicar linha no formulário" style="background:none;border:1px solid var(--border-md);border-radius:4px;cursor:pointer;color:var(--primary);font-size:11px;padding:3px 7px;white-space:nowrap;font-family:var(--font);">⧉</button>'+
+            '<button onclick="msOfertaDuplicar('+ri+')" title="Duplicar linha no formulário" style="background:none;border:1px solid var(--border-md);border-radius:4px;cursor:pointer;color:var(--primary);font-size:11px;padding:3px 7px;white-space:nowrap;font-family:var(--font);">⧉</button>'+
           '</td>'+
           r.map(c=>'<td>'+(c??'')+'</td>').join('')+
         '</tr>';
@@ -5705,9 +5706,10 @@ async function renderCodigosOferta(mc){
   window.msOfertaBuscar=function(q){const data=window._msOfertaData||JSON.parse(sessionStorage.getItem('ms_oferta_data')||'{}');const rows=data[activeSheet]||[];document.getElementById('oferta-table').innerHTML=buildTable(rows,q);};
 
   // ── Duplicar linha: preenche modal com valores da linha clicada ──
-  window.msOfertaDuplicar=function(rowJsonStr){
+  window.msOfertaDuplicar=function(ri){
     try{
-      const row=JSON.parse(rowJsonStr);
+      const row=(window._turmasFiltered||[])[ri];
+      if(!row){showToast('Linha não encontrada.');return;}
       TURMAS_COLS.forEach((_,i)=>{
         const el=document.getElementById('turma-field-'+i);
         if(el) el.value=(row[i]??'');
