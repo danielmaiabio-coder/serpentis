@@ -60,7 +60,7 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
 .nb-brand-sub{font-size:10px;color:rgba(255,255,255,0.45);}
 .nb-chocalho{width:36px;height:36px;object-fit:contain;cursor:pointer;transform-origin:center bottom;}
 .nb-chocalho.shaking{animation:chocalho-shake 0.6s ease;}
-.nb-nav{display:flex;align-items:center;gap:2px;flex:1;}
+.nb-nav{display:flex;align-items:center;gap:2px;flex:1;justify-content:center;}
 .nb-item{position:relative;}
 .nb-btn{display:flex;align-items:center;gap:5px;padding:7px 12px;border:none;background:transparent;color:rgba(255,255,255,0.7);font-family:var(--font);font-size:13px;cursor:pointer;border-radius:8px;transition:all 0.15s;white-space:nowrap;}
 .nb-btn:hover,.nb-btn.open{background:rgba(255,255,255,0.1);color:#fff;}
@@ -431,6 +431,7 @@ body.dark-mode select{background:#22263a;color:#e8eaf0;border-color:rgba(255,255
     <div class="nb-right">
       <div id="nb-notif-wrap"></div>
       <div class="nb-separator"></div>
+      <img id="snakeCornerNav" src="" style="width:28px;height:28px;object-fit:contain;opacity:0.85;cursor:pointer;filter:drop-shadow(0 1px 4px rgba(0,0,0,0.3));transition:transform 0.15s,opacity 0.15s;" onclick="playSnakeSound()" title="Ssss..." onmouseover="this.style.transform='scale(1.12)'" onmouseout="this.style.transform='scale(1)'"/>
       <a href="https://portal.hashtagtreinamentos.com/" target="_blank" style="display:flex;align-items:center;">
         <img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/e_bgremoval/q_auto/f_auto/v1780845570/hash_o8megr.jpg" style="width:28px;height:28px;object-fit:contain;opacity:0.8;cursor:pointer;border-radius:6px;transition:opacity 0.15s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.8"/>
       </a>
@@ -480,6 +481,7 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
 const SNAKE_IMG = "https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780709517/snake_jet3mt.png";
 document.getElementById('loginSnake').src = SNAKE_IMG;
 document.getElementById('snakeCorner').src = SNAKE_IMG;
+const snNav=document.getElementById('snakeCornerNav');if(snNav)snNav.src=SNAKE_IMG;
 
 const firebaseConfig = {
   apiKey: "AIzaSyDyCvWzsvKKgUrekqBRwUIkYbWdRTgkvS8",
@@ -828,6 +830,7 @@ function buildNav(){
 function nbToggle(id){
   const btn=document.getElementById('nbg-'+id);
   const dd=document.getElementById('nbd-'+id);
+  if(!dd) return;
   const isOpen=dd.classList.contains('open');
   nbClose();
   if(!isOpen){dd.classList.add('open');if(btn)btn.classList.add('open');}
@@ -836,6 +839,7 @@ function nbClose(){
   document.querySelectorAll('.nb-dropdown.open').forEach(el=>el.classList.remove('open'));
   document.querySelectorAll('.nb-btn.open').forEach(el=>el.classList.remove('open'));
 }
+window.nbToggle=nbToggle;
 window.nbClose=nbClose;
 
 window.goPage=function(p){navigate(p);};
