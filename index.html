@@ -5406,24 +5406,83 @@ async function renderAgenda(mc){
 // ── CONTROLE CÓDIGO DE OFERTA ────────────────────────────────────────────
 window.renderFormsplanilhas=function renderFormsplanilhas(mc,activeTab){
   activeTab=activeTab||'forms';
-  const tabForms=activeTab==='forms';
+  const tabForms=(activeTab==='forms');
+  const tabPlanilha=(activeTab==='planilha');
+  const tabCobranca=(activeTab==='cobranca');
+  function tabBtn(id,label,active){
+    return '<button onclick="renderFormsplanilhas(document.getElementById(\'mainContent\'),\''+id+'\')" style="padding:10px 20px;background:none;border:none;border-bottom:'+(active?'2px solid var(--primary)':'2px solid transparent')+';color:'+(active?'var(--primary)':'var(--text-2)')+';font-family:var(--font);font-size:13px;font-weight:'+(active?'600':'400')+';cursor:pointer;margin-bottom:-2px;">'+label+'</button>';
+  }
+  var bodyHtml='';
+  if(tabForms){
+    bodyHtml='<iframe src="https://docs.google.com/forms/d/e/1FAIpQLSdQgsfjOUOMaL9xbbRsEW-Z1bDma4GVP0tptxb6ryjuodQkmg/viewform?embedded=true" width="100%" height="900" frameborder="0" marginheight="0" marginwidth="0" style="display:block;border:none;border-radius:14px;">Carregando...</iframe>';
+  } else if(tabPlanilha){
+    bodyHtml='<iframe src="https://docs.google.com/spreadsheets/d/1O7ROraHF_3UQkMBs974-ouUZwD9uJSTJzGt8EQGrCEQ/edit?gid=50821618#gid=50821618" width="100%" height="900" frameborder="0" style="display:block;border:none;border-radius:14px;">Carregando...</iframe>';
+  } else if(tabCobranca){
+    bodyHtml='<div style="padding:1.5rem;"><div style="font-size:13px;color:var(--text-2);margin-bottom:1.25rem;">Clique no botao abaixo para abrir o widget flutuante. Arraste-o para qualquer canto da tela.</div>'+
+      '<button onclick="pipCobrancaAbrir()" style="padding:10px 20px;background:var(--primary);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:13px;font-weight:500;cursor:pointer;">Abrir Widget Cobranca Ativa</button>'+
+      '<div style="margin-top:1.5rem;padding:1rem;background:var(--surface);border-radius:var(--radius);border:1px solid var(--border-md);font-size:12px;color:var(--text-3);">'+
+        '<strong style="color:var(--text-2);">Como funciona:</strong><br>'+
+        '1. Clique em Abrir Widget - aparece uma caixa flutuante na tela<br>'+
+        '2. Digite o email do aluno e pressione Enter ou clique em Salvar<br>'+
+        '3. O email e registrado automaticamente na proxima linha vazia da coluna A<br>'+
+        '4. Arraste o widget para qualquer posicao na tela'+
+      '</div></div>';
+  }
   mc.innerHTML=snakeHtml()+
     '<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;">'+
-      '<div class="page-eyebrow">📋 UTILIDADES</div>'+
+      '<div class="page-eyebrow">UTILIDADES</div>'+
       '<div class="page-title">Forms / Planilhas</div>'+
-      '<div class="page-sub">Formulários e planilhas do setor</div>'+
+      '<div class="page-sub">Formularios e planilhas do setor</div>'+
     '</div>'+
     '<div style="display:flex;gap:0;margin-bottom:1rem;border-bottom:2px solid var(--border);">'+
-      '<button onclick="renderFormsplanilhas(document.getElementById(\'mainContent\'),\'forms\')" style="padding:10px 20px;background:none;border:none;border-bottom:'+(tabForms?'2px solid var(--primary)':'2px solid transparent')+';color:'+(tabForms?'var(--primary)':'var(--text-2)')+';font-family:var(--font);font-size:13px;font-weight:'+(tabForms?'600':'400')+';cursor:pointer;margin-bottom:-2px;">Forms Cancelamentos/Reembolsos</button>'+
-      '<button onclick="renderFormsplanilhas(document.getElementById(\'mainContent\'),\'planilha\')" style="padding:10px 20px;background:none;border:none;border-bottom:'+(!tabForms?'2px solid var(--primary)':'2px solid transparent')+';color:'+(!tabForms?'var(--primary)':'var(--text-2)')+';font-family:var(--font);font-size:13px;font-weight:'+(!tabForms?'600':'400')+';cursor:pointer;margin-bottom:-2px;">Mapeamento de Cancelamento</button>'+
+      tabBtn('forms','Forms Cancelamentos/Reembolsos',tabForms)+
+      tabBtn('planilha','Mapeamento de Cancelamento',tabPlanilha)+
+      tabBtn('cobranca','Cobranca Ativa',tabCobranca)+
     '</div>'+
-    '<div class="panel" style="padding:0;overflow:hidden;border-radius:14px;min-height:80vh;">'+
-      (tabForms
-        ? '<iframe src="https://docs.google.com/forms/d/e/1FAIpQLSdQgsfjOUOMaL9xbbRsEW-Z1bDma4GVP0tptxb6ryjuodQkmg/viewform?embedded=true" width="100%" height="900" frameborder="0" marginheight="0" marginwidth="0" style="display:block;border:none;border-radius:14px;">Carregando…</iframe>'
-        : '<iframe src="https://docs.google.com/spreadsheets/d/1O7ROraHF_3UQkMBs974-ouUZwD9uJSTJzGt8EQGrCEQ/edit?gid=50821618#gid=50821618" width="100%" height="900" frameborder="0" style="display:block;border:none;border-radius:14px;">Carregando…</iframe>'
-      )+
+    '<div class="panel" style="'+(tabForms||tabPlanilha?'padding:0;overflow:hidden;':'')+'border-radius:14px;min-height:'+(tabCobranca?'auto':'80vh')+';">'+
+      bodyHtml+
     '</div>';
 }
+
+var PIP_APPS_URL='https://script.google.com/macros/s/AKfycbxXK3B7vAvkZXPgpLs1g_9tXr-v-xWQAFq7KkOGI4U8m53Kee_a5mL04KCYAB5bo-e6uA/exec';
+window.pipCobrancaAbrir=function(){
+  if(document.getElementById('pip-cobranca'))return;
+  var pip=document.createElement('div');
+  pip.id='pip-cobranca';
+  pip.style.cssText='position:fixed;bottom:80px;right:24px;width:300px;background:var(--surface);border-radius:14px;box-shadow:0 8px 32px rgba(0,0,0,0.25);z-index:9999;font-family:var(--font);border:1px solid var(--border-md);overflow:hidden;';
+  pip.innerHTML=
+    '<div id="pip-drag" style="background:var(--primary);color:#fff;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;cursor:grab;user-select:none;">'+
+      '<span style="font-size:13px;font-weight:600;">Cobranca Ativa</span>'+
+      '<button onclick="document.getElementById(\'pip-cobranca\').remove()" style="background:none;border:none;color:#fff;font-size:16px;cursor:pointer;padding:0;line-height:1;">x</button>'+
+    '</div>'+
+    '<div style="padding:14px;">'+
+      '<div style="font-size:11px;color:var(--text-2);margin-bottom:8px;">Digite o email e pressione Enter ou clique em Salvar</div>'+
+      '<input id="pip-email-input" type="email" placeholder="email@aluno.com" style="width:100%;padding:9px 11px;border:1px solid var(--border-md);border-radius:var(--radius);background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px;box-sizing:border-box;" onkeydown="if(event.key===\'Enter\')pipCobrancaSalvar()"/>'+
+      '<div id="pip-status" style="font-size:11px;margin-top:6px;min-height:16px;"></div>'+
+      '<button onclick="pipCobrancaSalvar()" style="width:100%;margin-top:10px;padding:9px;background:var(--primary);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:13px;font-weight:500;cursor:pointer;">Salvar na planilha</button>'+
+    '</div>';
+  document.body.appendChild(pip);
+  var drag=document.getElementById('pip-drag');
+  var dragging=false,ox=0,oy=0;
+  drag.addEventListener('mousedown',function(e){dragging=true;ox=e.clientX-pip.getBoundingClientRect().left;oy=e.clientY-pip.getBoundingClientRect().top;drag.style.cursor='grabbing';});
+  document.addEventListener('mousemove',function(e){if(!dragging)return;pip.style.left=(e.clientX-ox)+'px';pip.style.top=(e.clientY-oy)+'px';pip.style.right='auto';pip.style.bottom='auto';});
+  document.addEventListener('mouseup',function(){dragging=false;if(drag)drag.style.cursor='grab';});
+  setTimeout(function(){var el=document.getElementById('pip-email-input');if(el)el.focus();},100);
+};
+window.pipCobrancaSalvar=async function(){
+  var input=document.getElementById('pip-email-input');
+  var status=document.getElementById('pip-status');
+  var valor=input?input.value.trim():'';
+  if(!valor){status.style.color='var(--red)';status.textContent='Digite um email antes de salvar.';return;}
+  status.style.color='var(--text-2)';status.textContent='Salvando...';
+  try{
+    var resp=await fetch(PIP_APPS_URL,{method:'POST',body:JSON.stringify({valor:valor}),headers:{'Content-Type':'application/json'}});
+    var data=await resp.json();
+    if(data.ok){status.style.color='#22c55e';status.textContent='Salvo na linha '+data.linha+'!';input.value='';setTimeout(function(){var s=document.getElementById('pip-status');if(s)s.textContent='';},3000);}
+    else{throw new Error('erro');}
+  }catch(e){status.style.color='var(--red)';status.textContent='Erro ao salvar. Tente novamente.';}
+};
+
 
 async function renderCodigosOferta(mc){
   const MS_CLIENT_ID = '48d20a5c-edc2-4109-8c74-b9169a0e5b98';
