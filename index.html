@@ -5163,7 +5163,7 @@ async function renderAgenda(mc){
 
     mc.innerHTML =
       // Full-screen background
-      '<div style="position:relative;width:100%;height:100vh;background:url(https://res.cloudinary.com/dbd9hpwyb/image/upload/v1781053769/foto_rio_keunob.jpg) center/cover no-repeat;overflow-y:auto;">'+
+      '<div style="position:relative;width:100%;height:calc(100vh - 56px);background:url(https://res.cloudinary.com/dbd9hpwyb/image/upload/v1781053769/foto_rio_keunob.jpg) center/cover no-repeat;overflow-y:auto;">'+
       snakeHtml()+
 
       // Content wrapper with padding
@@ -6231,7 +6231,7 @@ async function renderBasilisco(mc){
   mc.style.padding='0';
   mc.style.overflow='hidden';
   mc.innerHTML=
-    '<div style="position:relative;width:100%;height:100vh;background:url(https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780761816/foto_snake_rswhrg.png) center/cover no-repeat;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;">'+
+    '<div style="position:relative;width:100%;height:calc(100vh - 56px);background:url(https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780761816/foto_snake_rswhrg.png) center/cover no-repeat;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;">'+
     snakeHtml()+
 
     // Config panel (coord only) — top right
