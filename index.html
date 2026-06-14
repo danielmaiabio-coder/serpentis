@@ -109,8 +109,7 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
   border:1px solid rgba(255,255,255,0.08);
   box-shadow:inset 0 0 12px rgba(0,0,0,0.6);
   transition:transform 0.1s;
-  margin-left:auto;
-  margin-right:12px;
+  margin-left:16px;
 }
 .led-board:hover{transform:scale(1.03);}
 .led-board.led-green{
@@ -463,12 +462,12 @@ body.dark-mode select{background:#22263a;color:#e8eaf0;border-color:rgba(255,255
         <div class="nb-brand-sub" id="sbSub">—</div>
       </div>
     </div>
-    <!-- Nav groups -->
-    <div class="nb-nav" id="navItems"></div>
     <!-- Letreiro Lembretes (LED scoreboard) -->
     <div id="led-lembrete" class="led-board led-green" onclick="navigate('lembretes')" title="Lembretes">
       <span id="led-lembrete-text">HOJE TA TRANQUILO</span>
     </div>
+    <!-- Nav groups -->
+    <div class="nb-nav" id="navItems"></div>
     <!-- Right side -->
     <div class="nb-right">
       <div id="nb-notif-wrap"></div>
