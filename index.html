@@ -2451,7 +2451,9 @@ async function renderPerfil(mc){
     {nome:'Dourado',bg:'linear-gradient(135deg,#78350f,#d97706)'},
   ];
 
-  mc.innerHTML=snakeHtml()+'<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;"><div style="display:flex;flex-direction:column;align-items:center;text-align:center;padding:0.25rem 0;"><div class="page-eyebrow">* PAGINA INICIAL</div><div class="page-title" style="display:flex;align-items:center;gap:10px;justify-content:center;">Bem vindo ao Chocalho &nbsp;—&nbsp; <img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/e_bgremoval/q_auto/f_auto/v1780780614/chocalho_1_in7jon.png" style="width:36px;height:36px;object-fit:contain;vertical-align:middle;"/></div></div></div>'+
+  mc.innerHTML=snakeHtml()+'<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;"><div style="display:flex;flex-direction:column;align-items:center;text-align:center;padding:0.25rem 0;"><div class="page-eyebrow">* PAGINA INICIAL</div><div class="page-title" style="display:flex;align-items:center;gap:10px;justify-content:center;">Bem vindo ao Chocalho &nbsp;—&nbsp; <img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/e_bgremoval/q_auto/f_auto/v1780780614/chocalho_1_in7jon.png" style="width:36px;height:36px;object-fit:contain;vertical-align:middle;"/></div></div>'+
+    '<div id="lembrete-notif-dot" onclick="navigate(\'lembretes\')" title="Lembretes" style="position:absolute;top:14px;right:14px;width:14px;height:14px;border-radius:50%;background:transparent;cursor:pointer;transition:background 0.2s;"></div>'+
+    '</div>'+
     '<div class="panel" style="padding:0;overflow:hidden;margin-bottom:0.5rem;">'+
     '<div class="perfil-avatar-area">'+
     (perfil.capa
@@ -2648,6 +2650,7 @@ async function renderPerfil(mc){
 
   window._bgTemas = TEMAS;
   window._bgSelecionado = bgAtual;
+  await updateLembreteNotifDot();
 }
 function renderDisparosCard(id, titulo, slots, isCoord){
   const platDefault = id==='pedro'?'WATI PEDRO':'WATI DANIEL';
@@ -5574,12 +5577,14 @@ async function carregarLembretes(){
     listEl.innerHTML='<div style="display:flex;flex-direction:column;gap:10px;">'+itens.map(it=>{
       const isHoje=it.data===hojeStr;
       const isPassado=it.data<hojeStr;
-      const borderColor=isHoje?'#e53e3e':(isPassado?'var(--border-md)':'var(--primary)');
+      const feito=!!it.feito;
+      const borderColor=isHoje&&!feito?'#e53e3e':(isPassado||feito?'var(--border-md)':'var(--primary)');
       const dataFmt=new Date(it.data+'T00:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'});
-      return '<div style="display:flex;align-items:center;gap:14px;padding:14px 16px;background:var(--surface);border-radius:12px;border:1px solid var(--border-md);border-left:4px solid '+borderColor+';'+(isPassado?'opacity:0.5;':'')+'">'+
+      return '<div style="display:flex;align-items:center;gap:14px;padding:14px 16px;background:var(--surface);border-radius:12px;border:1px solid var(--border-md);border-left:4px solid '+borderColor+';'+((isPassado||feito)?'opacity:0.5;':'')+'">'+
+        '<input type="checkbox" '+(feito?'checked':'')+' onchange="toggleLembreteFeito(\''+it.id+'\',this.checked)" title="Marcar como feito" style="width:18px;height:18px;cursor:pointer;accent-color:var(--primary);flex-shrink:0;"/>'+
         '<div style="flex:1;min-width:0;">'+
-          '<div style="font-size:14px;font-weight:600;color:var(--text);'+(isPassado?'text-decoration:line-through;':'')+'">'+(it.descricao||'')+'</div>'+
-          '<div style="font-size:12px;color:var(--text-2);">'+dataFmt+(it.hora?' \u2022 '+it.hora:'')+(isHoje?' \u2022 <span style="color:#e53e3e;font-weight:600;">HOJE</span>':'')+'</div>'+
+          '<div style="font-size:14px;font-weight:600;color:var(--text);'+((isPassado||feito)?'text-decoration:line-through;':'')+'">'+(it.descricao||'')+'</div>'+
+          '<div style="font-size:12px;color:var(--text-2);">'+dataFmt+(it.hora?' \u2022 '+it.hora:'')+(isHoje&&!feito?' \u2022 <span style="color:#e53e3e;font-weight:600;">HOJE</span>':'')+(feito?' \u2022 <span style="color:var(--primary);font-weight:600;">FEITO</span>':'')+'</div>'+
         '</div>'+
         '<button onclick="deletarLembrete(\''+it.id+'\')" title="Excluir" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:16px;padding:4px;">\u2715</button>'+
       '</div>';
@@ -5603,10 +5608,11 @@ window.salvarLembrete=async function(){
   const hora=document.getElementById('lemb-hora').value;
   if(!desc||!data){showToast('Preencha descricao e data.');return;}
   try{
-    await addDoc(collection(db,'usuarios',currentUser.uid,'lembretes'),{descricao:desc,data:data,hora:hora||'',ts:Date.now()});
+    await addDoc(collection(db,'usuarios',currentUser.uid,'lembretes'),{descricao:desc,data:data,hora:hora||'',feito:false,ts:Date.now()});
     document.getElementById('modal-lembrete').style.display='none';
     showToast('Lembrete salvo!');
     await carregarLembretes();
+    await updateLembreteNotifDot();
   }catch(e){showToast('Erro: '+e.message);}
 };
 
@@ -5616,8 +5622,33 @@ window.deletarLembrete=async function(id){
     await deleteDoc(doc(db,'usuarios',currentUser.uid,'lembretes',id));
     showToast('Excluido.');
     await carregarLembretes();
+    await updateLembreteNotifDot();
   }catch(e){showToast('Erro: '+e.message);}
 };
+
+window.toggleLembreteFeito=async function(id,feito){
+  try{
+    await setDoc(doc(db,'usuarios',currentUser.uid,'lembretes',id),{feito:feito},{merge:true});
+    await carregarLembretes();
+    await updateLembreteNotifDot();
+  }catch(e){showToast('Erro: '+e.message);}
+};
+
+// ── Atualiza o ponto de notificacao na pagina inicial ──
+async function updateLembreteNotifDot(){
+  const dot=document.getElementById('lembrete-notif-dot');
+  if(!dot||!currentUser)return;
+  try{
+    const hoje=new Date().toISOString().slice(0,10);
+    const q=query(collection(db,'usuarios',currentUser.uid,'lembretes'),where('data','==',hoje));
+    const snap=await getDocs(q);
+    let pendente=false;
+    snap.forEach(d=>{if(!d.data().feito)pendente=true;});
+    dot.style.background=pendente?'#e53e3e':'transparent';
+    dot.style.boxShadow=pendente?'0 0 8px rgba(229,62,62,0.7)':'none';
+  }catch(e){/* silencioso */}
+}
+window.updateLembreteNotifDot=updateLembreteNotifDot;
 
 // ══════════════════════════════════════════
 // TERMOMETRO DE DEMANDA
