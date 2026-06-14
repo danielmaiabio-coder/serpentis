@@ -69,6 +69,9 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
 .nb-btn-single{display:flex;align-items:center;gap:5px;padding:7px 12px;border:none;background:transparent;color:rgba(255,255,255,0.7);font-family:var(--font);font-size:13px;cursor:pointer;border-radius:8px;transition:all 0.15s;white-space:nowrap;}
 .nb-btn-single:hover,.nb-btn-single.active{background:rgba(255,255,255,0.1);color:#fff;}
 .nb-dropdown{position:absolute;top:calc(100% + 8px);left:0;background:#0d2e14;border:1px solid rgba(255,255,255,0.12);border-radius:10px;min-width:200px;padding:6px;box-shadow:0 8px 32px rgba(0,0,0,0.4);display:none;z-index:600;}
+.nb-item:hover .nb-dropdown{display:block;}
+.nb-item:hover .nb-btn{background:rgba(255,255,255,0.1);color:#fff;}
+.nb-item:hover .nb-btn svg{transform:rotate(180deg);}
 .nb-dropdown.open{display:block;}
 .nb-dd-item{display:flex;align-items:center;gap:9px;padding:8px 10px;font-size:13px;color:rgba(255,255,255,0.7);cursor:pointer;border-radius:7px;transition:all 0.15s;border:none;background:none;width:100%;text-align:left;font-family:var(--font);}
 .nb-dd-item:hover,.nb-dd-item.active{background:rgba(46,139,69,0.35);color:#fff;}
@@ -80,6 +83,11 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
 .nb-avatar{width:32px;height:32px;border-radius:50%;overflow:hidden;flex-shrink:0;cursor:pointer;}
 .nb-avatar img{width:100%;height:100%;object-fit:cover;}
 .nb-user-info{cursor:pointer;}
+.nb-user-wrap{position:relative;}
+.nb-user-dropdown{position:absolute;top:calc(100% + 8px);right:0;background:#0d2e14;border:1px solid rgba(255,255,255,0.12);border-radius:10px;min-width:160px;padding:6px;box-shadow:0 8px 32px rgba(0,0,0,0.4);display:none;z-index:600;}
+.nb-user-wrap:hover .nb-user-dropdown{display:block;}
+.nb-user-wrap:hover .nb-user-chevron{transform:rotate(180deg);}
+.nb-user-chevron{transition:transform 0.2s;}
 .nb-user-name{font-size:13px;font-weight:500;color:#fff;line-height:1.2;}
 .nb-user-role{font-size:10px;color:rgba(255,255,255,0.45);}
 .nb-icon-btn{padding:6px 8px;border:none;background:rgba(255,255,255,0.08);border-radius:8px;cursor:pointer;font-size:15px;line-height:1;transition:background 0.15s;color:#fff;}
@@ -366,7 +374,7 @@ body.dark-mode select{background:#22263a;color:#e8eaf0;border-color:rgba(255,255
 .forgot-link:hover{color:var(--primary);}
 .sound-fab{position:fixed;bottom:24px;left:24px;width:38px;height:38px;border-radius:50%;background:rgba(13,46,20,0.85);border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.7);cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:998;transition:all 0.15s;backdrop-filter:blur(4px);}
 .sound-fab:hover{background:rgba(26,92,42,0.95);color:#fff;}
-.sound-popover{position:fixed;bottom:70px;left:16px;width:280px;background:#0d2e14;border:1px solid rgba(255,255,255,0.12);border-radius:14px;padding:14px;z-index:999;box-shadow:0 8px 32px rgba(0,0,0,0.5);display:none;flex-direction:column;gap:10px;}
+.sound-popover{position:fixed;top:64px;right:140px;width:280px;background:#0d2e14;border:1px solid rgba(255,255,255,0.12);border-radius:14px;padding:14px;z-index:999;box-shadow:0 8px 32px rgba(0,0,0,0.5);display:none;flex-direction:column;gap:10px;}
 .sound-popover.open{display:flex;}
 .sound-pop-label{font-size:10px;font-weight:500;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:0.1em;}
 .sound-pop-pills{display:flex;gap:5px;flex-wrap:wrap;}
@@ -432,23 +440,37 @@ body.dark-mode select{background:#22263a;color:#e8eaf0;border-color:rgba(255,255
       <div id="nb-notif-wrap"></div>
       <div class="nb-separator"></div>
       <img id="snakeCornerNav" src="" style="width:28px;height:28px;object-fit:contain;opacity:0.85;cursor:pointer;filter:drop-shadow(0 1px 4px rgba(0,0,0,0.3));transition:transform 0.15s,opacity 0.15s;" onclick="playSnakeSound()" title="Ssss..." onmouseover="this.style.transform='scale(1.12)'" onmouseout="this.style.transform='scale(1)'"/>
+      <button class="nb-icon-btn" onclick="toggleSoundPopover()" title="Sons de notificacao" style="padding:5px;display:flex;align-items:center;">
+        <img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1781412558/notification-bell_jv13ng.png" style="width:18px;height:18px;object-fit:contain;"/>
+      </button>
       <a href="https://portal.hashtagtreinamentos.com/" target="_blank" style="display:flex;align-items:center;">
         <img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/e_bgremoval/q_auto/f_auto/v1780845570/hash_o8megr.jpg" style="width:28px;height:28px;object-fit:contain;opacity:0.8;cursor:pointer;border-radius:6px;transition:opacity 0.15s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.8"/>
       </a>
       <div class="nb-separator"></div>
       <button id="btn-dark-mode" class="nb-icon-btn" onclick="toggleDarkMode()" title="Modo noturno">🌙</button>
-      <button class="nb-icon-btn" onclick="doLogout()" title="Sair" style="display:flex;align-items:center;gap:5px;font-size:12px;padding:6px 10px;">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-        Sair
-      </button>
       <div class="nb-separator"></div>
-      <div style="display:flex;align-items:center;gap:8px;cursor:pointer;" onclick="goPage('perfil')">
-        <div class="nb-avatar" id="sbAvatar"></div>
-        <div class="nb-user-info">
-          <div class="nb-user-name" id="sbName">—</div>
-          <div class="nb-user-role" id="sbRole">—</div>
+      <div class="nb-user-wrap">
+        <div style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:4px 6px;border-radius:8px;">
+          <div class="nb-avatar" id="sbAvatar"></div>
+          <div class="nb-user-info">
+            <div class="nb-user-name" id="sbName">—</div>
+            <div class="nb-user-role" id="sbRole">—</div>
+          </div>
+          <svg class="nb-user-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2" style="transition:transform 0.2s;"><polyline points="6 9 12 15 18 9"/></svg>
         </div>
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        <div class="nb-user-dropdown">
+          <button class="nb-dd-item" onclick="goPage('perfil')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            Editar perfil
+          </button>
+          <button class="nb-dd-item" onclick="toggleDarkMode()">
+            <span>🌙</span> Modo noturno
+          </button>
+          <button class="nb-dd-item" onclick="doLogout()" style="color:#ff8080;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            Sair
+          </button>
+        </div>
       </div>
     </div>
   </nav>
@@ -469,9 +491,7 @@ body.dark-mode select{background:#22263a;color:#e8eaf0;border-color:rgba(255,255
     </button>
   </div>
 </div>
-<button class="sound-fab" id="soundFab" onclick="toggleSoundPopover()" title="Sons de notificação">
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
-</button>
+<button id="soundFab" style="display:none;"></button>
 <div class="toast" id="toast"></div>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
