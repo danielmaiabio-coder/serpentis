@@ -7,7 +7,7 @@
   <link rel="icon" type="image/png" href="https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780709517/snake_jet3mt.png"/>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=UnifrakturMaguntia&display=swap" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600&family=DM+Mono:wght@400;500&family=DotGothic16&display=swap" rel="stylesheet"/>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 :root{
@@ -96,6 +96,33 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
 .nb-icon-btn{padding:6px 8px;border:none;background:rgba(255,255,255,0.08);border-radius:8px;cursor:pointer;font-size:15px;line-height:1;transition:background 0.15s;color:#fff;}
 .nb-icon-btn:hover{background:rgba(255,255,255,0.15);}
 .nb-separator{width:1px;height:20px;background:rgba(255,255,255,0.12);margin:0 4px;}
+/* ── Letreiro LED Lembretes ── */
+.led-board{
+  font-family:'DotGothic16',monospace;
+  font-size:13px;
+  letter-spacing:2px;
+  padding:6px 16px;
+  border-radius:6px;
+  cursor:pointer;
+  white-space:nowrap;
+  background:#0a0a0a;
+  border:1px solid rgba(255,255,255,0.08);
+  box-shadow:inset 0 0 12px rgba(0,0,0,0.6);
+  transition:transform 0.1s;
+  margin-left:auto;
+  margin-right:12px;
+}
+.led-board:hover{transform:scale(1.03);}
+.led-board.led-green{
+  color:#39ff14;
+  text-shadow:0 0 4px #39ff14,0 0 10px rgba(57,255,20,0.6),0 0 18px rgba(57,255,20,0.3);
+}
+.led-board.led-red{
+  color:#ff2c2c;
+  text-shadow:0 0 4px #ff2c2c,0 0 10px rgba(255,44,44,0.7),0 0 18px rgba(255,44,44,0.4);
+  animation:led-blink 1.4s infinite;
+}
+@keyframes led-blink{0%,60%{opacity:1;}80%{opacity:0.4;}100%{opacity:1;}}
 .nb-notif-btn{position:relative;padding:6px 8px;border:none;background:rgba(255,255,255,0.08);border-radius:8px;cursor:pointer;font-size:15px;line-height:1;color:#fff;transition:background 0.15s;}
 .nb-notif-btn:hover{background:rgba(255,255,255,0.15);}
 .nb-notif-dot{position:absolute;top:4px;right:4px;width:8px;height:8px;border-radius:50%;background:#4CAF6A;box-shadow:0 0 4px #4CAF6A;display:none;}
@@ -438,6 +465,10 @@ body.dark-mode select{background:#22263a;color:#e8eaf0;border-color:rgba(255,255
     </div>
     <!-- Nav groups -->
     <div class="nb-nav" id="navItems"></div>
+    <!-- Letreiro Lembretes (LED scoreboard) -->
+    <div id="led-lembrete" class="led-board led-green" onclick="navigate('lembretes')" title="Lembretes">
+      <span id="led-lembrete-text">HOJE TA TRANQUILO</span>
+    </div>
     <!-- Right side -->
     <div class="nb-right">
       <div id="nb-notif-wrap"></div>
@@ -807,6 +838,7 @@ function getPerms(){
 function setupApp(){
   hide('loginScreen');show('appShell','flex');
   updateSidebarUser();buildNav();
+  updateLedLembrete();
   if(userProfile.bgColor) aplicarBg(userProfile.bgColor);
   // Request notification permission and setup badges
   if('Notification' in window && Notification.permission==='default'){
@@ -902,6 +934,7 @@ window.navigate=async function(page){
   if(page==='codigosoferta'){await renderCodigosOferta(mc);return;}
   if(page==='formsplanilhas'){renderFormsplanilhas(mc);return;}
   if(page==='feriastime'){renderFeriasTime(mc);return;}
+  if(page==='lembretes'){await renderLembretes(mc);return;}
   if(page==='basilisco'){await renderBasilisco(mc);return;}
   if(page==='perfis'){await renderPerfis(mc);return;}
   if(page==='caderno'){await renderCaderno(mc);return;}
@@ -5477,6 +5510,128 @@ async function renderAgenda(mc){
 // ── /AGENDA ───────────────────────────────────────────────────────────────
 
 // ── CONTROLE CÓDIGO DE OFERTA ────────────────────────────────────────────
+// ── LEMBRETES ──
+async function renderLembretes(mc){
+  mc.innerHTML=snakeHtml()+
+    '<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">'+
+      '<div><div class="page-eyebrow">PESSOAL</div><div class="page-title">\u23F0 Lembretes</div><div class="page-sub">Seus lembretes pessoais \u2014 visiveis so para voce</div></div>'+
+      '<button onclick="abrirModalLembrete()" style="padding:8px 16px;background:var(--primary);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:12px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:6px;">'+
+        '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>'+
+        'Novo lembrete'+
+      '</button>'+
+    '</div>'+
+    '<div class="panel" id="lembretes-list">Carregando...</div>'+
+    // Modal
+    '<div id="modal-lembrete" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:3000;align-items:center;justify-content:center;">'+
+      '<div style="background:var(--surface);border-radius:var(--radius-lg);padding:1.5rem;width:100%;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,0.3);">'+
+        '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">'+
+          '<div style="font-size:15px;font-weight:600;">Novo lembrete</div>'+
+          '<button onclick="document.getElementById(\'modal-lembrete\').style.display=\'none\'" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-2);">\u2715</button>'+
+        '</div>'+
+        '<div style="display:flex;flex-direction:column;gap:12px;">'+
+          '<div><label style="display:block;font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-2);margin-bottom:4px;">Descricao</label>'+
+            '<input id="lemb-desc" type="text" placeholder="Ex: Enviar pix para fulano" style="width:100%;padding:9px 11px;border:1px solid var(--border-md);border-radius:var(--radius);background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px;box-sizing:border-box;"/></div>'+
+          '<div style="display:flex;gap:10px;">'+
+            '<div style="flex:1;"><label style="display:block;font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-2);margin-bottom:4px;">Data</label>'+
+              '<input id="lemb-data" type="date" style="width:100%;padding:9px 11px;border:1px solid var(--border-md);border-radius:var(--radius);background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px;box-sizing:border-box;"/></div>'+
+            '<div style="flex:1;"><label style="display:block;font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-2);margin-bottom:4px;">Horario</label>'+
+              '<input id="lemb-hora" type="time" style="width:100%;padding:9px 11px;border:1px solid var(--border-md);border-radius:var(--radius);background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px;box-sizing:border-box;"/></div>'+
+          '</div>'+
+        '</div>'+
+        '<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:1.25rem;">'+
+          '<button onclick="document.getElementById(\'modal-lembrete\').style.display=\'none\'" style="padding:8px 18px;border:1px solid var(--border-md);border-radius:var(--radius);background:transparent;color:var(--text-2);font-family:var(--font);font-size:13px;cursor:pointer;">Cancelar</button>'+
+          '<button onclick="salvarLembrete()" style="padding:8px 18px;background:var(--primary);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:13px;font-weight:500;cursor:pointer;">Salvar</button>'+
+        '</div>'+
+      '</div>'+
+    '</div>';
+  await carregarLembretes();
+}
+
+async function carregarLembretes(){
+  const listEl=document.getElementById('lembretes-list');
+  if(!listEl)return;
+  try{
+    const q=query(collection(db,'usuarios',currentUser.uid,'lembretes'),orderBy('data','asc'),orderBy('hora','asc'));
+    const snap=await getDocs(q);
+    const hojeStr=new Date().toISOString().slice(0,10);
+    const itens=[];
+    snap.forEach(d=>itens.push({id:d.id,...d.data()}));
+    if(itens.length===0){
+      listEl.innerHTML='<div class="empty">Nenhum lembrete cadastrado. Clique em "Novo lembrete" para criar.</div>';
+      return;
+    }
+    listEl.innerHTML='<div style="display:flex;flex-direction:column;gap:10px;">'+itens.map(it=>{
+      const isHoje=it.data===hojeStr;
+      const isPassado=it.data<hojeStr;
+      const borderColor=isHoje?'#e53e3e':(isPassado?'var(--border-md)':'var(--primary)');
+      const dataFmt=new Date(it.data+'T00:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'});
+      return '<div style="display:flex;align-items:center;gap:14px;padding:14px 16px;background:var(--surface);border-radius:12px;border:1px solid var(--border-md);border-left:4px solid '+borderColor+';'+(isPassado?'opacity:0.5;':'')+'">'+
+        '<div style="flex:1;min-width:0;">'+
+          '<div style="font-size:14px;font-weight:600;color:var(--text);'+(isPassado?'text-decoration:line-through;':'')+'">'+(it.descricao||'')+'</div>'+
+          '<div style="font-size:12px;color:var(--text-2);">'+dataFmt+(it.hora?' \u2022 '+it.hora:'')+(isHoje?' \u2022 <span style="color:#e53e3e;font-weight:600;">HOJE</span>':'')+'</div>'+
+        '</div>'+
+        '<button onclick="deletarLembrete(\''+it.id+'\')" title="Excluir" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:16px;padding:4px;">\u2715</button>'+
+      '</div>';
+    }).join('')+'</div>';
+  }catch(e){
+    listEl.innerHTML='<div class="empty">Erro ao carregar: '+e.message+'</div>';
+  }
+}
+
+window.abrirModalLembrete=function(){
+  document.getElementById('lemb-desc').value='';
+  document.getElementById('lemb-data').value=new Date().toISOString().slice(0,10);
+  document.getElementById('lemb-hora').value='';
+  document.getElementById('modal-lembrete').style.display='flex';
+  setTimeout(()=>document.getElementById('lemb-desc')?.focus(),50);
+};
+
+window.salvarLembrete=async function(){
+  const desc=document.getElementById('lemb-desc').value.trim();
+  const data=document.getElementById('lemb-data').value;
+  const hora=document.getElementById('lemb-hora').value;
+  if(!desc||!data){showToast('Preencha descricao e data.');return;}
+  try{
+    await addDoc(collection(db,'usuarios',currentUser.uid,'lembretes'),{descricao:desc,data:data,hora:hora||'',ts:Date.now()});
+    document.getElementById('modal-lembrete').style.display='none';
+    showToast('Lembrete salvo!');
+    await carregarLembretes();
+    await updateLedLembrete();
+  }catch(e){showToast('Erro: '+e.message);}
+};
+
+window.deletarLembrete=async function(id){
+  if(!confirm('Excluir este lembrete?'))return;
+  try{
+    await deleteDoc(doc(db,'usuarios',currentUser.uid,'lembretes',id));
+    showToast('Excluido.');
+    await carregarLembretes();
+    await updateLedLembrete();
+  }catch(e){showToast('Erro: '+e.message);}
+};
+
+// Atualiza o letreiro LED com base nos lembretes de hoje
+async function updateLedLembrete(){
+  const led=document.getElementById('led-lembrete');
+  const txt=document.getElementById('led-lembrete-text');
+  if(!led||!txt||!currentUser)return;
+  try{
+    const hojeStr=new Date().toISOString().slice(0,10);
+    const q=query(collection(db,'usuarios',currentUser.uid,'lembretes'),where('data','==',hojeStr));
+    const snap=await getDocs(q);
+    if(snap.size>0){
+      led.classList.remove('led-green');
+      led.classList.add('led-red');
+      txt.textContent='LEMBRETE PARA HOJE';
+    } else {
+      led.classList.remove('led-red');
+      led.classList.add('led-green');
+      txt.textContent='HOJE TA TRANQUILO';
+    }
+  }catch(e){/* silencioso */}
+}
+window.updateLedLembrete=updateLedLembrete;
+
 window.renderFeriasTime=function renderFeriasTime(mc){
   // ── Dados de ferias (periodos por pessoa) ──
   const FERIAS_PESSOAS=[
