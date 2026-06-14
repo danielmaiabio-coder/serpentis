@@ -5565,11 +5565,16 @@ async function carregarLembretes(){
   const listEl=document.getElementById('lembretes-list');
   if(!listEl)return;
   try{
-    const q=query(collection(db,'usuarios',currentUser.uid,'lembretes'),orderBy('data','asc'),orderBy('hora','asc'));
+    const q=query(collection(db,'usuarios',currentUser.uid,'lembretes'),orderBy('data','asc'));
     const snap=await getDocs(q);
     const hojeStr=new Date().toISOString().slice(0,10);
     const itens=[];
     snap.forEach(d=>itens.push({id:d.id,...d.data()}));
+    // Ordena por hora dentro de cada dia (client-side)
+    itens.sort((a,b)=>{
+      if(a.data!==b.data) return a.data<b.data?-1:1;
+      return (a.hora||'').localeCompare(b.hora||'');
+    });
     if(itens.length===0){
       listEl.innerHTML='<div class="empty">Nenhum lembrete cadastrado. Clique em "Novo lembrete" para criar.</div>';
       return;
