@@ -812,18 +812,18 @@ function buildNav(){
   let painelItems=ddItem('resultado','Resultado')+ddItem('historico','Historico')+ddItem('notas','Analise de Chat')+ddItem('dashboard','Dashboard');
   html+=group('painel','Painel Brille',painelItems);
   if(isCoord){
-    let equipeItems=ddItem('equipe','Minha Equipe')+ddItem('lancar','Lancar Resultados')+ddItem('escritorio','Escritorio')+ddItem('relatorio_disparos','Relatorio de Disparos');
+    let equipeItems=ddItem('equipe','Minha Equipe')+ddItem('lancar','Lancar Resultados')+ddItem('escritorio','🗂️ Escritorio')+ddItem('relatorio_disparos','📊 Relatorio de Disparos');
     html+=group('equipe','Visao da Equipe',equipeItems);
   } else if(canLancar){
     html+=singleItem('lancar','Lancar Resultados');
   }
-  let socialItems=ddItem('acido','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780767902/uol_dqoo8g.webp" style="width:15px;height:15px;object-fit:contain;vertical-align:middle;margin-right:4px;"/>Chat da Uol')+ddItem('feed','Feed da Cobranca')+(isViewer?'':ddItem('slack','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780945202/slack_z3jpfx.png" style="width:13px;height:13px;object-fit:contain;vertical-align:middle;margin-right:3px;"/>Slack'))+ddItem('perfis','Perfis');
+  let socialItems=ddItem('acido','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780767902/uol_dqoo8g.webp" style="width:15px;height:15px;object-fit:contain;vertical-align:middle;margin-right:4px;"/>Chat da Uol')+ddItem('feed','Feed da Cobranca')+(isViewer?'':ddItem('slack','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780945202/slack_z3jpfx.png" style="width:13px;height:13px;object-fit:contain;vertical-align:middle;margin-right:3px;"/>Slack'))+ddItem('perfis','👥 Perfis');
   html+=group('social','Social',socialItems);
   if(!isViewer){
-    let utilItems=ddItem('copys','Banco de Copys')+ddItem('links','Links de Reneg.')+ddItem('escala','Escala de Roteamento')+ddItem('calc','Calculadoras')+ddItem('infos','Informacoes Uteis')+ddItem('codigosoferta','Cod. de Oferta')+ddItem('formsplanilhas','Forms/Planilhas');
+    let utilItems=ddItem('copys','Banco de Copys')+ddItem('links','Links de Reneg.')+ddItem('escala','Escala de Roteamento')+ddItem('calc','🧮 Calculadoras')+ddItem('infos','💡 Informacoes Uteis')+ddItem('codigosoferta','📊 Cod. de Oferta')+ddItem('formsplanilhas','📋 Forms/Planilhas');
     html+=group('utils','Utilidades',utilItems);
   }
-  let contaItems=ddItem('perfil','Pagina Inicial')+ddItem('agenda','Agenda')+ddItem('caderno','Caderno')+ddItem('basilisco','Basilisco')+(!isViewer?ddItem('feedback','Feedbacks'):'');
+  let contaItems=ddItem('perfil','Pagina Inicial')+ddItem('agenda','📅 Agenda')+ddItem('caderno','📓 Caderno')+ddItem('basilisco','Basilisco')+(!isViewer?ddItem('feedback','Feedbacks'):'');
   html+=group('conta','Conta',contaItems);
   document.getElementById('navItems').innerHTML=html;
 }
