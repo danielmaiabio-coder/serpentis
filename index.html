@@ -121,6 +121,14 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
   animation:led-blink 1.4s infinite;
 }
 @keyframes led-blink{0%,60%{opacity:1;}80%{opacity:0.4;}100%{opacity:1;}}
+/* Cores do termometro de demanda */
+.led-board.led-altissima{color:#7f1d1d;text-shadow:0 0 4px #7f1d1d,0 0 10px rgba(127,29,29,0.7),0 0 18px rgba(127,29,29,0.4);}
+.led-board.led-alta{color:#ef4444;text-shadow:0 0 4px #ef4444,0 0 10px rgba(239,68,68,0.7),0 0 18px rgba(239,68,68,0.4);}
+.led-board.led-moderada-alta{color:#f97316;text-shadow:0 0 4px #f97316,0 0 10px rgba(249,115,22,0.7),0 0 18px rgba(249,115,22,0.4);}
+.led-board.led-moderada{color:#22c55e;text-shadow:0 0 4px #22c55e,0 0 10px rgba(34,197,94,0.7),0 0 18px rgba(34,197,94,0.4);}
+.led-board.led-baixa-moderada{color:#14b8a6;text-shadow:0 0 4px #14b8a6,0 0 10px rgba(20,184,166,0.7),0 0 18px rgba(20,184,166,0.4);}
+.led-board.led-baixa{color:#38bdf8;text-shadow:0 0 4px #38bdf8,0 0 10px rgba(56,189,248,0.7),0 0 18px rgba(56,189,248,0.4);}
+.led-board.led-neutro{color:#9ca3af;text-shadow:0 0 4px #9ca3af,0 0 8px rgba(156,163,175,0.5);}
 .nb-notif-btn{position:relative;padding:6px 8px;border:none;background:rgba(255,255,255,0.08);border-radius:8px;cursor:pointer;font-size:15px;line-height:1;color:#fff;transition:background 0.15s;}
 .nb-notif-btn:hover{background:rgba(255,255,255,0.15);}
 .nb-notif-dot{position:absolute;top:4px;right:4px;width:8px;height:8px;border-radius:50%;background:#4CAF6A;box-shadow:0 0 4px #4CAF6A;display:none;}
@@ -477,9 +485,9 @@ body.dark-mode select{background:#22263a;color:#e8eaf0;border-color:rgba(255,255
       <div class="nb-separator"></div>
       <button id="btn-dark-mode" class="nb-icon-btn" onclick="toggleDarkMode()" title="Modo noturno">🌙</button>
       <div class="nb-separator"></div>
-      <!-- Letreiro Lembretes (LED scoreboard) -->
-      <div id="led-lembrete" class="led-board led-green" onclick="navigate('lembretes')" title="Lembretes">
-        <span id="led-lembrete-text">HOJE TA TRANQUILO</span>
+      <!-- Termometro de Demanda (LED scoreboard) -->
+      <div id="led-termometro" class="led-board" onclick="abrirModalTermometro()" title="Termometro de Demanda">
+        <span id="led-termometro-text">CARREGANDO...</span>
       </div>
       <div class="nb-separator"></div>
       <div class="nb-user-wrap">
@@ -837,7 +845,9 @@ function getPerms(){
 function setupApp(){
   hide('loginScreen');show('appShell','flex');
   updateSidebarUser();buildNav();
-  updateLedLembrete();
+  updateLedTermometro();
+  if(window._termometroInterval) clearInterval(window._termometroInterval);
+  window._termometroInterval=setInterval(updateLedTermometro, 60000); // atualiza a cada minuto
   if(userProfile.bgColor) aplicarBg(userProfile.bgColor);
   // Request notification permission and setup badges
   if('Notification' in window && Notification.permission==='default'){
@@ -879,7 +889,7 @@ function buildNav(){
     let utilItems=ddItem('copys','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780800196/copy_b0dpnq.png" style="width:15px;height:15px;object-fit:contain;vertical-align:middle;margin-right:5px;"/>Banco de Copys')+ddItem('links','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780800378/links_wnwufb.jpg" style="width:15px;height:15px;object-fit:contain;vertical-align:middle;margin-right:5px;"/>Links de Reneg.')+ddItem('escala','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780800513/rotear_wgszyx.png" style="width:15px;height:15px;object-fit:contain;vertical-align:middle;margin-right:5px;"/>Escala de Roteamento')+ddItem('calc','🧮 Calculadoras')+ddItem('infos','💡 Informacoes Uteis')+ddItem('codigosoferta','📊 Cod. de Oferta')+ddItem('formsplanilhas','📋 Forms/Planilhas');
     html+=group('utils','Utilidades',utilItems);
   }
-  let contaItems=ddItem('perfil','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780845592/home_w6kzpw.png" style="width:15px;height:15px;object-fit:contain;vertical-align:middle;margin-right:5px;"/>Pagina Inicial')+ddItem('agenda','📅 Agenda')+ddItem('caderno','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780802371/historico_zbvzr3.png" style="width:15px;height:15px;object-fit:contain;vertical-align:middle;margin-right:5px;"/>Caderno')+ddItem('basilisco','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780873587/dark_snake_puyvhs.png" style="width:15px;height:15px;object-fit:contain;vertical-align:middle;margin-right:5px;"/>Basilisco')+ddItem('feriastime','🏖️ Ferias do Time')+(!isViewer?ddItem('feedback','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780803681/chatting_xdxyho.png" style="width:15px;height:15px;object-fit:contain;vertical-align:middle;margin-right:5px;"/>Feedbacks'):'');
+  let contaItems=ddItem('perfil','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780845592/home_w6kzpw.png" style="width:15px;height:15px;object-fit:contain;vertical-align:middle;margin-right:5px;"/>Pagina Inicial')+ddItem('agenda','📅 Agenda')+ddItem('caderno','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780802371/historico_zbvzr3.png" style="width:15px;height:15px;object-fit:contain;vertical-align:middle;margin-right:5px;"/>Caderno')+ddItem('basilisco','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780873587/dark_snake_puyvhs.png" style="width:15px;height:15px;object-fit:contain;vertical-align:middle;margin-right:5px;"/>Basilisco')+ddItem('feriastime','🏖️ Ferias do Time')+ddItem('lembretes','⏰ Lembretes')+(!isViewer?ddItem('feedback','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780803681/chatting_xdxyho.png" style="width:15px;height:15px;object-fit:contain;vertical-align:middle;margin-right:5px;"/>Feedbacks'):'');
   html+=group('conta','Conta',contaItems);
   document.getElementById('navItems').innerHTML=html;
 }
@@ -3239,6 +3249,7 @@ async function renderEscritorio(mc){
     '<div class="page-title">Escritorio</div>'+
     '<div class="page-sub">Registros e anotacoes por operador — visivel apenas para coordenadores</div>'+
     '</div>'+
+    '<div class="panel" id="term-hist-container" style="margin-bottom:1.5rem;"></div>'+
     ops.map(op=>{
       const ini=(op.nome||'?').split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
       const avHtml=op.foto?'<img src="'+op.foto+'" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/>':ini;
@@ -3248,6 +3259,7 @@ async function renderEscritorio(mc){
         '<div style="margin-left:auto;font-size:12px;color:var(--primary);">Abrir →</div>'+
       '</div>';
     }).join('');
+  await renderTermometroHistorico(document.getElementById('term-hist-container'));
 }
 
 window.abrirEscritorio=async function(uid){
@@ -5595,7 +5607,6 @@ window.salvarLembrete=async function(){
     document.getElementById('modal-lembrete').style.display='none';
     showToast('Lembrete salvo!');
     await carregarLembretes();
-    await updateLedLembrete();
   }catch(e){showToast('Erro: '+e.message);}
 };
 
@@ -5605,31 +5616,341 @@ window.deletarLembrete=async function(id){
     await deleteDoc(doc(db,'usuarios',currentUser.uid,'lembretes',id));
     showToast('Excluido.');
     await carregarLembretes();
-    await updateLedLembrete();
   }catch(e){showToast('Erro: '+e.message);}
 };
 
-// Atualiza o letreiro LED com base nos lembretes de hoje
-async function updateLedLembrete(){
-  const led=document.getElementById('led-lembrete');
-  const txt=document.getElementById('led-lembrete-text');
-  if(!led||!txt||!currentUser)return;
-  try{
-    const hojeStr=new Date().toISOString().slice(0,10);
-    const q=query(collection(db,'usuarios',currentUser.uid,'lembretes'),where('data','==',hojeStr));
-    const snap=await getDocs(q);
-    if(snap.size>0){
-      led.classList.remove('led-green');
-      led.classList.add('led-red');
-      txt.textContent='LEMBRETE PARA HOJE';
-    } else {
-      led.classList.remove('led-red');
-      led.classList.add('led-green');
-      txt.textContent='HOJE TA TRANQUILO';
-    }
-  }catch(e){/* silencioso */}
+// ══════════════════════════════════════════
+// TERMOMETRO DE DEMANDA
+// ══════════════════════════════════════════
+const TERM_NIVEIS=[
+  {id:'altissima',label:'Altissima',cor:'#7f1d1d',valor:6},
+  {id:'alta',label:'Alta',cor:'#ef4444',valor:5},
+  {id:'moderada_alta',label:'Moderada/Alta',cor:'#f97316',valor:4},
+  {id:'moderada',label:'Moderada',cor:'#22c55e',valor:3},
+  {id:'baixa_moderada',label:'Baixa/Moderada',cor:'#14b8a6',valor:2},
+  {id:'baixa',label:'Baixa',cor:'#38bdf8',valor:1},
+];
+function termNivelById(id){return TERM_NIVEIS.find(n=>n.id===id);}
+function termCssClass(id){return 'led-'+id.replace(/_/g,'-');}
+
+// Turnos: retorna o turno ativo agora, ou null se fora de qualquer janela
+// turno: {key, label, pergunta, inicio:[h,m], fim:[h,m]}
+const TERM_TURNOS=[
+  {key:'turno1',label:'Manha',pergunta:'Como esta a demanda?',inicio:[9,0],fim:[12,0]},
+  {key:'turno2',label:'Tarde',pergunta:'Como esta a demanda?',inicio:[12,1],fim:[17,0]},
+  {key:'turno3',label:'Fim do dia',pergunta:'Como foi o seu dia?',inicio:[17,30],fim:[18,30]},
+];
+
+function minutosAgora(){
+  const d=new Date();
+  return d.getHours()*60+d.getMinutes();
 }
-window.updateLedLembrete=updateLedLembrete;
+function turnoAtivo(){
+  const m=minutosAgora();
+  for(const t of TERM_TURNOS){
+    const ini=t.inicio[0]*60+t.inicio[1];
+    const fim=t.fim[0]*60+t.fim[1];
+    if(m>=ini && m<=fim) return t;
+  }
+  return null;
+}
+// Turno mais recente que ja ocorreu hoje (para coordenador ver media), mesmo fora da janela
+function turnoMaisRecente(){
+  const m=minutosAgora();
+  let recente=null;
+  for(const t of TERM_TURNOS){
+    const ini=t.inicio[0]*60+t.inicio[1];
+    if(m>=ini) recente=t;
+  }
+  return recente;
+}
+function hojeStr(){return new Date().toISOString().slice(0,10);}
+
+// ── Atualiza o letreiro do termometro ──
+async function updateLedTermometro(){
+  const led=document.getElementById('led-termometro');
+  const txt=document.getElementById('led-termometro-text');
+  if(!led||!txt||!currentUser||!userProfile)return;
+  const {isCoord}=getPerms();
+  const ativo=turnoAtivo();
+  const data=hojeStr();
+
+  // Limpa classes de cor anteriores
+  TERM_NIVEIS.forEach(n=>led.classList.remove(termCssClass(n.id)));
+  led.classList.remove('led-neutro','led-red','led-green');
+
+  try{
+    if(isCoord){
+      // Coordenador: media do turno mais recente (ativo ou ja passado)
+      const turno=turnoAtivo()||turnoMaisRecente();
+      if(!turno){
+        led.classList.add('led-neutro');
+        txt.textContent='SEM VOTOS HOJE';
+        return;
+      }
+      const q=query(collection(db,'temperaturas',data,'respostas'));
+      const snap=await getDocs(q);
+      const valores=[];
+      snap.forEach(d=>{
+        const v=d.data()[turno.key];
+        if(v) {
+          const n=termNivelById(v);
+          if(n) valores.push(n.valor);
+        }
+      });
+      if(valores.length===0){
+        led.classList.add('led-neutro');
+        txt.textContent='SEM VOTOS HOJE';
+        return;
+      }
+      const media=valores.reduce((a,b)=>a+b,0)/valores.length;
+      // Mapeia media (1-6) para o nivel mais proximo
+      const nivelMedio=TERM_NIVEIS.slice().reverse().reduce((prev,cur)=>{
+        return Math.abs(cur.valor-media)<Math.abs(prev.valor-media)?cur:prev;
+      });
+      led.classList.add(termCssClass(nivelMedio.id));
+      txt.textContent='DEMANDA: '+nivelMedio.label.toUpperCase()+' ('+media.toFixed(1)+')';
+    } else {
+      // Operador: mostra a propria escolha do turno ativo, ou pergunta se ainda nao votou
+      if(!ativo){
+        led.classList.add('led-neutro');
+        txt.textContent='SEM TURNO ATIVO';
+        return;
+      }
+      const ref=doc(db,'temperaturas',data,'respostas',currentUser.uid);
+      const snap=await getDoc(ref);
+      const minhaResposta=snap.exists()?snap.data()[ativo.key]:null;
+      if(minhaResposta){
+        const n=termNivelById(minhaResposta);
+        led.classList.add(termCssClass(minhaResposta));
+        txt.textContent=(n?n.label.toUpperCase():minhaResposta);
+      } else {
+        led.classList.add('led-neutro');
+        txt.textContent=ativo.pergunta.toUpperCase();
+      }
+    }
+  }catch(e){
+    led.classList.add('led-neutro');
+    txt.textContent='TERMOMETRO';
+  }
+}
+window.updateLedTermometro=updateLedTermometro;
+
+// ── Modal de escolha (operador) / visualizacao (coordenador) ──
+window.abrirModalTermometro=async function(){
+  const {isCoord}=getPerms();
+  const data=hojeStr();
+
+  if(isCoord){
+    // Coordenador: mostra distribuicao de votos do turno mais recente
+    const turno=turnoAtivo()||turnoMaisRecente();
+    let conteudo='';
+    if(!turno){
+      conteudo='<div style="text-align:center;padding:2rem;color:var(--text-3);">Nenhum turno ainda hoje.</div>';
+    } else {
+      const q=query(collection(db,'temperaturas',data,'respostas'));
+      const snap=await getDocs(q);
+      const contagem={};
+      TERM_NIVEIS.forEach(n=>contagem[n.id]=0);
+      let total=0;
+      snap.forEach(d=>{
+        const v=d.data()[turno.key];
+        if(v&&contagem.hasOwnProperty(v)){contagem[v]++;total++;}
+      });
+      if(total===0){
+        conteudo='<div style="text-align:center;padding:2rem;color:var(--text-3);">Sem votos hoje ('+turno.label+').</div>';
+      } else {
+        conteudo='<div style="font-size:12px;color:var(--text-2);margin-bottom:14px;">Turno: <strong>'+turno.label+'</strong> \u2022 '+total+' resposta'+(total===1?'':'s')+'</div>'+
+          '<div style="display:flex;flex-direction:column;gap:8px;">'+
+          TERM_NIVEIS.map(n=>{
+            const qtd=contagem[n.id];
+            const pct=total?Math.round(qtd/total*100):0;
+            return '<div style="display:flex;align-items:center;gap:10px;">'+
+              '<div style="width:120px;font-size:12px;color:var(--text);">'+n.label+'</div>'+
+              '<div style="flex:1;height:10px;background:var(--surface);border-radius:6px;overflow:hidden;"><div style="width:'+pct+'%;height:100%;background:'+n.cor+';"></div></div>'+
+              '<div style="width:50px;text-align:right;font-size:12px;color:var(--text-2);">'+qtd+' ('+pct+'%)</div>'+
+            '</div>';
+          }).join('')+
+          '</div>';
+      }
+    }
+    showModalGeneric('Termometro de Demanda',conteudo);
+    return;
+  }
+
+  // Operador: escolher temperatura do turno ativo
+  const ativo=turnoAtivo();
+  if(!ativo){
+    showModalGeneric('Termometro de Demanda','<div style="text-align:center;padding:2rem;color:var(--text-3);">Nenhum turno ativo agora.<br/>Turnos: 09h-12h, 12h01-17h, 17h30-18h30.</div>');
+    return;
+  }
+  const ref=doc(db,'temperaturas',data,'respostas',currentUser.uid);
+  const snap=await getDoc(ref);
+  const minhaResposta=snap.exists()?snap.data()[ativo.key]:null;
+
+  const opcoesHtml=TERM_NIVEIS.map(n=>{
+    const selecionado=minhaResposta===n.id;
+    return '<button onclick="salvarTemperatura(\''+ativo.key+'\',\''+n.id+'\')" style="width:100%;display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:10px;border:2px solid '+(selecionado?n.cor:'var(--border-md)')+';background:'+(selecionado?n.cor+'18':'var(--surface)')+';cursor:pointer;font-family:var(--font);font-size:13px;color:var(--text);text-align:left;margin-bottom:8px;">'+
+      '<div style="width:16px;height:16px;border-radius:50%;background:'+n.cor+';flex-shrink:0;"></div>'+
+      '<span style="flex:1;font-weight:'+(selecionado?'600':'400')+';">'+n.label+'</span>'+
+      (selecionado?'<span style="font-size:11px;color:'+n.cor+';font-weight:700;">SELECIONADO</span>':'')+
+    '</button>';
+  }).join('');
+
+  const conteudo='<div style="font-size:13px;color:var(--text-2);margin-bottom:14px;">'+ativo.pergunta+' <span style="color:var(--text-3);">('+ativo.label+')</span></div>'+opcoesHtml;
+  showModalGeneric('Termometro de Demanda',conteudo);
+};
+
+window.salvarTemperatura=async function(turnoKey,nivelId){
+  try{
+    const data=hojeStr();
+    const ref=doc(db,'temperaturas',data,'respostas',currentUser.uid);
+    await setDoc(ref,{[turnoKey]:nivelId,nome:userProfile.nome||'',['ts_'+turnoKey]:Date.now()},{merge:true});
+    document.getElementById('modal-generic').style.display='none';
+    showToast('Temperatura registrada!');
+    await updateLedTermometro();
+  }catch(e){showToast('Erro: '+e.message);}
+};
+
+// ── Modal generico reutilizavel ──
+function showModalGeneric(titulo,conteudoHtml){
+  let modal=document.getElementById('modal-generic');
+  if(!modal){
+    modal=document.createElement('div');
+    modal.id='modal-generic';
+    modal.style.cssText='display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:3000;align-items:center;justify-content:center;';
+    document.body.appendChild(modal);
+  }
+  modal.innerHTML='<div style="background:var(--surface);border-radius:var(--radius-lg);padding:1.5rem;width:100%;max-width:380px;box-shadow:0 20px 60px rgba(0,0,0,0.3);max-height:85vh;overflow-y:auto;">'+
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">'+
+      '<div style="font-size:15px;font-weight:600;">'+titulo+'</div>'+
+      '<button onclick="document.getElementById(\'modal-generic\').style.display=\'none\'" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-2);">\u2715</button>'+
+    '</div>'+
+    conteudoHtml+
+  '</div>';
+  modal.style.display='flex';
+  modal.onclick=function(e){if(e.target===modal)modal.style.display='none';};
+}
+window.showModalGeneric=showModalGeneric;
+
+// ══════════════════════════════════════════
+// HISTORICO DO TERMOMETRO (Escritorio, coord only)
+// ══════════════════════════════════════════
+window.renderTermometroHistorico=async function(container){
+  const hoje=new Date();
+  const inicio30=new Date();inicio30.setDate(inicio30.getDate()-30);
+  const fmtInput=d=>d.toISOString().slice(0,10);
+
+  container.innerHTML=
+    '<div style="margin-bottom:1rem;">'+
+      '<div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:10px;">\uD83C\uDF21\uFE0F Historico do Termometro de Demanda</div>'+
+      '<div style="display:flex;gap:10px;align-items:end;flex-wrap:wrap;">'+
+        '<div><label style="display:block;font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-2);margin-bottom:4px;">De</label>'+
+          '<input id="term-hist-de" type="date" value="'+fmtInput(inicio30)+'" style="padding:8px 10px;border:1px solid var(--border-md);border-radius:var(--radius);background:var(--bg);color:var(--text);font-family:var(--font);font-size:12px;"/></div>'+
+        '<div><label style="display:block;font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-2);margin-bottom:4px;">Ate</label>'+
+          '<input id="term-hist-ate" type="date" value="'+fmtInput(hoje)+'" style="padding:8px 10px;border:1px solid var(--border-md);border-radius:var(--radius);background:var(--bg);color:var(--text);font-family:var(--font);font-size:12px;"/></div>'+
+        '<button onclick="carregarTermometroHistorico()" style="padding:8px 16px;background:var(--primary);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:12px;font-weight:500;cursor:pointer;">Buscar</button>'+
+        '<button onclick="exportarTermometroExcel()" style="padding:8px 16px;background:transparent;color:var(--primary);border:1px solid var(--primary);border-radius:var(--radius);font-family:var(--font);font-size:12px;font-weight:500;cursor:pointer;">\uD83D\uDCE5 Exportar Excel</button>'+
+      '</div>'+
+    '</div>'+
+    '<div id="term-hist-table">Carregando...</div>';
+
+  await carregarTermometroHistorico();
+};
+
+async function carregarTermometroHistorico(){
+  const tableEl=document.getElementById('term-hist-table');
+  if(!tableEl)return;
+  tableEl.innerHTML='Carregando...';
+  const de=document.getElementById('term-hist-de').value;
+  const ate=document.getElementById('term-hist-ate').value;
+  if(!de||!ate){tableEl.innerHTML='<div class="empty">Selecione o periodo.</div>';return;}
+
+  try{
+    // Gera lista de datas no intervalo
+    const datas=[];
+    let cur=new Date(de+'T00:00:00');
+    const fim=new Date(ate+'T00:00:00');
+    while(cur<=fim){datas.push(cur.toISOString().slice(0,10));cur.setDate(cur.getDate()+1);}
+
+    const linhas=[];
+    for(const d of datas){
+      const snap=await getDocs(collection(db,'temperaturas',d,'respostas'));
+      if(snap.empty)continue;
+      const porTurno={turno1:[],turno2:[],turno3:[]};
+      snap.forEach(doc=>{
+        const data=doc.data();
+        ['turno1','turno2','turno3'].forEach(tk=>{
+          if(data[tk]){const n=termNivelById(data[tk]);if(n)porTurno[tk].push({nome:data.nome||doc.id,nivel:n});}
+        });
+      });
+      const mediaTurno=arr=>arr.length?(arr.reduce((s,x)=>s+x.nivel.valor,0)/arr.length):null;
+      const m1=mediaTurno(porTurno.turno1);
+      const m2=mediaTurno(porTurno.turno2);
+      const m3=mediaTurno(porTurno.turno3);
+      const todasMedias=[m1,m2,m3].filter(m=>m!==null);
+      const mediaGeral=todasMedias.length?(todasMedias.reduce((a,b)=>a+b,0)/todasMedias.length):null;
+      linhas.push({data:d,porTurno,m1,m2,m3,mediaGeral});
+    }
+
+    window._termHistLinhas=linhas;
+
+    if(linhas.length===0){
+      tableEl.innerHTML='<div class="empty">Nenhum registro no periodo selecionado.</div>';
+      return;
+    }
+
+    function fmtMedia(m){
+      if(m===null)return '<span style="color:var(--text-3);">\u2014</span>';
+      const nivel=TERM_NIVEIS.slice().reverse().reduce((prev,cur)=>Math.abs(cur.valor-m)<Math.abs(prev.valor-m)?cur:prev);
+      return '<span style="color:'+nivel.cor+';font-weight:600;">'+m.toFixed(1)+'</span>';
+    }
+
+    tableEl.innerHTML='<div style="overflow-x:auto;">'+
+      '<table class="hist-table" style="min-width:600px;">'+
+        '<thead><tr><th>Data</th><th>Manha</th><th>Tarde</th><th>Fim do Dia</th><th>Media Geral</th></tr></thead>'+
+        '<tbody>'+linhas.map(l=>{
+          const dataFmt=new Date(l.data+'T00:00:00').toLocaleDateString('pt-BR');
+          return '<tr><td>'+dataFmt+'</td><td>'+fmtMedia(l.m1)+'</td><td>'+fmtMedia(l.m2)+'</td><td>'+fmtMedia(l.m3)+'</td><td>'+fmtMedia(l.mediaGeral)+'</td></tr>';
+        }).join('')+'</tbody>'+
+      '</table>'+
+      '<div style="font-size:11px;color:var(--text-3);margin-top:8px;">'+linhas.length+' dia(s) com registros</div>'+
+    '</div>';
+  }catch(e){
+    tableEl.innerHTML='<div class="empty">Erro: '+e.message+'</div>';
+  }
+}
+window.carregarTermometroHistorico=carregarTermometroHistorico;
+
+window.exportarTermometroExcel=function(){
+  if(!window.XLSX){showToast('SheetJS nao carregado.');return;}
+  const linhas=window._termHistLinhas||[];
+  if(linhas.length===0){showToast('Nenhum dado para exportar. Clique em Buscar primeiro.');return;}
+
+  const cabecalho=['Data','Manha (media)','Tarde (media)','Fim do Dia (media)','Media Geral','Detalhes Manha','Detalhes Tarde','Detalhes Fim do Dia'];
+  const detalhar=arr=>arr.map(x=>x.nome+': '+x.nivel.label).join('; ');
+  const dados=linhas.map(l=>{
+    const dataFmt=new Date(l.data+'T00:00:00').toLocaleDateString('pt-BR');
+    return [
+      dataFmt,
+      l.m1!==null?l.m1.toFixed(2):'',
+      l.m2!==null?l.m2.toFixed(2):'',
+      l.m3!==null?l.m3.toFixed(2):'',
+      l.mediaGeral!==null?l.mediaGeral.toFixed(2):'',
+      detalhar(l.porTurno.turno1),
+      detalhar(l.porTurno.turno2),
+      detalhar(l.porTurno.turno3),
+    ];
+  });
+  const ws=XLSX.utils.aoa_to_sheet([cabecalho,...dados]);
+  ws['!cols']=[{wch:12},{wch:14},{wch:14},{wch:16},{wch:12},{wch:40},{wch:40},{wch:40}];
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Termometro');
+  const de=document.getElementById('term-hist-de').value;
+  const ate=document.getElementById('term-hist-ate').value;
+  XLSX.writeFile(wb,'Termometro_Demanda_'+de+'_a_'+ate+'.xlsx');
+  showToast('Excel exportado!');
+};
 
 window.renderFeriasTime=function renderFeriasTime(mc){
   // ── Dados de ferias (periodos por pessoa) ──
