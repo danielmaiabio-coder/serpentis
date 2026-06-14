@@ -5478,15 +5478,146 @@ async function renderAgenda(mc){
 
 // ── CONTROLE CÓDIGO DE OFERTA ────────────────────────────────────────────
 window.renderFeriasTime=function renderFeriasTime(mc){
-  mc.innerHTML=snakeHtml()+
-    '<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;">'+
-      '<div class="page-eyebrow">CONTA</div>'+
-      '<div class="page-title">\uD83C\uDFD6\uFE0F Ferias do Time</div>'+
-      '<div class="page-sub">Calendario de ferias e folgas da equipe</div>'+
-    '</div>'+
-    '<div class="panel" style="padding:0;overflow:hidden;border-radius:14px;min-height:80vh;">'+
-      '<iframe src="https://docs.google.com/spreadsheets/d/1kOriXHI80UqxicZSxmN945Nl8WHjj-k7u8sS593pdOs/edit?gid=0#gid=0" width="100%" height="900" frameborder="0" style="display:block;border:none;border-radius:14px;">Carregando...</iframe>'+
+  // ── Dados de ferias (periodos por pessoa) ──
+  const FERIAS_PESSOAS=[
+    {nome:'Daniel',cor:'#3b82f6',periodos:[
+      {inicio:'2026-01-05',fim:'2026-01-12'},
+      {inicio:'2026-03-18',fim:'2026-03-30'}
+    ]},
+    {nome:'Jenifer',cor:'#f59e0b',periodos:[
+      {inicio:'2026-06-01',fim:'2026-06-11'}
+    ]},
+    {nome:'Laiza',cor:'#ec4899',periodos:[
+      {inicio:'2026-08-17',fim:'2026-08-31'}
+    ]},
+    {nome:'Vivian',cor:'#a855f7',periodos:[
+      {inicio:'2026-11-16',fim:'2026-11-30'}
+    ]},
+  ];
+
+  const MESES=['Janeiro','Fevereiro','Marco','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  const DIAS_SEMANA=['D','S','T','Q','Q','S','S'];
+  const hoje=new Date();hoje.setHours(0,0,0,0);
+
+  function parseDate(s){const [y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d);}
+  function fmtDate(d){return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'short'});}
+  function diffDias(a,b){return Math.round((b-a)/(1000*60*60*24))+1;}
+
+  // ── Card de proximas ferias (ordenado por data, mostra so as futuras/atuais) ──
+  let todosPeriodos=[];
+  FERIAS_PESSOAS.forEach(p=>p.periodos.forEach(per=>{
+    const ini=parseDate(per.inicio), fim=parseDate(per.fim);
+    todosPeriodos.push({nome:p.nome,cor:p.cor,inicio:ini,fim:fim,dias:diffDias(ini,fim)});
+  }));
+  todosPeriodos.sort((a,b)=>a.inicio-b.inicio);
+  const futuros=todosPeriodos.filter(p=>p.fim>=hoje);
+  const passados=todosPeriodos.filter(p=>p.fim<hoje);
+
+  function statusPeriodo(p){
+    if(hoje>=p.inicio && hoje<=p.fim) return {label:'EM FERIAS',color:'#22c55e'};
+    if(p.inicio>hoje){
+      const dias=diffDias(hoje,p.inicio)-1;
+      return {label:'EM '+dias+' DIA'+(dias===1?'':'S'),color:'#f59e0b'};
+    }
+    return {label:'CONCLUIDO',color:'#94a3b8'};
+  }
+
+  function cardPeriodo(p){
+    const st=statusPeriodo(p);
+    const iniciais=p.nome.substring(0,2).toUpperCase();
+    return '<div style="display:flex;align-items:center;gap:14px;padding:14px 16px;background:var(--surface);border-radius:12px;border:1px solid var(--border-md);border-left:4px solid '+p.cor+';">'+
+      '<div style="width:40px;height:40px;border-radius:50%;background:'+p.cor+'22;color:'+p.cor+';display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex-shrink:0;">'+iniciais+'</div>'+
+      '<div style="flex:1;min-width:0;">'+
+        '<div style="font-size:14px;font-weight:600;color:var(--text);">'+p.nome+'</div>'+
+        '<div style="font-size:12px;color:var(--text-2);">'+fmtDate(p.inicio)+' - '+fmtDate(p.fim)+' • '+p.dias+' dias</div>'+
+      '</div>'+
+      '<div style="padding:4px 10px;border-radius:20px;background:'+st.color+'22;color:'+st.color+';font-size:10px;font-weight:700;letter-spacing:0.04em;white-space:nowrap;">'+st.label+'</div>'+
     '</div>';
+  }
+
+  // ── Calendario anual (12 mini-calendarios) ──
+  function diasNoMes(ano,mes){return new Date(ano,mes+1,0).getDate();}
+  function primeiroDiaSemana(ano,mes){return new Date(ano,mes,1).getDay();}
+
+  function quemEstaDeFerias(data){
+    return FERIAS_PESSOAS.filter(p=>p.periodos.some(per=>{
+      const ini=parseDate(per.inicio),fim=parseDate(per.fim);
+      return data>=ini && data<=fim;
+    }));
+  }
+
+  function miniCalendario(ano,mes){
+    const totalDias=diasNoMes(ano,mes);
+    const primeiroDia=primeiroDiaSemana(ano,mes);
+    let cells='';
+    // Dias vazios antes do primeiro dia
+    for(let i=0;i<primeiroDia;i++) cells+='<div></div>';
+    for(let d=1;d<=totalDias;d++){
+      const data=new Date(ano,mes,d);
+      const pessoasFerias=quemEstaDeFerias(data);
+      const isHoje=data.getTime()===hoje.getTime();
+      let bgStyle='';
+      if(pessoasFerias.length===1){
+        bgStyle='background:'+pessoasFerias[0].cor+'33;color:'+pessoasFerias[0].cor+';font-weight:700;';
+      } else if(pessoasFerias.length>1){
+        const cores=pessoasFerias.map(p=>p.cor);
+        const grad=cores.map((c,i)=>c+'33 '+(i*100/cores.length)+'%, '+c+'33 '+((i+1)*100/cores.length)+'%').join(',');
+        bgStyle='background:linear-gradient(135deg,'+grad+');font-weight:700;color:var(--text);';
+      }
+      const borderStyle=isHoje?'border:2px solid var(--primary);':'';
+      cells+='<div title="'+(pessoasFerias.map(p=>p.nome).join(', ')||'')+'" style="aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:10px;border-radius:5px;'+bgStyle+borderStyle+'cursor:'+(pessoasFerias.length?'help':'default')+';">'+d+'</div>';
+    }
+    return '<div style="background:var(--surface);border-radius:12px;border:1px solid var(--border-md);padding:12px;">'+
+      '<div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:8px;text-align:center;">'+MESES[mes]+'</div>'+
+      '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:4px;">'+
+        DIAS_SEMANA.map(d=>'<div style="font-size:9px;color:var(--text-3);text-align:center;font-weight:600;">'+d+'</div>').join('')+
+      '</div>'+
+      '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;">'+cells+'</div>'+
+    '</div>';
+  }
+
+  const ano=2026;
+  let calendariosHtml='';
+  for(let m=0;m<12;m++) calendariosHtml+=miniCalendario(ano,m);
+
+  // ── Legenda ──
+  const legendaHtml=FERIAS_PESSOAS.map(p=>
+    '<div style="display:flex;align-items:center;gap:6px;">'+
+      '<div style="width:12px;height:12px;border-radius:3px;background:'+p.cor+';"></div>'+
+      '<span style="font-size:12px;color:var(--text-2);">'+p.nome+'</span>'+
+    '</div>'
+  ).join('');
+
+  mc.innerHTML=snakeHtml()+
+    '<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">'+
+      '<div><div class="page-eyebrow">CONTA</div><div class="page-title">\uD83C\uDFD6\uFE0F Ferias do Time</div><div class="page-sub">Calendario de ferias e folgas da equipe \u2014 '+ano+'</div></div>'+
+      '<a href="https://docs.google.com/spreadsheets/d/1kOriXHI80UqxicZSxmN945Nl8WHjj-k7u8sS593pdOs/edit?gid=0#gid=0" target="_blank" style="padding:8px 16px;background:var(--primary);color:#fff;border-radius:var(--radius);font-family:var(--font);font-size:12px;font-weight:500;text-decoration:none;display:inline-flex;align-items:center;gap:6px;">\uD83D\uDCC4 Abrir planilha completa</a>'+
+    '</div>'+
+
+    // Proximas ferias
+    '<div class="panel" style="margin-bottom:1.5rem;">'+
+      '<div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:14px;">\u23F3 Proximas e Atuais Ferias</div>'+
+      (futuros.length
+        ? '<div style="display:flex;flex-direction:column;gap:10px;">'+futuros.map(cardPeriodo).join('')+'</div>'
+        : '<div style="font-size:13px;color:var(--text-3);">Nenhuma ferias agendada futuramente.</div>')+
+    '</div>'+
+
+    // Calendario anual
+    '<div class="panel" style="margin-bottom:1.5rem;">'+
+      '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:14px;">'+
+        '<div style="font-size:14px;font-weight:600;color:var(--text);">\uD83D\uDCC5 Calendario Anual</div>'+
+        '<div style="display:flex;gap:14px;flex-wrap:wrap;">'+legendaHtml+'</div>'+
+      '</div>'+
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;">'+calendariosHtml+'</div>'+
+    '</div>'+
+
+    // Historico (passados)
+    (passados.length
+      ? '<div class="panel">'+
+          '<div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:14px;">\u2705 Ferias Concluidas</div>'+
+          '<div style="display:flex;flex-direction:column;gap:10px;">'+passados.map(cardPeriodo).join('')+'</div>'+
+        '</div>'
+      : '');
 }
 
 window.renderFormsplanilhas=function renderFormsplanilhas(mc,activeTab){
