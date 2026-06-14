@@ -5679,36 +5679,18 @@ const TERM_NIVEIS=[
 function termNivelById(id){return TERM_NIVEIS.find(n=>n.id===id);}
 function termCssClass(id){return 'led-'+id.replace(/_/g,'-');}
 
-// Turnos: retorna o turno ativo agora, ou null se fora de qualquer janela
-// turno: {key, label, pergunta, inicio:[h,m], fim:[h,m]}
-const TERM_TURNOS=[
-  {key:'turno1',label:'Manha',pergunta:'Como esta a demanda?',inicio:[9,0],fim:[12,0]},
-  {key:'turno2',label:'Tarde',pergunta:'Como esta a demanda?',inicio:[12,1],fim:[17,0]},
-  {key:'turno3',label:'Fim do dia',pergunta:'Como foi o seu dia?',inicio:[17,30],fim:[18,30]},
-];
+// Turno unico: a partir das 17h30, pergunta "Como foi o seu dia?"
+const TERM_HORARIO=[17,30]; // hora, minuto a partir do qual a votacao abre
 
 function minutosAgora(){
   const d=new Date();
   return d.getHours()*60+d.getMinutes();
 }
-function turnoAtivo(){
+// Retorna true se ja passou do horario de votacao hoje
+function votacaoLiberada(){
   const m=minutosAgora();
-  for(const t of TERM_TURNOS){
-    const ini=t.inicio[0]*60+t.inicio[1];
-    const fim=t.fim[0]*60+t.fim[1];
-    if(m>=ini && m<=fim) return t;
-  }
-  return null;
-}
-// Turno mais recente que ja ocorreu hoje (para coordenador ver media), mesmo fora da janela
-function turnoMaisRecente(){
-  const m=minutosAgora();
-  let recente=null;
-  for(const t of TERM_TURNOS){
-    const ini=t.inicio[0]*60+t.inicio[1];
-    if(m>=ini) recente=t;
-  }
-  return recente;
+  const limite=TERM_HORARIO[0]*60+TERM_HORARIO[1];
+  return m>=limite;
 }
 function hojeStr(){return new Date().toISOString().slice(0,10);}
 
@@ -5718,7 +5700,7 @@ async function updateLedTermometro(){
   const txt=document.getElementById('led-termometro-text');
   if(!led||!txt||!currentUser||!userProfile)return;
   const {isCoord}=getPerms();
-  const ativo=turnoAtivo();
+  const liberado=votacaoLiberada();
   const data=hojeStr();
 
   // Limpa classes de cor anteriores
@@ -5727,21 +5709,12 @@ async function updateLedTermometro(){
 
   try{
     if(isCoord){
-      // Coordenador: media do turno mais recente (ativo ou ja passado)
-      const turno=turnoAtivo()||turnoMaisRecente();
-      if(!turno){
-        led.classList.add('led-neutro');
-        txt.textContent='SEM VOTOS HOJE';
-        return;
-      }
+      // Coordenador: media dos votos de hoje (anonimo), sempre — antes ou depois de 17h30
       const snap=await getDocs(collection(db,'temperaturas',data,'respostas'));
       const valores=[];
       snap.forEach(d=>{
-        const v=d.data()[turno.key];
-        if(v) {
-          const n=termNivelById(v);
-          if(n) valores.push(n.valor);
-        }
+        const v=d.data().voto;
+        if(v){const n=termNivelById(v);if(n)valores.push(n.valor);}
       });
       if(valores.length===0){
         led.classList.add('led-neutro');
@@ -5749,29 +5722,28 @@ async function updateLedTermometro(){
         return;
       }
       const media=valores.reduce((a,b)=>a+b,0)/valores.length;
-      // Mapeia media (1-6) para o nivel mais proximo
       const nivelMedio=TERM_NIVEIS.slice().reverse().reduce((prev,cur)=>{
         return Math.abs(cur.valor-media)<Math.abs(prev.valor-media)?cur:prev;
       });
       led.classList.add(termCssClass(nivelMedio.id));
       txt.textContent='DEMANDA: '+nivelMedio.label.toUpperCase()+' ('+media.toFixed(1)+')';
     } else {
-      // Operador: mostra a propria escolha do turno ativo, ou pergunta se ainda nao votou
-      if(!ativo){
+      // Operador: so a partir das 17h30
+      if(!liberado){
         led.classList.add('led-neutro');
-        txt.textContent='SEM TURNO ATIVO';
+        txt.textContent='TERMOMETRO 17H30';
         return;
       }
       const ref=doc(db,'temperaturas',data,'respostas',currentUser.uid);
       const snap=await getDoc(ref);
-      const minhaResposta=snap.exists()?snap.data()[ativo.key]:null;
+      const minhaResposta=snap.exists()?snap.data().voto:null;
       if(minhaResposta){
         const n=termNivelById(minhaResposta);
         led.classList.add(termCssClass(minhaResposta));
         txt.textContent=(n?n.label.toUpperCase():minhaResposta);
       } else {
         led.classList.add('led-neutro');
-        txt.textContent=ativo.pergunta.toUpperCase();
+        txt.textContent='COMO FOI O SEU DIA?';
       }
     }
   }catch(e){
@@ -5788,61 +5760,55 @@ window.abrirModalTermometro=async function(){
   const data=hojeStr();
 
   if(isCoord){
-    // Coordenador: mostra distribuicao de votos do turno mais recente
-    const turno=turnoAtivo()||turnoMaisRecente();
-    let conteudo='';
-    if(!turno){
-      conteudo='<div style="text-align:center;padding:2rem;color:var(--text-3);">Nenhum turno ainda hoje.</div>';
+    // Coordenador: distribuicao anonima dos votos de hoje
+    const snap=await getDocs(collection(db,'temperaturas',data,'respostas'));
+    const contagem={};
+    TERM_NIVEIS.forEach(n=>contagem[n.id]=0);
+    let total=0;
+    snap.forEach(d=>{
+      const v=d.data().voto;
+      if(v&&contagem.hasOwnProperty(v)){contagem[v]++;total++;}
+    });
+    let conteudo;
+    if(total===0){
+      conteudo='<div style="text-align:center;padding:2rem;color:var(--text-3);">Sem votos hoje.</div>';
     } else {
-      const snap=await getDocs(collection(db,'temperaturas',data,'respostas'));
-      const contagem={};
-      TERM_NIVEIS.forEach(n=>contagem[n.id]=0);
-      let total=0;
-      snap.forEach(d=>{
-        const v=d.data()[turno.key];
-        if(v&&contagem.hasOwnProperty(v)){contagem[v]++;total++;}
-      });
-      if(total===0){
-        conteudo='<div style="text-align:center;padding:2rem;color:var(--text-3);">Sem votos hoje ('+turno.label+').</div>';
-      } else {
-        conteudo='<div style="font-size:12px;color:var(--text-2);margin-bottom:14px;">Turno: <strong>'+turno.label+'</strong> \u2022 '+total+' resposta'+(total===1?'':'s')+'</div>'+
-          '<div style="display:flex;flex-direction:column;gap:8px;">'+
-          TERM_NIVEIS.map(n=>{
-            const qtd=contagem[n.id];
-            const pct=total?Math.round(qtd/total*100):0;
-            return '<div style="display:flex;align-items:center;gap:10px;">'+
-              '<div style="width:120px;font-size:12px;color:var(--text);">'+n.label+'</div>'+
-              '<div style="flex:1;height:10px;background:var(--surface);border-radius:6px;overflow:hidden;"><div style="width:'+pct+'%;height:100%;background:'+n.cor+';"></div></div>'+
-              '<div style="width:50px;text-align:right;font-size:12px;color:var(--text-2);">'+qtd+' ('+pct+'%)</div>'+
-            '</div>';
-          }).join('')+
+      conteudo='<div style="font-size:12px;color:var(--text-2);margin-bottom:14px;">'+total+' resposta'+(total===1?'':'s')+' hoje (anonimo)</div>'+
+        '<div style="display:flex;flex-direction:column;gap:8px;">'+
+        TERM_NIVEIS.map(n=>{
+          const qtd=contagem[n.id];
+          const pct=total?Math.round(qtd/total*100):0;
+          return '<div style="display:flex;align-items:center;gap:10px;">'+
+            '<div style="width:120px;font-size:12px;color:var(--text);">'+n.label+'</div>'+
+            '<div style="flex:1;height:10px;background:var(--surface);border-radius:6px;overflow:hidden;"><div style="width:'+pct+'%;height:100%;background:'+n.cor+';"></div></div>'+
+            '<div style="width:50px;text-align:right;font-size:12px;color:var(--text-2);">'+qtd+' ('+pct+'%)</div>'+
           '</div>';
-      }
+        }).join('')+
+        '</div>';
     }
     showModalGeneric('Termometro de Demanda',conteudo);
     return;
   }
 
-  // Operador: escolher temperatura do turno ativo
-  const ativo=turnoAtivo();
-  if(!ativo){
-    showModalGeneric('Termometro de Demanda','<div style="text-align:center;padding:2rem;color:var(--text-3);">Nenhum turno ativo agora.<br/>Turnos: 09h-12h, 12h01-17h, 17h30-18h30.</div>');
+  // Operador: so pode votar a partir das 17h30
+  if(!votacaoLiberada()){
+    showModalGeneric('Termometro de Demanda','<div style="text-align:center;padding:2rem;color:var(--text-3);">A votacao abre a partir das 17h30.<br/>Pergunta: "Como foi o seu dia?"</div>');
     return;
   }
   const ref=doc(db,'temperaturas',data,'respostas',currentUser.uid);
   const snap=await getDoc(ref);
-  const minhaResposta=snap.exists()?snap.data()[ativo.key]:null;
+  const minhaResposta=snap.exists()?snap.data().voto:null;
 
   const opcoesHtml=TERM_NIVEIS.map(n=>{
     const selecionado=minhaResposta===n.id;
-    return '<button onclick="salvarTemperatura(\''+ativo.key+'\',\''+n.id+'\')" style="width:100%;display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:10px;border:2px solid '+(selecionado?n.cor:'var(--border-md)')+';background:'+(selecionado?n.cor+'18':'var(--surface)')+';cursor:pointer;font-family:var(--font);font-size:13px;color:var(--text);text-align:left;margin-bottom:8px;">'+
+    return '<button onclick="salvarTemperatura(\''+n.id+'\')" style="width:100%;display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:10px;border:2px solid '+(selecionado?n.cor:'var(--border-md)')+';background:'+(selecionado?n.cor+'18':'var(--surface)')+';cursor:pointer;font-family:var(--font);font-size:13px;color:var(--text);text-align:left;margin-bottom:8px;">'+
       '<div style="width:16px;height:16px;border-radius:50%;background:'+n.cor+';flex-shrink:0;"></div>'+
       '<span style="flex:1;font-weight:'+(selecionado?'600':'400')+';">'+n.label+'</span>'+
       (selecionado?'<span style="font-size:11px;color:'+n.cor+';font-weight:700;">SELECIONADO</span>':'')+
     '</button>';
   }).join('');
 
-  const conteudo='<div style="font-size:13px;color:var(--text-2);margin-bottom:14px;">'+ativo.pergunta+' <span style="color:var(--text-3);">('+ativo.label+')</span></div>'+opcoesHtml;
+  const conteudo='<div style="font-size:13px;color:var(--text-2);margin-bottom:14px;">Como foi o seu dia?</div>'+opcoesHtml;
   showModalGeneric('Termometro de Demanda',conteudo);
  }catch(e){
    console.error('Erro abrirModalTermometro:',e);
@@ -5850,13 +5816,13 @@ window.abrirModalTermometro=async function(){
  }
 };
 
-window.salvarTemperatura=async function(turnoKey,nivelId){
+window.salvarTemperatura=async function(nivelId){
   try{
     const data=hojeStr();
     const ref=doc(db,'temperaturas',data,'respostas',currentUser.uid);
-    await setDoc(ref,{[turnoKey]:nivelId,nome:userProfile.nome||'',['ts_'+turnoKey]:Date.now()},{merge:true});
+    await setDoc(ref,{voto:nivelId,nome:userProfile.nome||'',ts:Date.now()},{merge:true});
     document.getElementById('modal-generic').style.display='none';
-    showToast('Temperatura registrada!');
+    showToast('Resposta registrada!');
     await updateLedTermometro();
   }catch(e){showToast('Erro: '+e.message);}
 };
@@ -5902,6 +5868,7 @@ window.renderTermometroHistorico=async function(container){
         '<button onclick="exportarTermometroExcel()" style="padding:8px 16px;background:transparent;color:var(--primary);border:1px solid var(--primary);border-radius:var(--radius);font-family:var(--font);font-size:12px;font-weight:500;cursor:pointer;">\uD83D\uDCE5 Exportar Excel</button>'+
       '</div>'+
     '</div>'+
+    '<div id="term-hist-resumo" style="margin-bottom:12px;"></div>'+
     '<div id="term-hist-table">Carregando...</div>';
 
   await carregarTermometroHistorico();
@@ -5909,8 +5876,10 @@ window.renderTermometroHistorico=async function(container){
 
 async function carregarTermometroHistorico(){
   const tableEl=document.getElementById('term-hist-table');
+  const resumoEl=document.getElementById('term-hist-resumo');
   if(!tableEl)return;
   tableEl.innerHTML='Carregando...';
+  if(resumoEl)resumoEl.innerHTML='';
   const de=document.getElementById('term-hist-de').value;
   const ate=document.getElementById('term-hist-ate').value;
   if(!de||!ate){tableEl.innerHTML='<div class="empty">Selecione o periodo.</div>';return;}
@@ -5926,41 +5895,44 @@ async function carregarTermometroHistorico(){
     for(const d of datas){
       const snap=await getDocs(collection(db,'temperaturas',d,'respostas'));
       if(snap.empty)continue;
-      const porTurno={turno1:[],turno2:[],turno3:[]};
+      const valores=[];
       snap.forEach(doc=>{
-        const data=doc.data();
-        ['turno1','turno2','turno3'].forEach(tk=>{
-          if(data[tk]){const n=termNivelById(data[tk]);if(n)porTurno[tk].push({nome:data.nome||doc.id,nivel:n});}
-        });
+        const v=doc.data().voto;
+        if(v){const n=termNivelById(v);if(n)valores.push(n.valor);}
       });
-      const mediaTurno=arr=>arr.length?(arr.reduce((s,x)=>s+x.nivel.valor,0)/arr.length):null;
-      const m1=mediaTurno(porTurno.turno1);
-      const m2=mediaTurno(porTurno.turno2);
-      const m3=mediaTurno(porTurno.turno3);
-      const todasMedias=[m1,m2,m3].filter(m=>m!==null);
-      const mediaGeral=todasMedias.length?(todasMedias.reduce((a,b)=>a+b,0)/todasMedias.length):null;
-      linhas.push({data:d,porTurno,m1,m2,m3,mediaGeral});
+      if(valores.length===0)continue;
+      const media=valores.reduce((a,b)=>a+b,0)/valores.length;
+      linhas.push({data:d,media,total:valores.length});
     }
 
     window._termHistLinhas=linhas;
+
+    function fmtMedia(m){
+      if(m===null||m===undefined)return '<span style="color:var(--text-3);">\u2014</span>';
+      const nivel=TERM_NIVEIS.slice().reverse().reduce((prev,cur)=>Math.abs(cur.valor-m)<Math.abs(prev.valor-m)?cur:prev);
+      return '<span style="color:'+nivel.cor+';font-weight:600;">'+m.toFixed(1)+' \u2022 '+nivel.label+'</span>';
+    }
 
     if(linhas.length===0){
       tableEl.innerHTML='<div class="empty">Nenhum registro no periodo selecionado.</div>';
       return;
     }
 
-    function fmtMedia(m){
-      if(m===null)return '<span style="color:var(--text-3);">\u2014</span>';
-      const nivel=TERM_NIVEIS.slice().reverse().reduce((prev,cur)=>Math.abs(cur.valor-m)<Math.abs(prev.valor-m)?cur:prev);
-      return '<span style="color:'+nivel.cor+';font-weight:600;">'+m.toFixed(1)+'</span>';
+    // Media geral do periodo
+    const mediaGeral=linhas.reduce((s,l)=>s+l.media,0)/linhas.length;
+    if(resumoEl){
+      resumoEl.innerHTML='<div style="padding:14px 16px;background:var(--surface);border-radius:12px;border:1px solid var(--border-md);display:flex;align-items:center;gap:14px;">'+
+        '<div style="font-size:12px;color:var(--text-2);">Media geral do periodo ('+linhas.length+' dia'+(linhas.length===1?'':'s')+' com votos):</div>'+
+        '<div style="font-size:16px;">'+fmtMedia(mediaGeral)+'</div>'+
+      '</div>';
     }
 
     tableEl.innerHTML='<div style="overflow-x:auto;">'+
-      '<table class="hist-table" style="min-width:600px;">'+
-        '<thead><tr><th>Data</th><th>Manha</th><th>Tarde</th><th>Fim do Dia</th><th>Media Geral</th></tr></thead>'+
+      '<table class="hist-table" style="min-width:400px;">'+
+        '<thead><tr><th>Data</th><th>Media</th><th>Votos</th></tr></thead>'+
         '<tbody>'+linhas.map(l=>{
           const dataFmt=new Date(l.data+'T00:00:00').toLocaleDateString('pt-BR');
-          return '<tr><td>'+dataFmt+'</td><td>'+fmtMedia(l.m1)+'</td><td>'+fmtMedia(l.m2)+'</td><td>'+fmtMedia(l.m3)+'</td><td>'+fmtMedia(l.mediaGeral)+'</td></tr>';
+          return '<tr><td>'+dataFmt+'</td><td>'+fmtMedia(l.media)+'</td><td>'+l.total+'</td></tr>';
         }).join('')+'</tbody>'+
       '</table>'+
       '<div style="font-size:11px;color:var(--text-3);margin-top:8px;">'+linhas.length+' dia(s) com registros</div>'+
@@ -5976,23 +5948,22 @@ window.exportarTermometroExcel=function(){
   const linhas=window._termHistLinhas||[];
   if(linhas.length===0){showToast('Nenhum dado para exportar. Clique em Buscar primeiro.');return;}
 
-  const cabecalho=['Data','Manha (media)','Tarde (media)','Fim do Dia (media)','Media Geral','Detalhes Manha','Detalhes Tarde','Detalhes Fim do Dia'];
-  const detalhar=arr=>arr.map(x=>x.nome+': '+x.nivel.label).join('; ');
+  function nivelDaMedia(m){
+    return TERM_NIVEIS.slice().reverse().reduce((prev,cur)=>Math.abs(cur.valor-m)<Math.abs(prev.valor-m)?cur:prev);
+  }
+
+  const cabecalho=['Data','Media','Nivel','Qtde de Votos'];
   const dados=linhas.map(l=>{
     const dataFmt=new Date(l.data+'T00:00:00').toLocaleDateString('pt-BR');
-    return [
-      dataFmt,
-      l.m1!==null?l.m1.toFixed(2):'',
-      l.m2!==null?l.m2.toFixed(2):'',
-      l.m3!==null?l.m3.toFixed(2):'',
-      l.mediaGeral!==null?l.mediaGeral.toFixed(2):'',
-      detalhar(l.porTurno.turno1),
-      detalhar(l.porTurno.turno2),
-      detalhar(l.porTurno.turno3),
-    ];
+    return [dataFmt,l.media.toFixed(2),nivelDaMedia(l.media).label,l.total];
   });
+  // Linha de media geral
+  const mediaGeral=linhas.reduce((s,l)=>s+l.media,0)/linhas.length;
+  dados.push([]);
+  dados.push(['Media Geral do Periodo',mediaGeral.toFixed(2),nivelDaMedia(mediaGeral).label,'']);
+
   const ws=XLSX.utils.aoa_to_sheet([cabecalho,...dados]);
-  ws['!cols']=[{wch:12},{wch:14},{wch:14},{wch:16},{wch:12},{wch:40},{wch:40},{wch:40}];
+  ws['!cols']=[{wch:14},{wch:10},{wch:18},{wch:14}];
   const wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,ws,'Termometro');
   const de=document.getElementById('term-hist-de').value;
@@ -6000,7 +5971,6 @@ window.exportarTermometroExcel=function(){
   XLSX.writeFile(wb,'Termometro_Demanda_'+de+'_a_'+ate+'.xlsx');
   showToast('Excel exportado!');
 };
-
 window.renderFeriasTime=function renderFeriasTime(mc){
   // ── Dados de ferias (periodos por pessoa) ──
   const FERIAS_PESSOAS=[
