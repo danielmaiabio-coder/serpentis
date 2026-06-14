@@ -2775,32 +2775,43 @@ window.uploadCapa=async function(e){
   showToast('Enviando capa...');
   try{
     const url=await uploadToCloudinary(file);
+    const urlOtimizada=cloudinaryCapaPerfil(url);
     const capaPreview=document.getElementById('perfil-capa-preview');
-    if(capaPreview)capaPreview.src=url;
+    if(capaPreview)capaPreview.src=urlOtimizada;
     const capaImg=document.getElementById('perfil-capa-preview-img');
-    if(capaImg){capaImg.src=url;}
+    if(capaImg){capaImg.src=urlOtimizada;}
     else{
       const area=document.querySelector('.perfil-capa-placeholder');
-      if(area) area.outerHTML='<img src="'+url+'" class="perfil-capa" id="perfil-capa-preview-img"/>';
+      if(area) area.outerHTML='<img src="'+urlOtimizada+'" class="perfil-capa" id="perfil-capa-preview-img"/>';
     }
     showToast('Capa pronta! Clique em salvar.');
   }catch(e){showToast('Erro ao enviar capa.');}
 };
+// Otimiza capa enviada em 1920x1080 (ou qualquer tamanho) para 1920x510 com crop inteligente
+function cloudinaryCapaPerfil(url){
+  if(!url||!url.includes('/upload/')) return url;
+  return url.replace('/upload/','/upload/w_1920,h_510,c_fill,g_auto,q_auto:best,f_auto,e_sharpen:40/');
+}
 
 window.uploadFoto=async function(e){
   const file=e.target.files[0];if(!file)return;
   showToast('Enviando foto...');
   try{
     const url=await uploadToCloudinary(file);
+    const urlOtimizada=cloudinaryFotoPerfil(url);
     const preview=document.getElementById('perfil-foto-preview');
-    if(preview)preview.src=url;
+    if(preview)preview.src=urlOtimizada;
     const av=document.getElementById('perfil-av-preview');
-    if(av){av.innerHTML='<img src="'+url+'" alt="foto"/>';}
+    if(av){av.innerHTML='<img src="'+urlOtimizada+'" alt="foto"/>';}
     const bigImg=document.querySelector('.perfil-avatar-big img');
-    if(bigImg)bigImg.src=url;
+    if(bigImg)bigImg.src=urlOtimizada;
     showToast('Foto pronta! Clique em salvar.');
   }catch(e){showToast('Erro ao enviar foto.');}
 };
+function cloudinaryFotoPerfil(url){
+  if(!url||!url.includes('/upload/')) return url;
+  return url.replace('/upload/','/upload/w_500,h_500,c_fill,g_auto,q_auto:best,f_auto,e_sharpen:60/');
+}
 window.salvarPerfil=async function(){
   const nome=document.getElementById('perfil-nome').value.trim();
   const fotoEl=document.getElementById('perfil-foto-preview');
@@ -3353,13 +3364,14 @@ window.uploadCapa=async function(e){
   showToast('Enviando capa...');
   try{
     const url=await uploadToCloudinary(file);
+    const urlOtimizada=cloudinaryCapaPerfil(url);
     const capaPreview=document.getElementById('perfil-capa-preview');
-    if(capaPreview)capaPreview.src=url;
+    if(capaPreview)capaPreview.src=urlOtimizada;
     const capaImg=document.getElementById('perfil-capa-preview-img');
-    if(capaImg){capaImg.src=url;}
+    if(capaImg){capaImg.src=urlOtimizada;}
     else{
       const area=document.querySelector('.perfil-capa-placeholder');
-      if(area) area.outerHTML='<img src="'+url+'" class="perfil-capa" id="perfil-capa-preview-img"/>';
+      if(area) area.outerHTML='<img src="'+urlOtimizada+'" class="perfil-capa" id="perfil-capa-preview-img"/>';
     }
     showToast('Capa pronta! Clique em salvar.');
   }catch(e){showToast('Erro ao enviar capa.');}
@@ -3370,12 +3382,13 @@ window.uploadFoto=async function(e){
   showToast('Enviando foto...');
   try{
     const url=await uploadToCloudinary(file);
+    const urlOtimizada=cloudinaryFotoPerfil(url);
     const preview=document.getElementById('perfil-foto-preview');
-    if(preview)preview.src=url;
+    if(preview)preview.src=urlOtimizada;
     const av=document.getElementById('perfil-av-preview');
-    if(av){av.innerHTML='<img src="'+url+'" alt="foto"/>';}
+    if(av){av.innerHTML='<img src="'+urlOtimizada+'" alt="foto"/>';}
     const bigImg=document.querySelector('.perfil-avatar-big img');
-    if(bigImg)bigImg.src=url;
+    if(bigImg)bigImg.src=urlOtimizada;
     showToast('Foto pronta! Clique em salvar.');
   }catch(e){showToast('Erro ao enviar foto.');}
 };
