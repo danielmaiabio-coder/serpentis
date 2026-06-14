@@ -5688,8 +5688,7 @@ async function updateLedTermometro(){
         txt.textContent='SEM VOTOS HOJE';
         return;
       }
-      const q=query(collection(db,'temperaturas',data,'respostas'));
-      const snap=await getDocs(q);
+      const snap=await getDocs(collection(db,'temperaturas',data,'respostas'));
       const valores=[];
       snap.forEach(d=>{
         const v=d.data()[turno.key];
@@ -5738,6 +5737,7 @@ window.updateLedTermometro=updateLedTermometro;
 
 // ── Modal de escolha (operador) / visualizacao (coordenador) ──
 window.abrirModalTermometro=async function(){
+ try{
   const {isCoord}=getPerms();
   const data=hojeStr();
 
@@ -5748,8 +5748,7 @@ window.abrirModalTermometro=async function(){
     if(!turno){
       conteudo='<div style="text-align:center;padding:2rem;color:var(--text-3);">Nenhum turno ainda hoje.</div>';
     } else {
-      const q=query(collection(db,'temperaturas',data,'respostas'));
-      const snap=await getDocs(q);
+      const snap=await getDocs(collection(db,'temperaturas',data,'respostas'));
       const contagem={};
       TERM_NIVEIS.forEach(n=>contagem[n.id]=0);
       let total=0;
@@ -5799,6 +5798,10 @@ window.abrirModalTermometro=async function(){
 
   const conteudo='<div style="font-size:13px;color:var(--text-2);margin-bottom:14px;">'+ativo.pergunta+' <span style="color:var(--text-3);">('+ativo.label+')</span></div>'+opcoesHtml;
   showModalGeneric('Termometro de Demanda',conteudo);
+ }catch(e){
+   console.error('Erro abrirModalTermometro:',e);
+   showModalGeneric('Termometro de Demanda','<div style="text-align:center;padding:2rem;color:var(--red);">Erro: '+e.message+'</div>');
+ }
 };
 
 window.salvarTemperatura=async function(turnoKey,nivelId){
