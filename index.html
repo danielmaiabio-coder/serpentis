@@ -5645,10 +5645,20 @@ async function updateLembreteNotifDot(){
   if(!dot||!currentUser)return;
   try{
     const hoje=new Date().toISOString().slice(0,10);
+    const agora=new Date();
+    const minutosAgora=agora.getHours()*60+agora.getMinutes();
     const q=query(collection(db,'usuarios',currentUser.uid,'lembretes'),where('data','==',hoje));
     const snap=await getDocs(q);
     let pendente=false;
-    snap.forEach(d=>{if(!d.data().feito)pendente=true;});
+    snap.forEach(d=>{
+      const it=d.data();
+      if(it.feito)return;
+      // Sem horario definido -> considera pendente o dia todo
+      if(!it.hora){pendente=true;return;}
+      const [h,m]=it.hora.split(':').map(Number);
+      const minutosLembrete=h*60+m;
+      if(minutosAgora>=minutosLembrete) pendente=true;
+    });
     dot.style.background=pendente?'#e53e3e':'transparent';
     dot.style.boxShadow=pendente?'0 0 8px rgba(229,62,62,0.7)':'none';
   }catch(e){/* silencioso */}
