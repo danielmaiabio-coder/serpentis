@@ -7103,7 +7103,9 @@ async function renderCodigosOferta(mc){
       '<div class="panel" id="oferta-table">'+
         (rows
           ? buildTable(rows,query)
-          : '<div class="empty">Digite algo na busca acima para carregar os dados da aba "'+activeSheet+'".</div>')+
+          : (isTurmas
+              ? '<div class="empty">Digite algo na busca acima para carregar os dados da aba "Turmas".</div>'
+              : '<div class="empty">Carregando...</div>'))+
       '</div>'+
       // ── Modal Novo Registro TURMAS ──
       '<div id="modal-turma" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:3000;align-items:center;justify-content:center;">'+
@@ -7210,11 +7212,38 @@ async function renderCodigosOferta(mc){
 
   window.msOfertaSetSheet=async function(sheet){
     activeSheet=sheet;
-    const data=window._msOfertaCache[sheet]?{[sheet]:window._msOfertaCache[sheet]}:null;
-    await renderPage(data,'');
+    if(sheet==='Modelo'){
+      // Modelo: carrega tudo automaticamente
+      const tableEl=document.getElementById('oferta-table');
+      await renderPage(window._msOfertaCache['Modelo']?{Modelo:window._msOfertaCache['Modelo']}:null,'');
+      if(!window._msOfertaCache['Modelo']){
+        const tableEl2=document.getElementById('oferta-table');
+        if(tableEl2) tableEl2.innerHTML='<div class="empty">Carregando...</div>';
+        try{
+          const rows=await carregarAbaSeNecessario('Modelo');
+          const tableEl3=document.getElementById('oferta-table');
+          if(tableEl3) tableEl3.innerHTML=buildTable(rows,'');
+          window._msOfertaData={Modelo:rows};
+        }catch(e){
+          const tableEl3=document.getElementById('oferta-table');
+          if(tableEl3) tableEl3.innerHTML='<div class="empty">Erro ao carregar: '+e.message+'</div>';
+        }
+      }
+    } else {
+      // Turmas: lazy load por busca
+      const data=window._msOfertaCache[sheet]?{[sheet]:window._msOfertaCache[sheet]}:null;
+      await renderPage(data,'');
+    }
   };
 
   window.msOfertaBuscar=function(q){
+    if(activeSheet==='Modelo'){
+      // Modelo: dados ja carregados por completo, filtra na hora
+      const rows=window._msOfertaCache['Modelo']||[];
+      const tableEl=document.getElementById('oferta-table');
+      if(tableEl) tableEl.innerHTML=buildTable(rows,q);
+      return;
+    }
     clearTimeout(_ofertaSearchTimer);
     if(!q || q.trim()===''){
       // Busca vazia: nao carrega nada, volta ao placeholder
