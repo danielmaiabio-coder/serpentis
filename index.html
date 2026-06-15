@@ -3733,30 +3733,126 @@ window.deletarComentario=async function(postId,commId){
 
 // ESCRITORIO
 
-async function renderEscritorio(mc){
+async function renderEscritorio(mc,activeTab){
+  activeTab=activeTab||'principal';
   const {isCoord}=getPerms();
   if(!isCoord){mc.innerHTML=snakeHtml()+'<div class="empty">Acesso restrito ao coordenador.</div>';return;}
   const snap=await getDocs(collection(db,'usuarios'));
   const ops=[];
   snap.forEach(d=>{const data=d.data();if(data.role==='op')ops.push({uid:d.id,...data});});
+
+  const tabBtn=(id,label)=>{
+    const active=activeTab===id;
+    return '<button onclick="renderEscritorio(document.getElementById(\'mainContent\'),\''+id+'\')" style="padding:10px 20px;background:none;border:none;border-bottom:'+(active?'2px solid var(--primary)':'2px solid transparent')+';color:'+(active?'var(--primary)':'var(--text-2)')+';font-family:var(--font);font-size:13px;font-weight:'+(active?'600':'400')+';cursor:pointer;margin-bottom:-2px;">'+label+'</button>';
+  };
+
   mc.innerHTML=snakeHtml()+
     '<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;">'+
     '<div class="page-eyebrow">🗂️ Escritorio</div>'+
     '<div class="page-title">Escritorio</div>'+
     '<div class="page-sub">Registros e anotacoes por operador — visivel apenas para coordenadores</div>'+
     '</div>'+
-    '<div class="panel" id="term-hist-container" style="margin-bottom:1.5rem;"></div>'+
+    '<div style="display:flex;gap:0;margin-bottom:1rem;border-bottom:2px solid var(--border);">'+
+      tabBtn('principal','Principal')+
+      tabBtn('quemfazoque','\ud83d\udccc Quem Faz o Que')+
+    '</div>'+
+    '<div id="escritorio-tab-content"></div>';
+
+  const content=document.getElementById('escritorio-tab-content');
+  if(activeTab==='quemfazoque'){
+    await renderQuemFazOQue(content,ops);
+  } else {
+    content.innerHTML='<div class="panel" id="term-hist-container" style="margin-bottom:1.5rem;"></div>'+
+      ops.map(op=>{
+        const ini=(op.nome||'?').split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
+        const avHtml=op.foto?'<img src="'+op.foto+'" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/>':ini;
+        return'<div class="escritorio-card" onclick="abrirEscritorio(\''+op.uid+'\')">'+
+          '<div class="op-av" style="background:'+(op.cor||'#1A5C2A')+';color:#fff;">'+avHtml+'</div>'+
+          '<div><div class="op-nm">'+op.nome+'</div><div class="op-mt">'+(op.email||'')+'</div></div>'+
+          '<div style="margin-left:auto;font-size:12px;color:var(--primary);">Abrir →</div>'+
+        '</div>';
+      }).join('');
+    await renderTermometroHistorico(document.getElementById('term-hist-container'));
+  }
+}
+
+// ══════════════════════════════════════════
+// QUEM FAZ O QUE — funcoes extras por operador
+// ══════════════════════════════════════════
+async function renderQuemFazOQue(container,ops){
+  container.innerHTML='<div class="panel"><div class="empty">Carregando...</div></div>';
+  let funcoes={};
+  try{
+    const snap=await getDocs(collection(db,'quem_faz_o_que'));
+    snap.forEach(d=>{funcoes[d.id]=d.data().texto||'';});
+  }catch(e){
+    container.innerHTML='<div class="panel"><div class="empty">Erro ao carregar: '+e.message+'</div></div>';
+    return;
+  }
+
+  window._qfoqOps=ops;
+
+  container.innerHTML='<div style="display:flex;flex-direction:column;gap:10px;">'+
     ops.map(op=>{
       const ini=(op.nome||'?').split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
       const avHtml=op.foto?'<img src="'+op.foto+'" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/>':ini;
-      return'<div class="escritorio-card" onclick="abrirEscritorio(\''+op.uid+'\')">'+
-        '<div class="op-av" style="background:'+(op.cor||'#1A5C2A')+';color:#fff;">'+avHtml+'</div>'+
-        '<div><div class="op-nm">'+op.nome+'</div><div class="op-mt">'+(op.email||'')+'</div></div>'+
-        '<div style="margin-left:auto;font-size:12px;color:var(--primary);">Abrir →</div>'+
+      const texto=funcoes[op.uid]||'';
+      const preview=texto?texto.substring(0,120)+(texto.length>120?'...':''):'<span style="color:var(--text-3);">Nenhuma funcao extra registrada. Clique para adicionar.</span>';
+      return '<div class="panel" style="cursor:pointer;" onclick="abrirQfoqModal(\''+op.uid+'\')">'+
+        '<div style="display:flex;align-items:center;gap:12px;">'+
+          '<div class="op-av" style="background:'+(op.cor||'#1A5C2A')+';color:#fff;flex-shrink:0;">'+avHtml+'</div>'+
+          '<div style="flex:1;min-width:0;">'+
+            '<div style="font-size:14px;font-weight:600;color:var(--text);">'+op.nome+'</div>'+
+            '<div style="font-size:12px;color:var(--text-2);margin-top:4px;line-height:1.5;white-space:pre-wrap;">'+preview+'</div>'+
+          '</div>'+
+          '<div style="font-size:12px;color:var(--primary);flex-shrink:0;">Editar \u2192</div>'+
+        '</div>'+
       '</div>';
-    }).join('');
-  await renderTermometroHistorico(document.getElementById('term-hist-container'));
+    }).join('')+
+  '</div>'+
+  // Modal de edicao
+  '<div id="modal-qfoq" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:3000;align-items:center;justify-content:center;">'+
+    '<div style="background:var(--surface);border-radius:var(--radius-lg);padding:1.5rem;width:100%;max-width:480px;box-shadow:0 20px 60px rgba(0,0,0,0.3);">'+
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">'+
+        '<div style="font-size:15px;font-weight:600;" id="modal-qfoq-titulo">Funcoes Extras</div>'+
+        '<button onclick="document.getElementById(\'modal-qfoq\').style.display=\'none\'" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-2);">\u2715</button>'+
+      '</div>'+
+      '<div style="font-size:12px;color:var(--text-2);margin-bottom:10px;">Descreva livremente outras funcoes ou responsabilidades que esta pessoa exerce.</div>'+
+      '<textarea id="qfoq-textarea" rows="8" placeholder="Ex: Responsavel por organizar a escala de roteamento, apoia no suporte do Slack..." style="width:100%;padding:10px 12px;border:1px solid var(--border-md);border-radius:var(--radius);background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px;resize:vertical;box-sizing:border-box;"></textarea>'+
+      '<input type="hidden" id="qfoq-uid"/>'+
+      '<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:1.25rem;">'+
+        '<button onclick="document.getElementById(\'modal-qfoq\').style.display=\'none\'" style="padding:8px 18px;border:1px solid var(--border-md);border-radius:var(--radius);background:transparent;color:var(--text-2);font-family:var(--font);font-size:13px;cursor:pointer;">Cancelar</button>'+
+        '<button onclick="salvarQfoq()" style="padding:8px 18px;background:var(--primary);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:13px;font-weight:500;cursor:pointer;">Salvar</button>'+
+      '</div>'+
+    '</div>'+
+  '</div>';
 }
+
+window.abrirQfoqModal=async function(uid){
+  const ops=window._qfoqOps||[];
+  const op=ops.find(o=>o.uid===uid);
+  document.getElementById('modal-qfoq-titulo').textContent='Funcoes Extras \u2014 '+(op?op.nome:'Operador');
+  document.getElementById('qfoq-uid').value=uid;
+  let texto='';
+  try{
+    const snap=await getDoc(doc(db,'quem_faz_o_que',uid));
+    if(snap.exists())texto=snap.data().texto||'';
+  }catch(e){/* ignora */}
+  document.getElementById('qfoq-textarea').value=texto;
+  document.getElementById('modal-qfoq').style.display='flex';
+  setTimeout(()=>document.getElementById('qfoq-textarea')?.focus(),50);
+};
+
+window.salvarQfoq=async function(){
+  const uid=document.getElementById('qfoq-uid').value;
+  const texto=document.getElementById('qfoq-textarea').value.trim();
+  try{
+    await setDoc(doc(db,'quem_faz_o_que',uid),{texto,atualizadoEm:Date.now()});
+    document.getElementById('modal-qfoq').style.display='none';
+    showToast('Salvo!');
+    await renderQuemFazOQue(document.getElementById('escritorio-tab-content'),window._qfoqOps);
+  }catch(e){showToast('Erro: '+e.message);}
+};
 
 window.abrirEscritorio=async function(uid){
   escritorioOpAtual=uid;
