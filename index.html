@@ -6894,43 +6894,6 @@ async function renderCodigosOferta(mc){
     return res;
   }
 
-  async function fetchSheetData(sheetName){
-    // Access via SharePoint sharing URL — works for files shared with the logged-in user
-    const shareUrl = 'https://hashtagtreinamentos-my.sharepoint.com/:x:/r/personal/diego_hashtagtreinamentos_com/_layouts/15/Doc.aspx?sourcedoc=%7BA63AE1B4-7478-42F5-BBA1-B2FE7DBF8B9B%7D';
-    // Encode the URL as base64url for Graph shares API
-    const encoded = btoa(shareUrl).replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');
-    const shareBase = 'https://graph.microsoft.com/v1.0/shares/u!'+encoded+'/driveItem';
-
-    // Get drive item reference
-    const itemRes = await graphFetch(shareBase,{});
-    if(!itemRes.ok){
-      // Fallback: try via sharedWithMe
-      const sharedRes = await graphFetch('https://graph.microsoft.com/v1.0/me/drive/sharedWithMe',{});
-      const sharedData = await sharedRes.json();
-      const sf=(sharedData.value||[]).find(x=>x.name&&x.name.toLowerCase().includes('controle')&&x.name.toLowerCase().includes('oferta'));
-      if(!sf) throw new Error('Sessão expirada ou arquivo não encontrado. Clique em "Desconectar" e faça login novamente.');
-      const driveId=sf.remoteItem?.parentReference?.driveId||sf.parentReference?.driveId;
-      const itemId=sf.remoteItem?.id||sf.id;
-      const base=driveId
-        ?'https://graph.microsoft.com/v1.0/drives/'+driveId+'/items/'+itemId
-        :'https://graph.microsoft.com/v1.0/me/drive/items/'+itemId;
-      const wsRes2=await graphFetch(base+'/workbook/worksheets/'+encodeURIComponent(sheetName)+'/usedRange?$select=values',{});
-      if(!wsRes2.ok){const e2=await wsRes2.json();throw new Error(e2.error?.message||'Erro ao ler aba');}
-      return (await wsRes2.json()).values||[];
-    }
-
-    const itemData = await itemRes.json();
-    const driveId = itemData.parentReference?.driveId;
-    const itemId = itemData.id;
-    const base = driveId
-      ?'https://graph.microsoft.com/v1.0/drives/'+driveId+'/items/'+itemId
-      :'https://graph.microsoft.com/v1.0/me/drive/items/'+itemId;
-
-    const wsRes=await graphFetch(base+'/workbook/worksheets/'+encodeURIComponent(sheetName)+'/usedRange?$select=values',{});
-    if(!wsRes.ok){const err=await wsRes.json();throw new Error(err.error?.message||'Erro ao ler aba '+sheetName);}
-    return (await wsRes.json()).values||[];
-  }
-
   // ── Colunas TURMAS (A–Q, índices 0–16) ──
   const TURMAS_COLS = [
     'Curso','Oferta','Curso & Oferta','Descrição / Forma de pagamento',
@@ -6970,7 +6933,18 @@ async function renderCodigosOferta(mc){
 
   async function fetchSheetData(sheetName){
     const base=await resolveBase();
-    const wsRes=await graphFetch(base+'/workbook/worksheets/'+encodeURIComponent(sheetName)+'/usedRange?$select=values',{});
+    let wsRes=await graphFetch(base+'/workbook/worksheets/'+encodeURIComponent(sheetName)+'/usedRange?$select=values',{});
+    if(!wsRes.ok){
+      // Tenta encontrar o nome real da aba (case-insensitive / espacos extras)
+      const listRes=await graphFetch(base+'/workbook/worksheets?$select=name',{});
+      if(listRes.ok){
+        const listData=await listRes.json();
+        const real=(listData.value||[]).find(w=>(w.name||'').trim().toLowerCase()===sheetName.trim().toLowerCase());
+        if(real){
+          wsRes=await graphFetch(base+'/workbook/worksheets/'+encodeURIComponent(real.name)+'/usedRange?$select=values',{});
+        }
+      }
+    }
     if(!wsRes.ok){const err=await wsRes.json();throw new Error(err.error?.message||'Erro ao ler aba '+sheetName);}
     return (await wsRes.json()).values||[];
   }
