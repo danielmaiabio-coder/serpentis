@@ -1439,8 +1439,13 @@ const CHAT_CRITERIOS=[
 
 async function renderNotas(mc,op){
   const isCoord=userProfile.role==='coord';
-  const snap=await getDoc(doc(db,'analise_chat',op.uid));
-  const dados=snap.exists()?snap.data():null;
+  let dados=null,erroPerm=null;
+  try{
+    const snap=await getDoc(doc(db,'analise_chat',op.uid));
+    dados=snap.exists()?snap.data():null;
+  }catch(e){
+    erroPerm=e.message;
+  }
 
   mc.innerHTML=snakeHtml()+'<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">'+
     '<div><div class="page-eyebrow">* '+(isCoord?op.nome+' · ':'')+'Analise de Chat</div><div class="page-title">Qualidade de Atendimento (WATI)</div><div class="page-sub">'+(dados&&dados.geradoEm?'Relatorio gerado em '+dados.geradoEm:'Nenhum relatorio enviado ainda')+'</div></div>'+
@@ -1452,6 +1457,11 @@ async function renderNotas(mc,op){
     :'')+
   '</div>'+
   '<div id="analise-chat-content"></div>';
+
+  if(erroPerm){
+    document.getElementById('analise-chat-content').innerHTML='<div class="panel"><div class="empty">Erro de permissao: '+erroPerm+'<br/><br/>Adicione a regra do Firestore para a colecao "analise_chat".</div></div>';
+    return;
+  }
 
   await renderAnaliseChatContent(op,dados);
 }
