@@ -1205,7 +1205,7 @@ function pageHeaderOp(op,isCoord,eyebrow,titulo,sub,extraRight){
   const avHtml=op.foto?'<img src="'+op.foto+'" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/>':ini;
   return '<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;">'+
     '<div style="display:flex;align-items:center;gap:14px;">'+
-    '<div style="width:48px;height:48px;border-radius:50%;background:'+(op.cor||'#1A5C2A')+';color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;flex-shrink:0;overflow:hidden;">'+avHtml+'</div>'+
+    '<div style="width:82px;height:82px;border-radius:50%;background:'+(op.cor||'#1A5C2A')+';color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:24px;flex-shrink:0;overflow:hidden;">'+avHtml+'</div>'+
     '<div><div class="page-eyebrow">* '+(isCoord?op.nome+' \u00b7 ':'')+eyebrow+'</div>'+
     '<div class="page-title">'+titulo+'</div>'+(sub?'<div class="page-sub">'+sub+'</div>':'')+
     '</div>'+
