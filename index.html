@@ -7077,7 +7077,7 @@ async function renderCodigosOferta(mc){
   }
 
   async function renderPage(data,query=''){
-    const rows=data[activeSheet]||[];
+    const rows=(data&&data[activeSheet])||null;
     const isTurmas=(activeSheet==='Turmas');
     mc.innerHTML=snakeHtml()+
       '<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">'+
@@ -7086,7 +7086,6 @@ async function renderCodigosOferta(mc){
           '<div style="width:8px;height:8px;border-radius:50%;background:#22c55e;box-shadow:0 0 6px #22c55e;"></div>'+
           '<span style="font-size:12px;color:var(--text-2);">Conectado</span>'+
           '<button onclick="msOfertaDesconectar()" style="padding:4px 10px;border:1px solid var(--border-md);border-radius:var(--radius);background:transparent;color:var(--text-3);font-size:11px;cursor:pointer;font-family:var(--font);">Desconectar</button>'+
-          '<button onclick="msOfertaRecarregar()" style="padding:4px 10px;border:1px solid var(--primary);border-radius:var(--radius);background:transparent;color:var(--primary);font-size:11px;cursor:pointer;font-family:var(--font);">↻ Atualizar</button>'+
         '</div>'+
       '</div>'+
       '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;border-bottom:2px solid var(--border);">'+
@@ -7101,7 +7100,11 @@ async function renderCodigosOferta(mc){
         '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="2" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>'+
         '<input id="oferta-search" type="text" value="'+query+'" placeholder="'+(isTurmas?'Buscar por Curso (coluna A)...':'Buscar...')+'" oninput="msOfertaBuscar(this.value)" style="width:100%;padding:10px 14px 10px 38px;border:1px solid var(--border-md);border-radius:var(--radius);background:var(--surface);color:var(--text);font-family:var(--font);font-size:13px;box-sizing:border-box;"/>'+
       '</div>'+
-      '<div class="panel" id="oferta-table">'+buildTable(rows,query)+'</div>'+
+      '<div class="panel" id="oferta-table">'+
+        (rows
+          ? buildTable(rows,query)
+          : '<div class="empty">Digite algo na busca acima para carregar os dados da aba "'+activeSheet+'".</div>')+
+      '</div>'+
       // ── Modal Novo Registro TURMAS ──
       '<div id="modal-turma" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:3000;align-items:center;justify-content:center;">'+
         '<div style="background:var(--surface);border-radius:var(--radius-lg);padding:1.5rem;width:100%;max-width:680px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3);">'+
@@ -7142,7 +7145,7 @@ async function renderCodigosOferta(mc){
           '</div>'+
         '</div>'+
       '</div>';
-    window._msOfertaData=data;
+    window._msOfertaData=data||{};
   }
 
   function showLogin(msg){
@@ -7163,21 +7166,18 @@ async function renderCodigosOferta(mc){
       '</div>';
   }
 
-  async function loadAndRender(){
-    try{
-      const [turmas,modelo]=await Promise.all([fetchSheetData('Turmas'),fetchSheetData('Modelo')]);
-      const data={Turmas:turmas,Modelo:modelo};
-      sessionStorage.setItem('ms_oferta_data',JSON.stringify(data));
-      await renderPage(data);
-    }catch(e){
-      const cached=sessionStorage.getItem('ms_oferta_data');
-      if(cached){await renderPage(JSON.parse(cached));showToast('Cache — '+e.message);}
-      else{msToken=null;sessionStorage.removeItem('ms_token');showLogin('Erro: '+e.message);}
-    }
+  // Cache em memoria por aba (carregado sob demanda, ao buscar)
+  window._msOfertaCache=window._msOfertaCache||{};
+  let _ofertaSearchTimer=null;
+
+  async function carregarAbaSeNecessario(sheet){
+    if(window._msOfertaCache[sheet]) return window._msOfertaCache[sheet];
+    const rows=await fetchSheetData(sheet);
+    window._msOfertaCache[sheet]=rows;
+    return rows;
   }
 
-  const cachedData=sessionStorage.getItem('ms_oferta_data');
-  if(msToken){if(cachedData)renderPage(JSON.parse(cachedData));loadAndRender();}
+  if(msToken) renderPage(null);
   else showLogin();
 
   window.msOfertaLogin=function(){
@@ -7202,14 +7202,40 @@ async function renderCodigosOferta(mc){
       const tokenResp=await pca.acquireTokenSilent({scopes:['Files.ReadWrite'],account:resp.account});
       msToken=tokenResp.accessToken;
       sessionStorage.setItem('ms_token',msToken);
-      await loadAndRender();
+      await renderPage(null);
     }catch(e){if(status) status.textContent='❌ '+e.message;}
   };
 
-  window.msOfertaDesconectar=function(){msToken=null;sessionStorage.removeItem('ms_token');sessionStorage.removeItem('ms_oferta_data');showLogin();};
-  window.msOfertaRecarregar=async function(){showToast('Atualizando...');await loadAndRender();};
-  window.msOfertaSetSheet=async function(sheet){activeSheet=sheet;const data=window._msOfertaData||JSON.parse(sessionStorage.getItem('ms_oferta_data')||'{}');const q=document.getElementById('oferta-search')?.value||'';await renderPage(data,q);};
-  window.msOfertaBuscar=function(q){const data=window._msOfertaData||JSON.parse(sessionStorage.getItem('ms_oferta_data')||'{}');const rows=data[activeSheet]||[];document.getElementById('oferta-table').innerHTML=buildTable(rows,q);};
+  window.msOfertaDesconectar=function(){msToken=null;sessionStorage.removeItem('ms_token');sessionStorage.removeItem('ms_oferta_data');window._msOfertaCache={};showLogin();};
+
+  window.msOfertaSetSheet=async function(sheet){
+    activeSheet=sheet;
+    const data=window._msOfertaCache[sheet]?{[sheet]:window._msOfertaCache[sheet]}:null;
+    await renderPage(data,'');
+  };
+
+  window.msOfertaBuscar=function(q){
+    clearTimeout(_ofertaSearchTimer);
+    if(!q || q.trim()===''){
+      // Busca vazia: nao carrega nada, volta ao placeholder
+      const tableEl=document.getElementById('oferta-table');
+      if(tableEl) tableEl.innerHTML='<div class="empty">Digite algo na busca acima para carregar os dados da aba "'+activeSheet+'".</div>';
+      return;
+    }
+    const tableEl=document.getElementById('oferta-table');
+    if(tableEl) tableEl.innerHTML='<div class="empty">Carregando...</div>';
+    _ofertaSearchTimer=setTimeout(async()=>{
+      try{
+        const rows=await carregarAbaSeNecessario(activeSheet);
+        const tableEl2=document.getElementById('oferta-table');
+        if(tableEl2) tableEl2.innerHTML=buildTable(rows,q);
+        window._msOfertaData={[activeSheet]:rows};
+      }catch(e){
+        const tableEl2=document.getElementById('oferta-table');
+        if(tableEl2) tableEl2.innerHTML='<div class="empty">Erro ao carregar: '+e.message+'</div>';
+      }
+    },500); // debounce 500ms
+  };
 
   // ── Duplicar linha: preenche modal com valores da linha clicada ──
   window.msOfertaDuplicar=function(ri){
@@ -7247,7 +7273,13 @@ async function renderCodigosOferta(mc){
       await appendRow('Turmas',values);
       document.getElementById('modal-turma').style.display='none';
       showToast('Registro adicionado!');
-      await loadAndRender();
+      // Invalida cache de Turmas e recarrega a busca atual
+      delete window._msOfertaCache['Turmas'];
+      const q=document.getElementById('oferta-search')?.value||'';
+      if(q.trim()){
+        const rows=await carregarAbaSeNecessario('Turmas');
+        document.getElementById('oferta-table').innerHTML=buildTable(rows,q);
+      }
     }catch(e){
       showToast('Erro: '+e.message);
     }finally{
@@ -7259,8 +7291,7 @@ async function renderCodigosOferta(mc){
   window.msModeloEditarN=function(rowIdx){
     document.getElementById('modal-n-rowIdx').value=rowIdx;
     // Preenche com valor atual se existir
-    const data=window._msOfertaData||JSON.parse(sessionStorage.getItem('ms_oferta_data')||'{}');
-    const rows=(data['Modelo']||[]);
+    const rows=(window._msOfertaCache['Modelo']||[]);
     const row=rows[rowIdx]||[];
     document.getElementById('modal-n-input').value=row[MODELO_COL_N]||'';
     document.getElementById('modal-n-result').style.display='none';
@@ -7300,12 +7331,10 @@ async function renderCodigosOferta(mc){
       const uValue=rowValues[MODELO_COL_U]??'';
 
       // Atualiza cache local
-      const data=window._msOfertaData||JSON.parse(sessionStorage.getItem('ms_oferta_data')||'{}');
-      if(data['Modelo']&&data['Modelo'][rowIdx]){
-        data['Modelo'][rowIdx][MODELO_COL_N]=valor;
-        data['Modelo'][rowIdx][MODELO_COL_U]=uValue;
-        window._msOfertaData=data;
-        sessionStorage.setItem('ms_oferta_data',JSON.stringify(data));
+      const cacheModelo=window._msOfertaCache['Modelo'];
+      if(cacheModelo&&cacheModelo[rowIdx]){
+        cacheModelo[rowIdx][MODELO_COL_N]=valor;
+        cacheModelo[rowIdx][MODELO_COL_U]=uValue;
       }
 
       // Atualiza a tabela visualmente sem reload
