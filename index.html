@@ -1197,6 +1197,21 @@ window.importarResultadoExcel=async function(input,uid){
   }
 };
 
+// ── Header com foto do operador ao lado do titulo (Painel Brille) ──
+function pageHeaderOp(op,isCoord,eyebrow,titulo,sub,extraRight){
+  const ini=(op.nome||'?').split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
+  const avHtml=op.foto?'<img src="'+op.foto+'" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/>':ini;
+  return '<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;">'+
+    '<div style="display:flex;align-items:center;gap:14px;">'+
+    '<div style="width:48px;height:48px;border-radius:50%;background:'+(op.cor||'#1A5C2A')+';color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;flex-shrink:0;overflow:hidden;">'+avHtml+'</div>'+
+    '<div><div class="page-eyebrow">* '+(isCoord?op.nome+' \u00b7 ':'')+eyebrow+'</div>'+
+    '<div class="page-title">'+titulo+'</div>'+(sub?'<div class="page-sub">'+sub+'</div>':'')+
+    '</div>'+
+    '</div>'+
+    (extraRight||'')+
+  '</div>';
+}
+
 async function renderResultado(mc,op){
   const isCoord=userProfile.role==='coord';
   const semSnap=await getDoc(doc(db,'semanas',op.uid));
@@ -1218,10 +1233,7 @@ async function renderResultado(mc,op){
   if(isCoord) banner+='<button class="reuniao-edit-btn" onclick="editarReuniao()">Editar</button>';
   banner+='</div></div>';
   mc.innerHTML=snakeHtml()+
-    '<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;">'+
-    '<div class="page-eyebrow">* '+(isCoord?op.nome+' · ':'')+'Resultado Semanal</div>'+
-    '<div class="page-title">Semana atual</div><div class="page-sub">'+(sem.descricao||'Semana em andamento')+'</div>'+
-    '</div>'+
+    pageHeaderOp(op,isCoord,'Resultado Semanal','Semana atual',sem.descricao||'Semana em andamento')+
     banner+
     '<div class="cards-row"><div class="stat-card blue"><div class="sc-label">Valor Recuperado</div><div class="sc-value">'+atual.valor+'</div><div class="sc-sub">esta semana</div></div>'+
     '<div class="stat-card green"><div class="sc-label">Atendimentos</div><div class="sc-value">'+atual.atend+'</div><div class="sc-sub">esta semana</div></div>'+
@@ -1261,16 +1273,12 @@ async function renderHistorico(mc,op){
 
   function buildHistHtml(){
     return snakeHtml()+
-    '<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">'+
-      '<div><div class="page-eyebrow">* '+(isCoord?op.nome+' · ':'')+'Historico</div>'+
-      '<div class="page-title">Historico de recuperacao</div>'+
-      '<div class="page-sub">Semana a semana</div></div>'+
+    pageHeaderOp(op,isCoord,'Historico','Historico de recuperacao','Semana a semana',
       '<div style="display:flex;align-items:center;gap:8px;">'+
       '<button onclick="histExportarExcel()" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:transparent;color:var(--primary);border:1px solid var(--primary);border-radius:var(--radius);font-family:var(--font);font-size:12px;font-weight:500;cursor:pointer;">📥 Exportar Excel</button>'+
       (isCoord?'<button onclick="histAddSemana()" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:var(--primary);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:12px;font-weight:500;cursor:pointer;">'+
         '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Nova semana</button>':'')+
-      '</div>'+
-    '</div>'+
+      '</div>')+
     '<div class="panel">'+
       (rows.length===0?'<div class="empty">Nenhum registro ainda.</div>':
       '<table class="hist-table"><thead><tr><th>Semana</th><th>Valor recuperado</th>'+
@@ -1456,15 +1464,14 @@ async function renderNotas(mc,op,activeTab){
   // Guarda o op atual para os botoes de tab conseguirem re-renderizar
   window.viewingOpObj=op;
 
-  mc.innerHTML=snakeHtml()+'<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">'+
-    '<div><div class="page-eyebrow">* '+(isCoord?op.nome+' · ':'')+'Analise de Chat</div><div class="page-title">Qualidade de Atendimento (WATI)</div><div class="page-sub">'+(dados&&dados.geradoEm?'Relatorio gerado em '+dados.geradoEm:'Nenhum relatorio enviado ainda')+'</div></div>'+
-    (isCoord?
-      '<div style="display:flex;align-items:center;gap:8px;">'+
-        '<input type="file" id="chat-xlsx-input" accept=".xlsx" style="display:none;" onchange="processarRelatorioWati(event)"/>'+
-        '<button onclick="document.getElementById(\'chat-xlsx-input\').click()" style="padding:8px 16px;background:var(--primary);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:12px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:6px;">\ud83d\udce4 Importar relatorio WATI (.xlsx)</button>'+
-      '</div>'
-    :'')+
-  '</div>'+
+  mc.innerHTML=snakeHtml()+
+    pageHeaderOp(op,isCoord,'Analise de Chat','Qualidade de Atendimento (WATI)',(dados&&dados.geradoEm?'Relatorio gerado em '+dados.geradoEm:'Nenhum relatorio enviado ainda'),
+      (isCoord?
+        '<div style="display:flex;align-items:center;gap:8px;">'+
+          '<input type="file" id="chat-xlsx-input" accept=".xlsx" style="display:none;" onchange="processarRelatorioWati(event)"/>'+
+          '<button onclick="document.getElementById(\'chat-xlsx-input\').click()" style="padding:8px 16px;background:var(--primary);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:12px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:6px;">\ud83d\udce4 Importar relatorio WATI (.xlsx)</button>'+
+        '</div>'
+      :''))+
   '<div style="display:flex;gap:0;margin-bottom:1rem;border-bottom:2px solid var(--border);">'+
     tabBtn('atual','Atual')+
     tabBtn('historico','\ud83d\udcc1 Historico')+
@@ -1912,7 +1919,7 @@ async function renderDashboard(mc,op){
     :dashData.tipo==='imagem'?'<div class="panel"><div class="panel-title">Dashboard externo</div><img src="'+dashData.url+'" style="width:100%;border-radius:var(--radius);" alt="Dashboard"/>'+(isCoord?'<button class="btn-ghost" style="margin-top:10px;" onclick="limparDashboard()">Remover</button>':'')+'</div>'
     :isCoord?'<div class="panel"><div class="panel-title">Dashboard externo</div><p style="font-size:13px;color:var(--text-2);margin-bottom:1rem;">Adicione um link ou imagem.</p><div style="display:flex;gap:8px;margin-bottom:1rem;"><button class="fb-tab active" id="tab-link" onclick="showDashInput(\'link\')">Link (Power BI)</button><button class="fb-tab" id="tab-img" onclick="showDashInput(\'imagem\')">Imagem / Print</button></div><div id="dash-link-area"><input type="url" class="inp" id="dashUrl" placeholder="https://app.powerbi.com/..." style="margin-bottom:10px;"/><button class="btn-blue" onclick="salvarDashLink()">Salvar link</button></div><div id="dash-img-area" style="display:none;"><input type="file" id="dashFile" accept="image/*" onchange="previewDashImg(event)" style="font-size:13px;color:var(--text-2);margin-bottom:10px;display:block;"/><img id="dashPreview" style="display:none;width:100%;border-radius:var(--radius);margin-bottom:10px;"/><button class="btn-blue" onclick="salvarDashImagem()">Salvar imagem</button></div></div>'
     :'<div class="panel"><div class="empty">Nenhum dashboard externo adicionado.</div></div>';
-  mc.innerHTML=snakeHtml()+'<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;"><div class="page-eyebrow">* '+(isCoord?op.nome+' · ':'')+'Dashboard</div><div class="page-title">Resultados pessoais</div><div class="page-sub">Graficos e dashboard externo</div></div>'+grafSection+embedSection;
+  mc.innerHTML=snakeHtml()+pageHeaderOp(op,isCoord,'Dashboard','Resultados pessoais','Graficos e dashboard externo')+grafSection+embedSection;
 }
 window.showDashInput=function(t){document.getElementById('dash-link-area').style.display=t==='link'?'block':'none';document.getElementById('dash-img-area').style.display=t==='imagem'?'block':'none';document.querySelectorAll('.fb-tab').forEach(el=>el.classList.remove('active'));document.getElementById(t==='link'?'tab-link':'tab-img').classList.add('active');};
 window.salvarDashLink=async function(){const url=document.getElementById('dashUrl').value.trim();if(!url){showToast('Cole um link valido.');return;}try{await setDoc(doc(db,'dashboards',viewingOp),{tipo:'link',url});showToast('Link salvo!');navigate('dashboard');}catch(e){showToast('Erro.');}};
