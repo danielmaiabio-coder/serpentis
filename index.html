@@ -1508,10 +1508,10 @@ async function renderAnaliseChatContent(op,dados){
       statCard('T. Medio 1\u00aa Resposta',resumo.tempo1aResposta??'\u2014')+
     '</div>';
 
-  // ── Cards dos 7 criterios (media + barra de progresso) ──
+  // ── Cards dos 7 criterios (media + barra de progresso) — ultimo importado ──
   const criteriosHtml=
     '<div class="panel" style="margin-bottom:1.5rem;">'+
-      '<div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:14px;">\ud83d\udcca Medias por Criterio</div>'+
+      '<div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:14px;">\ud83d\udcca Medias por Criterio \u2014 \u00daltima Importa\u00e7\u00e3o</div>'+
       '<div style="display:flex;flex-direction:column;gap:12px;">'+
       CHAT_CRITERIOS.map(c=>{
         const media=resumo.medias?(resumo.medias[c.key]??0):0;
@@ -1522,7 +1522,14 @@ async function renderAnaliseChatContent(op,dados){
         '</div>';
       }).join('')+
       '</div>'+
+    '</div>'+
+    '<div class="panel" style="margin-bottom:1.5rem;" id="achat-media-geral">'+
+      '<div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:14px;">\ud83d\udcc8 Media Geral do Historico</div>'+
+      '<div style="font-size:12px;color:var(--text-3);">Calculando...</div>'+
     '</div>';
+
+  // Calcula media geral do historico (assincrono, atualiza o painel apos render)
+  carregarMediaGeralHistorico(op);
 
   // ── Lista de chats resolvidos ──
   const chatsHtml=chats.length===0
@@ -1558,6 +1565,60 @@ function statCard(label,value){
     '<div style="font-size:18px;font-weight:700;color:var(--text);">'+value+'</div>'+
     '<div style="font-size:11px;color:var(--text-2);margin-top:4px;">'+label+'</div>'+
   '</div>';
+}
+
+// ── Calcula media geral ponderada por numero de chats de todas as importacoes ──
+async function carregarMediaGeralHistorico(op){
+  const painel=document.getElementById('achat-media-geral');
+  if(!painel)return;
+  try{
+    const snap=await getDocs(collection(db,'analise_chat_historico',op.uid,'relatorios'));
+    const relatorios=[];
+    snap.forEach(d=>relatorios.push(d.data()));
+
+    if(relatorios.length===0){
+      painel.innerHTML='<div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:14px;">\ud83d\udcc8 Media Geral do Historico</div>'+
+        '<div class="empty" style="padding:1rem 0;">Nenhuma importacao no historico ainda.</div>';
+      return;
+    }
+
+    // Soma ponderada: cada criterio multiplicado pelo total de chats daquele relatorio
+    const somas={};const pesos={};
+    CHAT_CRITERIOS.forEach(c=>{somas[c.key]=0;pesos[c.key]=0;});
+    let totalChatsGeral=0,totalResolvidosGeral=0;
+
+    relatorios.forEach(r=>{
+      const resumo=r.resumo||{};
+      const peso=resumo.totalChats||0;
+      totalChatsGeral+=resumo.totalChats||0;
+      totalResolvidosGeral+=resumo.resolvidos||0;
+      CHAT_CRITERIOS.forEach(c=>{
+        const media=resumo.medias?(resumo.medias[c.key]??0):0;
+        if(peso>0){somas[c.key]+=media*peso;pesos[c.key]+=peso;}
+      });
+    });
+
+    const taxaGeral=totalChatsGeral>0?Math.round(totalResolvidosGeral/totalChatsGeral*100)+'%':'0%';
+
+    painel.innerHTML=
+      '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:14px;">'+
+        '<div style="font-size:14px;font-weight:600;color:var(--text);">\ud83d\udcc8 Media Geral do Historico</div>'+
+        '<div style="font-size:11px;color:var(--text-3);">'+relatorios.length+' importa\u00e7\u00f5es \u2022 '+totalChatsGeral+' chats \u2022 taxa geral: '+taxaGeral+'</div>'+
+      '</div>'+
+      '<div style="display:flex;flex-direction:column;gap:12px;">'+
+      CHAT_CRITERIOS.map(c=>{
+        const media=pesos[c.key]>0?(somas[c.key]/pesos[c.key]):0;
+        const pct=Math.round(media*10);
+        return '<div>'+
+          '<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-2);margin-bottom:4px;"><span>'+c.label+'</span><span style="font-weight:600;color:'+c.cor+';">'+media.toFixed(1)+'/10</span></div>'+
+          '<div style="height:8px;background:var(--surface);border-radius:6px;overflow:hidden;"><div style="width:'+pct+'%;height:100%;background:'+c.cor+';opacity:0.6;"></div></div>'+
+        '</div>';
+      }).join('')+
+      '</div>';
+  }catch(e){
+    painel.innerHTML='<div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:14px;">\ud83d\udcc8 Media Geral do Historico</div>'+
+      '<div class="empty" style="padding:1rem 0;">Erro: '+e.message+'</div>';
+  }
 }
 
 // ══════════════════════════════════════════
