@@ -1437,7 +1437,8 @@ const CHAT_CRITERIOS=[
   {key:'Esclarece',label:'Esclarece de forma completa',cor:'#a855f7'},
 ];
 
-async function renderNotas(mc,op){
+async function renderNotas(mc,op,activeTab){
+  activeTab=activeTab||'atual';
   const isCoord=userProfile.role==='coord';
   let dados=null,erroPerm=null;
   try{
@@ -1446,6 +1447,14 @@ async function renderNotas(mc,op){
   }catch(e){
     erroPerm=e.message;
   }
+
+  const tabBtn=(id,label)=>{
+    const active=activeTab===id;
+    return '<button onclick="renderNotas(document.getElementById(\'mainContent\'),viewingOpObj,\''+id+'\')" style="padding:10px 20px;background:none;border:none;border-bottom:'+(active?'2px solid var(--primary)':'2px solid transparent')+';color:'+(active?'var(--primary)':'var(--text-2)')+';font-family:var(--font);font-size:13px;font-weight:'+(active?'600':'400')+';cursor:pointer;margin-bottom:-2px;">'+label+'</button>';
+  };
+
+  // Guarda o op atual para os botoes de tab conseguirem re-renderizar
+  window.viewingOpObj=op;
 
   mc.innerHTML=snakeHtml()+'<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">'+
     '<div><div class="page-eyebrow">* '+(isCoord?op.nome+' · ':'')+'Analise de Chat</div><div class="page-title">Qualidade de Atendimento (WATI)</div><div class="page-sub">'+(dados&&dados.geradoEm?'Relatorio gerado em '+dados.geradoEm:'Nenhum relatorio enviado ainda')+'</div></div>'+
@@ -1456,6 +1465,10 @@ async function renderNotas(mc,op){
       '</div>'
     :'')+
   '</div>'+
+  '<div style="display:flex;gap:0;margin-bottom:1rem;border-bottom:2px solid var(--border);">'+
+    tabBtn('atual','Atual')+
+    tabBtn('historico','\ud83d\udcc1 Historico')+
+  '</div>'+
   '<div id="analise-chat-content"></div>';
 
   if(erroPerm){
@@ -1463,8 +1476,13 @@ async function renderNotas(mc,op){
     return;
   }
 
-  await renderAnaliseChatContent(op,dados);
+  if(activeTab==='historico'){
+    await renderAnaliseChatHistorico(op);
+  } else {
+    await renderAnaliseChatContent(op,dados);
+  }
 }
+window.renderNotas=renderNotas;
 
 async function renderAnaliseChatContent(op,dados){
   const container=document.getElementById('analise-chat-content');
@@ -1541,6 +1559,137 @@ function statCard(label,value){
     '<div style="font-size:11px;color:var(--text-2);margin-top:4px;">'+label+'</div>'+
   '</div>';
 }
+
+// ══════════════════════════════════════════
+// HISTORICO DE IMPORTACOES (Analise de Chat)
+// ══════════════════════════════════════════
+async function renderAnaliseChatHistorico(op,filtroDe,filtroAte){
+  const container=document.getElementById('analise-chat-content');
+  if(!container)return;
+
+  const hoje=new Date();
+  const inicio30=new Date();inicio30.setDate(inicio30.getDate()-30);
+  const fmtInput=d=>d.toISOString().slice(0,10);
+  const de=filtroDe||fmtInput(inicio30);
+  const ate=filtroAte||fmtInput(hoje);
+
+  container.innerHTML=
+    '<div style="margin-bottom:1rem;">'+
+      '<div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:10px;">\ud83d\udcc1 Importacoes Anteriores</div>'+
+      '<div style="display:flex;gap:10px;align-items:end;flex-wrap:wrap;">'+
+        '<div><label style="display:block;font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-2);margin-bottom:4px;">De</label>'+
+          '<input id="achat-hist-de" type="date" value="'+de+'" style="padding:8px 10px;border:1px solid var(--border-md);border-radius:var(--radius);background:var(--bg);color:var(--text);font-family:var(--font);font-size:12px;"/></div>'+
+        '<div><label style="display:block;font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-2);margin-bottom:4px;">Ate</label>'+
+          '<input id="achat-hist-ate" type="date" value="'+ate+'" style="padding:8px 10px;border:1px solid var(--border-md);border-radius:var(--radius);background:var(--bg);color:var(--text);font-family:var(--font);font-size:12px;"/></div>'+
+        '<button onclick="buscarAnaliseChatHistorico()" style="padding:8px 16px;background:var(--primary);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:12px;font-weight:500;cursor:pointer;">Buscar</button>'+
+      '</div>'+
+    '</div>'+
+    '<div id="achat-hist-list">Carregando...</div>';
+
+  await buscarAnaliseChatHistorico();
+}
+
+window.buscarAnaliseChatHistorico=async function(){
+  const listEl=document.getElementById('achat-hist-list');
+  if(!listEl)return;
+  const op=window.viewingOpObj;
+  if(!op){listEl.innerHTML='<div class="empty">Erro: operador nao identificado.</div>';return;}
+  const de=document.getElementById('achat-hist-de')?.value;
+  const ate=document.getElementById('achat-hist-ate')?.value;
+  listEl.innerHTML='Carregando...';
+
+  try{
+    const snap=await getDocs(collection(db,'analise_chat_historico',op.uid,'relatorios'));
+    let itens=[];
+    snap.forEach(d=>itens.push({id:d.id,...d.data()}));
+    // Filtra por data de importacao (campo importadoEmISO: YYYY-MM-DD)
+    if(de) itens=itens.filter(it=>(it.importadoEmISO||'')>=de);
+    if(ate) itens=itens.filter(it=>(it.importadoEmISO||'')<=ate);
+    itens.sort((a,b)=>(b.atualizadoEm||0)-(a.atualizadoEm||0));
+
+    if(itens.length===0){
+      listEl.innerHTML='<div class="empty">Nenhuma importacao encontrada no periodo.</div>';
+      return;
+    }
+
+    listEl.innerHTML='<div style="display:flex;flex-direction:column;gap:10px;">'+itens.map(it=>{
+      const resumo=it.resumo||{};
+      return '<div style="display:flex;align-items:center;gap:14px;padding:14px 16px;background:var(--surface);border-radius:12px;border:1px solid var(--border-md);">'+
+        '<div style="flex:1;min-width:0;">'+
+          '<div style="font-size:14px;font-weight:600;color:var(--text);">'+(it.geradoEm||'Relatorio')+'</div>'+
+          '<div style="font-size:12px;color:var(--text-2);">'+(resumo.totalChats??0)+' chats \u2022 '+(resumo.resolvidos??0)+' resolvidos \u2022 Taxa: '+(resumo.taxaResolucao||'0%')+'</div>'+
+        '</div>'+
+        '<button onclick="visualizarAnaliseChatHistorico(\''+it.id+'\')" style="padding:7px 14px;background:transparent;color:var(--primary);border:1px solid var(--primary);border-radius:var(--radius);font-family:var(--font);font-size:12px;font-weight:500;cursor:pointer;">Visualizar</button>'+
+        '<button onclick="excluirAnaliseChatHistorico(\''+it.id+'\')" title="Excluir" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:16px;padding:4px;">\u2715</button>'+
+      '</div>';
+    }).join('')+'</div>';
+  }catch(e){
+    listEl.innerHTML='<div class="empty">Erro: '+e.message+'</div>';
+  }
+};
+
+window.visualizarAnaliseChatHistorico=async function(id){
+  const op=window.viewingOpObj;
+  if(!op)return;
+  try{
+    const snap=await getDoc(doc(db,'analise_chat_historico',op.uid,'relatorios',id));
+    if(!snap.exists()){showToast('Importacao nao encontrada.');return;}
+    const dados=snap.data();
+    // Mostra dentro de um modal generico para nao perder a navegacao do historico
+    const tempContainer=document.createElement('div');
+    document.body.appendChild(tempContainer);
+    tempContainer.style.display='none';
+
+    // Monta o conteudo usando a mesma estrutura de renderAnaliseChatContent, mas em modal
+    let html='<div style="max-height:70vh;overflow-y:auto;">';
+    const resumo=dados.resumo||{};
+    const chats=dados.chats||[];
+    html+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:1rem;">'+
+      statCard('Total de Chats',resumo.totalChats??'\u2014')+
+      statCard('Resolvidos',resumo.resolvidos??'\u2014')+
+      statCard('Taxa Resolucao',resumo.taxaResolucao??'\u2014')+
+    '</div>';
+    html+='<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:1rem;">'+
+      CHAT_CRITERIOS.map(c=>{
+        const media=resumo.medias?(resumo.medias[c.key]??0):0;
+        const pct=Math.round(media*10);
+        return '<div>'+
+          '<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-2);margin-bottom:4px;"><span>'+c.label+'</span><span style="font-weight:600;color:'+c.cor+';">'+media.toFixed(1)+'/10</span></div>'+
+          '<div style="height:8px;background:var(--surface);border-radius:6px;overflow:hidden;"><div style="width:'+pct+'%;height:100%;background:'+c.cor+';"></div></div>'+
+        '</div>';
+      }).join('')+
+    '</div>';
+    if(chats.length){
+      html+='<div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:8px;">Chats resolvidos ('+chats.length+')</div>';
+      html+='<div style="display:flex;flex-direction:column;gap:8px;">'+chats.map(ch=>{
+        const notasHtml=CHAT_CRITERIOS.map(c=>{
+          const v=ch.notas?ch.notas[c.key]:null;
+          return '<span style="font-size:11px;color:var(--text-2);">'+c.label.split(' ')[0]+': <strong style="color:'+(v!=null?c.cor:'var(--text-3)')+';">'+(v!=null?v+'/10':'\u2014')+'</strong></span>';
+        }).join(' \u2022 ');
+        return '<div style="padding:10px 12px;background:var(--surface);border-radius:8px;border:1px solid var(--border-md);">'+
+          '<div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px;">'+(ch.cliente||'Cliente')+'</div>'+
+          (ch.problema?'<div style="font-size:11px;color:var(--text-2);margin-bottom:6px;">'+ch.problema+'</div>':'')+
+          '<div style="font-size:11px;">'+notasHtml+'</div>'+
+        '</div>';
+      }).join('')+'</div>';
+    }
+    html+='</div>';
+
+    showModalGeneric('Relatorio: '+(dados.geradoEm||id),html);
+    document.body.removeChild(tempContainer);
+  }catch(e){showToast('Erro: '+e.message);}
+};
+
+window.excluirAnaliseChatHistorico=async function(id){
+  if(!confirm('Excluir esta importacao do historico? Esta acao nao pode ser desfeita.'))return;
+  const op=window.viewingOpObj;
+  if(!op)return;
+  try{
+    await deleteDoc(doc(db,'analise_chat_historico',op.uid,'relatorios',id));
+    showToast('Importacao excluida.');
+    await buscarAnaliseChatHistorico();
+  }catch(e){showToast('Erro: '+e.message);}
+};
 
 // ── Processa o .xlsx do relatorio WATI e distribui por operador ──
 window.processarRelatorioWati=async function(e){
@@ -1656,8 +1805,12 @@ window.processarRelatorioWati=async function(e){
         }
       }
 
-      await setDoc(doc(db,'analise_chat',usuario.uid),{
-        resumo,chats,geradoEm,atualizadoEm:Date.now()
+      const dadosRelatorio={resumo,chats,geradoEm,atualizadoEm:Date.now()};
+      await setDoc(doc(db,'analise_chat',usuario.uid),dadosRelatorio);
+      // Salva copia no historico de importacoes
+      await addDoc(collection(db,'analise_chat_historico',usuario.uid,'relatorios'),{
+        ...dadosRelatorio,
+        importadoEmISO:new Date().toISOString().slice(0,10)
       });
       totalProcessados++;
     }
