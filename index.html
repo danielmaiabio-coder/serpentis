@@ -2128,26 +2128,42 @@ async function renderLinks(mc){
       '</a></div>').join('')+'</div>');
 }
 window.filtrarLinks=function(){
-  const raw=document.getElementById('busca-link').value.toLowerCase().trim();
+  const normalizar=s=>s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  const raw=normalizar(document.getElementById('busca-link').value.trim());
   const termos=raw.split(/\s+/).filter(t=>t.length>0);
-  document.querySelectorAll('.link-card').forEach(el=>{
-    const texto=(el.dataset.titulo+' '+el.dataset.desc);
-    if(termos.length===0){
+  const lista=document.getElementById('lista-links');
+  const cards=Array.from(document.querySelectorAll('.link-card'));
+
+  if(termos.length===0){
+    cards.forEach(el=>{
       el.style.display='flex';
       el.classList.remove('link-match','link-dim');
-      return;
-    }
-    // Acumulativo: TODOS os termos digitados precisam estar presentes (em qualquer ordem)
+    });
+    return;
+  }
+
+  // Marca match/dim e separa os grupos
+  const matches=[],dims=[];
+  cards.forEach(el=>{
+    const texto=normalizar((el.dataset.titulo||'')+' '+(el.dataset.desc||''));
     const match=termos.every(t=>texto.includes(t));
     el.style.display='flex';
     if(match){
       el.classList.add('link-match');
       el.classList.remove('link-dim');
+      matches.push(el);
     }else{
       el.classList.remove('link-match');
       el.classList.add('link-dim');
+      dims.push(el);
     }
   });
+
+  // Reordena no DOM: destacados primeiro (no topo), depois os esmaecidos
+  if(lista){
+    matches.forEach(el=>lista.appendChild(el));
+    dims.forEach(el=>lista.appendChild(el));
+  }
 };
 window.setTipoLink=function(tipo){
   window._linkTipo=tipo;
