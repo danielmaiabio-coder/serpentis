@@ -6846,7 +6846,53 @@ async function renderCodigosOferta(mc){
   const MS_REDIRECT  = 'https://serpentis.vercel.app';
 
   let msToken = sessionStorage.getItem('ms_token') || null;
+  let msAccount = null; // preenchido apos login
   let activeSheet = 'Turmas';
+
+  // ── Tenta renovar o token silenciosamente via MSAL ──
+  async function renovarToken(){
+    try{
+      if(!window.msal){
+        await new Promise((resolve,reject)=>{
+          if(document.getElementById('msal-script')){resolve();return;}
+          const s=document.createElement('script');
+          s.id='msal-script';
+          s.src='https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js';
+          s.onload=resolve;s.onerror=reject;
+          document.head.appendChild(s);
+        });
+      }
+      const pca=new msal.PublicClientApplication({
+        auth:{clientId:MS_CLIENT_ID,authority:'https://login.microsoftonline.com/'+MS_TENANT_ID,redirectUri:MS_REDIRECT},
+        cache:{cacheLocation:'sessionStorage'}
+      });
+      await pca.initialize();
+      const accounts=pca.getAllAccounts();
+      if(accounts.length===0) return null;
+      const tokenResp=await pca.acquireTokenSilent({scopes:['Files.ReadWrite'],account:accounts[0]});
+      msToken=tokenResp.accessToken;
+      sessionStorage.setItem('ms_token',msToken);
+      return msToken;
+    }catch(e){
+      console.warn('Falha ao renovar token MS:',e.message);
+      return null;
+    }
+  }
+
+  // ── Wrapper de fetch para chamadas Graph: renova token em caso de 401 e tenta de novo ──
+  async function graphFetch(url,opts){
+    opts=opts||{};
+    opts.headers=Object.assign({},opts.headers,{Authorization:'Bearer '+msToken});
+    let res=await fetch(url,opts);
+    if(res.status===401){
+      const novo=await renovarToken();
+      if(novo){
+        opts.headers.Authorization='Bearer '+novo;
+        res=await fetch(url,opts);
+      }
+    }
+    return res;
+  }
 
   async function fetchSheetData(sheetName){
     // Access via SharePoint sharing URL — works for files shared with the logged-in user
@@ -6856,19 +6902,19 @@ async function renderCodigosOferta(mc){
     const shareBase = 'https://graph.microsoft.com/v1.0/shares/u!'+encoded+'/driveItem';
 
     // Get drive item reference
-    const itemRes = await fetch(shareBase, {headers:{Authorization:'Bearer '+msToken}});
+    const itemRes = await graphFetch(shareBase,{});
     if(!itemRes.ok){
       // Fallback: try via sharedWithMe
-      const sharedRes = await fetch('https://graph.microsoft.com/v1.0/me/drive/sharedWithMe',{headers:{Authorization:'Bearer '+msToken}});
+      const sharedRes = await graphFetch('https://graph.microsoft.com/v1.0/me/drive/sharedWithMe',{});
       const sharedData = await sharedRes.json();
       const sf=(sharedData.value||[]).find(x=>x.name&&x.name.toLowerCase().includes('controle')&&x.name.toLowerCase().includes('oferta'));
-      if(!sf) throw new Error('Arquivo não encontrado. Certifique-se que a planilha está compartilhada com '+msToken.split('.')[0]);
+      if(!sf) throw new Error('Sessão expirada ou arquivo não encontrado. Clique em "Desconectar" e faça login novamente.');
       const driveId=sf.remoteItem?.parentReference?.driveId||sf.parentReference?.driveId;
       const itemId=sf.remoteItem?.id||sf.id;
       const base=driveId
         ?'https://graph.microsoft.com/v1.0/drives/'+driveId+'/items/'+itemId
         :'https://graph.microsoft.com/v1.0/me/drive/items/'+itemId;
-      const wsRes2=await fetch(base+'/workbook/worksheets/'+encodeURIComponent(sheetName)+'/usedRange?$select=values',{headers:{Authorization:'Bearer '+msToken}});
+      const wsRes2=await graphFetch(base+'/workbook/worksheets/'+encodeURIComponent(sheetName)+'/usedRange?$select=values',{});
       if(!wsRes2.ok){const e2=await wsRes2.json();throw new Error(e2.error?.message||'Erro ao ler aba');}
       return (await wsRes2.json()).values||[];
     }
@@ -6880,7 +6926,7 @@ async function renderCodigosOferta(mc){
       ?'https://graph.microsoft.com/v1.0/drives/'+driveId+'/items/'+itemId
       :'https://graph.microsoft.com/v1.0/me/drive/items/'+itemId;
 
-    const wsRes=await fetch(base+'/workbook/worksheets/'+encodeURIComponent(sheetName)+'/usedRange?$select=values',{headers:{Authorization:'Bearer '+msToken}});
+    const wsRes=await graphFetch(base+'/workbook/worksheets/'+encodeURIComponent(sheetName)+'/usedRange?$select=values',{});
     if(!wsRes.ok){const err=await wsRes.json();throw new Error(err.error?.message||'Erro ao ler aba '+sheetName);}
     return (await wsRes.json()).values||[];
   }
@@ -6901,7 +6947,7 @@ async function renderCodigosOferta(mc){
     const shareUrl='https://hashtagtreinamentos-my.sharepoint.com/:x:/r/personal/diego_hashtagtreinamentos_com/_layouts/15/Doc.aspx?sourcedoc=%7BA63AE1B4-7478-42F5-BBA1-B2FE7DBF8B9B%7D';
     const encoded=btoa(shareUrl).replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');
     const shareBase='https://graph.microsoft.com/v1.0/shares/u!'+encoded+'/driveItem';
-    const itemRes=await fetch(shareBase,{headers:{Authorization:'Bearer '+msToken}});
+    const itemRes=await graphFetch(shareBase,{});
     if(itemRes.ok){
       const d=await itemRes.json();
       const driveId=d.parentReference?.driveId;
@@ -6911,10 +6957,10 @@ async function renderCodigosOferta(mc){
         :'https://graph.microsoft.com/v1.0/me/drive/items/'+itemId;
     }
     // fallback sharedWithMe
-    const sharedRes=await fetch('https://graph.microsoft.com/v1.0/me/drive/sharedWithMe',{headers:{Authorization:'Bearer '+msToken}});
+    const sharedRes=await graphFetch('https://graph.microsoft.com/v1.0/me/drive/sharedWithMe',{});
     const sharedData=await sharedRes.json();
     const sf=(sharedData.value||[]).find(x=>x.name&&x.name.toLowerCase().includes('controle')&&x.name.toLowerCase().includes('oferta'));
-    if(!sf) throw new Error('Arquivo não encontrado.');
+    if(!sf) throw new Error('Sessão expirada ou arquivo não encontrado. Clique em "Desconectar" e faça login novamente.');
     const driveId=sf.remoteItem?.parentReference?.driveId||sf.parentReference?.driveId;
     const itemId=sf.remoteItem?.id||sf.id;
     return driveId
@@ -6924,7 +6970,7 @@ async function renderCodigosOferta(mc){
 
   async function fetchSheetData(sheetName){
     const base=await resolveBase();
-    const wsRes=await fetch(base+'/workbook/worksheets/'+encodeURIComponent(sheetName)+'/usedRange?$select=values',{headers:{Authorization:'Bearer '+msToken}});
+    const wsRes=await graphFetch(base+'/workbook/worksheets/'+encodeURIComponent(sheetName)+'/usedRange?$select=values',{});
     if(!wsRes.ok){const err=await wsRes.json();throw new Error(err.error?.message||'Erro ao ler aba '+sheetName);}
     return (await wsRes.json()).values||[];
   }
@@ -6937,18 +6983,14 @@ async function renderCodigosOferta(mc){
     function colLetter(n){let s='';n++;while(n>0){s=String.fromCharCode(65+(n-1)%26)+s;n=Math.floor((n-1)/26);}return s;}
     const cellAddr=colLetter(colIdx)+(rowIdx+1); // ex: N5
     const url=base+'/workbook/worksheets/'+encodeURIComponent(sheetName)+'/range(address=\''+cellAddr+'\')';
-    const res=await fetch(url,{
-      method:'PATCH',
-      headers:{Authorization:'Bearer '+msToken,'Content-Type':'application/json'},
-      body:JSON.stringify({values:[[value]]})
-    });
+    const res=await graphFetch(url,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({values:[[value]]})});
     if(!res.ok){const err=await res.json();throw new Error(err.error?.message||'Erro ao gravar célula');}
   }
 
   // ── Anexa nova linha ao final de uma aba ──
   async function appendRow(sheetName, values){
     const base=await resolveBase();
-    const usedRes=await fetch(base+'/workbook/worksheets/'+encodeURIComponent(sheetName)+'/usedRange?$select=rowCount',{headers:{Authorization:'Bearer '+msToken}});
+    const usedRes=await graphFetch(base+'/workbook/worksheets/'+encodeURIComponent(sheetName)+'/usedRange?$select=rowCount',{});
     const usedData=await usedRes.json();
     const nextRow=(usedData.rowCount||1)+1; // 1-based, after last used row
     function colLetter(n){let s='';n++;while(n>0){s=String.fromCharCode(65+(n-1)%26)+s;n=Math.floor((n-1)/26);}return s;}
@@ -6956,11 +6998,7 @@ async function renderCodigosOferta(mc){
     const endCol=colLetter(values.length-1);
     const rangeAddr=startCol+nextRow+':'+endCol+nextRow;
     const url=base+'/workbook/worksheets/'+encodeURIComponent(sheetName)+'/range(address=\''+rangeAddr+'\')';
-    const res=await fetch(url,{
-      method:'PATCH',
-      headers:{Authorization:'Bearer '+msToken,'Content-Type':'application/json'},
-      body:JSON.stringify({values:[values]})
-    });
+    const res=await graphFetch(url,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({values:[values]})});
     if(!res.ok){const err=await res.json();throw new Error(err.error?.message||'Erro ao adicionar linha');}
   }
 
@@ -7255,7 +7293,7 @@ async function renderCodigosOferta(mc){
       const excelRow=rowIdx+1;
       const rangeAddr='A'+excelRow+':U'+excelRow;
       const url=base+'/workbook/worksheets/Modelo/range(address=\''+rangeAddr+'\')';
-      const res=await fetch(url,{headers:{Authorization:'Bearer '+msToken}});
+      const res=await graphFetch(url,{});
       if(!res.ok){const e=await res.json();throw new Error(e.error?.message||'Erro ao ler linha');}
       const lineData=await res.json();
       const rowValues=(lineData.values||[[]])[0];
