@@ -247,7 +247,9 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
 .copy-card-body{font-size:13px;color:var(--text-2);line-height:1.65;white-space:pre-wrap;}
 .copy-btn{position:absolute;top:10px;right:10px;padding:4px 10px;border:1px solid var(--border-md);border-radius:6px;background:transparent;color:var(--text-3);font-family:var(--font);font-size:11px;cursor:pointer;}
 .copy-btn:hover{background:var(--bg);color:var(--text);}
-.link-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;gap:12px;}
+.link-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;gap:12px;transition:opacity 0.15s,border-color 0.15s,box-shadow 0.15s;}
+.link-card.link-match{border-color:var(--primary);box-shadow:0 0 0 2px rgba(26,92,42,0.15);}
+.link-card.link-dim{opacity:0.35;}
 .link-card-title{font-size:13px;font-weight:500;color:var(--text);flex:1;}
 .link-card-desc{font-size:11px;color:var(--text-3);margin-top:2px;}
 .link-card-btn{padding:6px 14px;background:var(--primary);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap;text-decoration:none;display:inline-block;}
@@ -2111,7 +2113,7 @@ async function renderLinks(mc){
         '<div id="link-bulk-status" style="font-size:12px;color:var(--text-3);margin-top:8px;"></div>'+
       '</div>'+
     '</div>'+
-    '<div class="search-box"><svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" id="busca-link" placeholder="Buscar link..." oninput="filtrarLinks()"/></div>'+
+    '<div class="search-box"><svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" id="busca-link" placeholder="Buscar (palavras avulsas, ex: boleto cartao)..." oninput="filtrarLinks()"/></div>'+
     (items.length===0?'<div class="panel"><div class="empty">Nenhum link cadastrado ainda.</div></div>':'<div id="lista-links">'+
     items.map(item=>'<div class="link-card" data-titulo="'+(item.titulo||'').toLowerCase()+'" data-desc="'+(item.tipo||'').toLowerCase()+'">'+
       '<div><div class="link-card-title">'+item.titulo+'</div>'+
@@ -2125,7 +2127,28 @@ async function renderLinks(mc){
         (item.url&&(item.url.includes('/raw/')||item.url.match(/\.(pdf|xlsx?|docx?|csv|pptx?)(\?|$)/i))?'⬇ Baixar':'Abrir →')+
       '</a></div>').join('')+'</div>');
 }
-window.filtrarLinks=function(){const q=document.getElementById('busca-link').value.toLowerCase();document.querySelectorAll('.link-card').forEach(el=>{const match=(el.dataset.titulo+' '+el.dataset.desc).includes(q);el.style.display=match?'flex':'none';});};
+window.filtrarLinks=function(){
+  const raw=document.getElementById('busca-link').value.toLowerCase().trim();
+  const termos=raw.split(/\s+/).filter(t=>t.length>0);
+  document.querySelectorAll('.link-card').forEach(el=>{
+    const texto=(el.dataset.titulo+' '+el.dataset.desc);
+    if(termos.length===0){
+      el.style.display='flex';
+      el.classList.remove('link-match','link-dim');
+      return;
+    }
+    // Acumulativo: TODOS os termos digitados precisam estar presentes (em qualquer ordem)
+    const match=termos.every(t=>texto.includes(t));
+    el.style.display='flex';
+    if(match){
+      el.classList.add('link-match');
+      el.classList.remove('link-dim');
+    }else{
+      el.classList.remove('link-match');
+      el.classList.add('link-dim');
+    }
+  });
+};
 window.setTipoLink=function(tipo){
   window._linkTipo=tipo;
   document.getElementById('tipo-recorrente').style.background=tipo==='Recorrente'?'var(--primary)':'transparent';
