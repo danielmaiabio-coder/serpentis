@@ -1424,24 +1424,247 @@ async function renderHistorico(mc,op){
   };
 }
 
+// ══════════════════════════════════════════
+// ANALISE DE CHAT (WATI) — 7 criterios 0-10
+// ══════════════════════════════════════════
+const CHAT_CRITERIOS=[
+  {key:'Educacao',label:'Educacao',cor:'#22c55e'},
+  {key:'Simpatia',label:'Simpatia',cor:'#3b82f6'},
+  {key:'Frieza',label:'Frieza',cor:'#64748b'},
+  {key:'Paciencia',label:'Paciencia',cor:'#14b8a6'},
+  {key:'Ironia',label:'Ironia',cor:'#f97316'},
+  {key:'Impaciencia',label:'Impaciencia',cor:'#ef4444'},
+  {key:'Esclarece',label:'Esclarece de forma completa',cor:'#a855f7'},
+];
+
 async function renderNotas(mc,op){
   const isCoord=userProfile.role==='coord';
-  const snap=await getDoc(doc(db,'notas',op.uid));const notas=snap.exists()?snap.data():{};
-  const cats=['Paciencia','Impaciencia','Esclarece de forma completa','Educacao','Proatividade'];
-  mc.innerHTML=snakeHtml()+'<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;"><div class="page-eyebrow">* '+(isCoord?op.nome+' · ':'')+'Notas</div>'+
-    '<div class="page-title">Avaliacao do operador</div></div>'+
-    '<div class="page-title">Avaliacao do operador</div><div class="page-sub">'+(isCoord?'Clique nas estrelas para salvar':'Notas atribuidas pelo coordenador')+'</div>'+
-    '<div class="panel">'+cats.map(cat=>{const val=notas[cat]||0;const key=cat.replace(/\s/g,'_');
-      return'<div class="nota-item"><span class="nota-label">'+cat+'</span>'+
-      '<div class="stars" id="stars-'+key+'">'+[1,2,3,4,5].map(i=>'<span class="star '+(i<=val?'on':'')+' '+((!isCoord)?'readonly':'')+'" '+(isCoord?'onclick="setNota(\''+op.uid+'\',\''+cat+'\',\''+key+'\','+i+')"':'')+'>?</span>').join('')+'</div>'+
-      '<span class="nota-score" id="score-'+key+'">'+val+'/5</span></div>';
-    }).join('')+'</div>';
+  const snap=await getDoc(doc(db,'analise_chat',op.uid));
+  const dados=snap.exists()?snap.data():null;
+
+  mc.innerHTML=snakeHtml()+'<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">'+
+    '<div><div class="page-eyebrow">* '+(isCoord?op.nome+' · ':'')+'Analise de Chat</div><div class="page-title">Qualidade de Atendimento (WATI)</div><div class="page-sub">'+(dados&&dados.geradoEm?'Relatorio gerado em '+dados.geradoEm:'Nenhum relatorio enviado ainda')+'</div></div>'+
+    (isCoord?
+      '<div style="display:flex;align-items:center;gap:8px;">'+
+        '<input type="file" id="chat-xlsx-input" accept=".xlsx" style="display:none;" onchange="processarRelatorioWati(event)"/>'+
+        '<button onclick="document.getElementById(\'chat-xlsx-input\').click()" style="padding:8px 16px;background:var(--primary);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:12px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:6px;">\ud83d\udce4 Importar relatorio WATI (.xlsx)</button>'+
+      '</div>'
+    :'')+
+  '</div>'+
+  '<div id="analise-chat-content"></div>';
+
+  await renderAnaliseChatContent(op,dados);
 }
-window.setNota=async function(opUid,cat,key,val){
-  document.querySelectorAll('#stars-'+key+' .star').forEach((s,i)=>s.classList.toggle('on',i<val));
-  document.getElementById('score-'+key).textContent=val+'/5';
-  try{await setDoc(doc(db,'notas',opUid),{[cat]:val},{merge:true});showToast('Nota salva!');}
-  catch(e){showToast('Erro ao salvar.');}
+
+async function renderAnaliseChatContent(op,dados){
+  const container=document.getElementById('analise-chat-content');
+  if(!container)return;
+
+  if(!dados){
+    container.innerHTML='<div class="panel"><div class="empty">Nenhum relatorio importado ainda.</div></div>';
+    return;
+  }
+
+  const resumo=dados.resumo||{};
+  const chats=dados.chats||[];
+  const distribuicao=dados.distribuicao||{};
+
+  // ── Cards de resumo geral ──
+  const cardsHtml=
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:1.5rem;">'+
+      statCard('Total de Chats',resumo.totalChats??'\u2014')+
+      statCard('Resolvidos',resumo.resolvidos??'\u2014')+
+      statCard('Taxa de Resolucao',resumo.taxaResolucao??'\u2014')+
+      statCard('IA: Resolvidos',resumo.iaResolvidos??'\u2014')+
+      statCard('T. Medio Atrelamento',resumo.tempoAtrelamento??'\u2014')+
+      statCard('T. Medio 1\u00aa Resposta',resumo.tempo1aResposta??'\u2014')+
+    '</div>';
+
+  // ── Cards dos 7 criterios (media + barra de progresso) ──
+  const criteriosHtml=
+    '<div class="panel" style="margin-bottom:1.5rem;">'+
+      '<div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:14px;">\ud83d\udcca Medias por Criterio</div>'+
+      '<div style="display:flex;flex-direction:column;gap:12px;">'+
+      CHAT_CRITERIOS.map(c=>{
+        const media=resumo.medias?(resumo.medias[c.key]??0):0;
+        const pct=Math.round(media*10);
+        return '<div>'+
+          '<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-2);margin-bottom:4px;"><span>'+c.label+'</span><span style="font-weight:600;color:'+c.cor+';">'+media.toFixed(1)+'/10</span></div>'+
+          '<div style="height:8px;background:var(--surface);border-radius:6px;overflow:hidden;"><div style="width:'+pct+'%;height:100%;background:'+c.cor+';"></div></div>'+
+        '</div>';
+      }).join('')+
+      '</div>'+
+    '</div>';
+
+  // ── Lista de chats resolvidos ──
+  const chatsHtml=chats.length===0
+    ? '<div class="panel"><div class="empty">Nenhum chat resolvido neste relatorio.</div></div>'
+    : '<div class="panel">'+
+        '<div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:14px;">\ud83d\udcac Chats Resolvidos ('+chats.length+')</div>'+
+        '<div style="display:flex;flex-direction:column;gap:12px;">'+
+        chats.map(ch=>{
+          const notasHtml=CHAT_CRITERIOS.map(c=>{
+            const v=ch.notas?ch.notas[c.key]:null;
+            return '<div style="display:flex;flex-direction:column;align-items:center;gap:2px;min-width:64px;">'+
+              '<div style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.04em;text-align:center;">'+c.label.split(' ')[0]+'</div>'+
+              '<div style="font-size:13px;font-weight:700;color:'+(v!=null?c.cor:'var(--text-3)')+';">'+(v!=null?v+'/10':'\u2014')+'</div>'+
+            '</div>';
+          }).join('');
+          return '<div style="padding:14px 16px;background:var(--surface);border-radius:12px;border:1px solid var(--border-md);">'+
+            '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;flex-wrap:wrap;">'+
+              '<div style="font-size:14px;font-weight:600;color:var(--text);">'+(ch.cliente||'Cliente')+'</div>'+
+              (ch.url?'<a href="'+ch.url+'" target="_blank" style="font-size:11px;color:var(--primary);text-decoration:none;">Ver conversa \u2192</a>':'')+
+            '</div>'+
+            (ch.problema?'<div style="font-size:12px;color:var(--text-2);margin-bottom:10px;line-height:1.5;">'+ch.problema+'</div>':'')+
+            '<div style="display:flex;gap:14px;flex-wrap:wrap;border-top:1px solid var(--border-md);padding-top:10px;">'+notasHtml+'</div>'+
+          '</div>';
+        }).join('')+
+        '</div>'+
+      '</div>';
+
+  container.innerHTML=cardsHtml+criteriosHtml+chatsHtml;
+}
+
+function statCard(label,value){
+  return '<div style="padding:14px;background:var(--surface);border-radius:12px;border:1px solid var(--border-md);text-align:center;">'+
+    '<div style="font-size:18px;font-weight:700;color:var(--text);">'+value+'</div>'+
+    '<div style="font-size:11px;color:var(--text-2);margin-top:4px;">'+label+'</div>'+
+  '</div>';
+}
+
+// ── Processa o .xlsx do relatorio WATI e distribui por operador ──
+window.processarRelatorioWati=async function(e){
+  const file=e.target.files[0];
+  if(!file)return;
+  if(!window.XLSX){showToast('SheetJS nao carregado.');return;}
+  showToast('Processando relatorio...');
+  try{
+    const buf=await file.arrayBuffer();
+    const wb=XLSX.read(buf,{type:'array'});
+    const resumoWs=wb.Sheets['Resumo Geral'];
+    if(!resumoWs){showToast('Aba "Resumo Geral" nao encontrada.');return;}
+    const resumoRows=XLSX.utils.sheet_to_json(resumoWs,{header:1,defval:null});
+
+    // Cabecalho na linha 2 (index 1)
+    const header=resumoRows[1];
+    const idxOperador=header.indexOf('Operador');
+    const idxTotal=header.indexOf('Total Chats');
+    const idxResolvidos=header.indexOf('Resolvidos');
+    const idxIaResolvidos=header.indexOf('IA: Resolvidos');
+    const idxTaxa=header.indexOf('Taxa Resolucao');
+    const idxTAtrel=header.indexOf('T. Medio Atrelamento');
+    const idxT1aResp=header.indexOf('T. Medio 1a Resposta');
+    const idxMedias={};
+    CHAT_CRITERIOS.forEach(c=>{
+      const colName=(c.key==='Esclarece'?'Esclarece':c.label)+' (media)';
+      idxMedias[c.key]=header.indexOf(colName);
+    });
+
+    // Geracao - extrai do titulo da linha 0 (ex: "Relatorio WATI 24h — 15/06/2026 00:29")
+    let geradoEm='';
+    const titulo=resumoRows[0]?resumoRows[0][0]:'';
+    const m=String(titulo).match(/(\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2})/);
+    if(m)geradoEm=m[1];
+
+    // Carrega lista de usuarios para fazer o match nome -> uid
+    const usuariosSnap=await getDocs(collection(db,'usuarios'));
+    const usuarios=[];
+    usuariosSnap.forEach(d=>usuarios.push({uid:d.id,...d.data()}));
+
+    function parseMedia(val){
+      if(val==null)return 0;
+      const s=String(val).replace('/10','').trim();
+      const n=parseFloat(s.replace(',','.'));
+      return isNaN(n)?0:n;
+    }
+    function parseNota(val){
+      if(val==null)return null;
+      const s=String(val).replace('/10','').trim();
+      const n=parseFloat(s.replace(',','.'));
+      return isNaN(n)?null:n;
+    }
+
+    let totalProcessados=0;
+    let naoEncontrados=[];
+
+    for(let i=2;i<resumoRows.length;i++){
+      const row=resumoRows[i];
+      if(!row||!row[idxOperador]||row[idxOperador]==='TOTAL')continue;
+      const nomeOperador=String(row[idxOperador]).trim();
+      // Tenta achar usuario cujo nome esta contido no nome do operador (ou vice-versa)
+      const nomeBase=nomeOperador.replace(/hashtag/i,'').trim().toLowerCase();
+      const usuario=usuarios.find(u=>{
+        const un=(u.nome||'').toLowerCase();
+        return un && (nomeBase.includes(un)||un.includes(nomeBase));
+      });
+      if(!usuario){naoEncontrados.push(nomeOperador);continue;}
+
+      const resumo={
+        totalChats:row[idxTotal]??0,
+        resolvidos:row[idxResolvidos]??0,
+        iaResolvidos:row[idxIaResolvidos]??0,
+        taxaResolucao:row[idxTaxa]??'0%',
+        tempoAtrelamento:row[idxTAtrel]??'N/A',
+        tempo1aResposta:row[idxT1aResp]??'N/A',
+        medias:{}
+      };
+      CHAT_CRITERIOS.forEach(c=>{resumo.medias[c.key]=parseMedia(row[idxMedias[c.key]]);});
+
+      // ── Le a aba individual do operador (lista de chats resolvidos) ──
+      const chats=[];
+      const sheetName=wb.SheetNames.find(s=>nomeOperador.toLowerCase().startsWith(s.toLowerCase())||s.toLowerCase()===nomeBase);
+      if(sheetName){
+        const ws=wb.Sheets[sheetName];
+        const opRows=XLSX.utils.sheet_to_json(ws,{header:1,defval:null});
+        // Encontra a linha de cabecalho da tabela de chats (comeca com '#')
+        let headerIdx=-1;
+        for(let r=0;r<opRows.length;r++){
+          if(opRows[r] && opRows[r][0]==='#'){headerIdx=r;break;}
+        }
+        if(headerIdx>=0){
+          const opHeader=opRows[headerIdx];
+          const ci=name=>opHeader.indexOf(name);
+          const cCliente=ci('Cliente'),cProblema=ci('Problema Resumido'),cUrl=ci('URL Conversa');
+          const cNotas={};
+          CHAT_CRITERIOS.forEach(c=>{cNotas[c.key]=ci(c.label.split(' ')[0])>=0?ci(c.label.split(' ')[0]):ci(c.key);});
+          for(let r=headerIdx+1;r<opRows.length;r++){
+            const row2=opRows[r];
+            if(!row2||row2[0]==null)break; // termina quando acabar a tabela
+            if(typeof row2[0]!=='number')break;
+            const notas={};
+            CHAT_CRITERIOS.forEach(c=>{
+              const idx=cNotas[c.key];
+              notas[c.key]=idx>=0?parseNota(row2[idx]):null;
+            });
+            chats.push({
+              cliente:row2[cCliente]||'',
+              problema:row2[cProblema]||'',
+              url:row2[cUrl]||'',
+              notas
+            });
+          }
+        }
+      }
+
+      await setDoc(doc(db,'analise_chat',usuario.uid),{
+        resumo,chats,geradoEm,atualizadoEm:Date.now()
+      });
+      totalProcessados++;
+    }
+
+    showToast('Relatorio importado! '+totalProcessados+' operador(es) atualizados.'+(naoEncontrados.length?' Nao encontrados: '+naoEncontrados.join(', '):''));
+
+    // Recarrega a visualizacao atual
+    const opAtual=viewingOp?await getDoc(doc(db,'usuarios',viewingOp)):null;
+    const op=opAtual&&opAtual.exists()?{uid:viewingOp,...opAtual.data()}:null;
+    if(op){
+      const snap=await getDoc(doc(db,'analise_chat',op.uid));
+      await renderAnaliseChatContent(op,snap.exists()?snap.data():null);
+    }
+  }catch(err){
+    console.error(err);
+    showToast('Erro ao processar: '+err.message);
+  }
 };
 
 async function renderDashboard(mc,op){
