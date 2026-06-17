@@ -6269,7 +6269,7 @@ const TERM_NIVEIS=[
 function termNivelById(id){return TERM_NIVEIS.find(n=>n.id===id);}
 function termCssClass(id){return 'led-'+id.replace(/_/g,'-');}
 
-// Turno unico: a partir das 17h30, pergunta "Como foi o seu dia?"
+// Turno unico: a partir das 17h30, pergunta "Como foi a demanda?"
 const TERM_HORARIO=[17,30]; // hora, minuto a partir do qual a votacao abre
 
 function minutosAgora(){
@@ -6352,7 +6352,7 @@ async function renderTermometroPagina(mc){
     conteudo='<div style="text-align:center;padding:3rem 1rem;color:var(--text-3);">'+
       '<div style="font-size:32px;margin-bottom:12px;">\ud83c\udf21\ufe0f</div>'+
       '<div style="font-size:14px;">A votacao abre a partir das 17h30.</div>'+
-      '<div style="font-size:13px;margin-top:6px;">Pergunta do dia: "Como foi o seu dia?"</div>'+
+      '<div style="font-size:13px;margin-top:6px;">Pergunta do dia: "Como foi a demanda?"</div>'+
     '</div>';
   } else {
     const opcoesHtml=TERM_NIVEIS.map(n=>{
@@ -6363,7 +6363,7 @@ async function renderTermometroPagina(mc){
         (selecionado?'<span style="font-size:11px;color:'+n.cor+';font-weight:700;">SELECIONADO</span>':'')+
       '</button>';
     }).join('');
-    conteudo='<div style="font-size:14px;color:var(--text-2);margin-bottom:18px;">Como foi o seu dia?</div>'+opcoesHtml;
+    conteudo='<div style="font-size:14px;color:var(--text-2);margin-bottom:18px;">Como foi a demanda?</div>'+opcoesHtml;
   }
 
   mc.innerHTML=snakeHtml()+
@@ -6426,7 +6426,7 @@ window.abrirModalTermometro=async function(){
 
   // Operador: so pode votar a partir das 17h30
   if(!votacaoLiberada()){
-    showModalGeneric('Termometro de Demanda','<div style="text-align:center;padding:2rem;color:var(--text-3);">A votacao abre a partir das 17h30.<br/>Pergunta: "Como foi o seu dia?"</div>');
+    showModalGeneric('Termometro de Demanda','<div style="text-align:center;padding:2rem;color:var(--text-3);">A votacao abre a partir das 17h30.<br/>Pergunta: "Como foi a demanda?"</div>');
     return;
   }
   const ref=doc(db,'temperaturas',data,'respostas',currentUser.uid);
@@ -6442,7 +6442,7 @@ window.abrirModalTermometro=async function(){
     '</button>';
   }).join('');
 
-  const conteudo='<div style="font-size:13px;color:var(--text-2);margin-bottom:14px;">Como foi o seu dia?</div>'+opcoesHtml;
+  const conteudo='<div style="font-size:13px;color:var(--text-2);margin-bottom:14px;">Como foi a demanda?</div>'+opcoesHtml;
   showModalGeneric('Termometro de Demanda',conteudo);
  }catch(e){
    console.error('Erro abrirModalTermometro:',e);
