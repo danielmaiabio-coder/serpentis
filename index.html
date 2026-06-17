@@ -412,7 +412,7 @@ body.dark-mode select{background:#22263a;color:#e8eaf0;border-color:rgba(255,255
 .forgot-link:hover{color:var(--primary);}
 .sound-fab{position:fixed;bottom:24px;left:24px;width:38px;height:38px;border-radius:50%;background:rgba(13,46,20,0.85);border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.7);cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:998;transition:all 0.15s;backdrop-filter:blur(4px);}
 .sound-fab:hover{background:rgba(26,92,42,0.95);color:#fff;}
-.sound-popover{position:fixed;top:64px;right:140px;width:280px;background:#0d2e14;border:1px solid rgba(255,255,255,0.12);border-radius:14px;padding:14px;z-index:999;box-shadow:0 8px 32px rgba(0,0,0,0.5);display:none;flex-direction:column;gap:10px;}
+.sound-popover{position:fixed;top:64px;right:140px;width:280px;background:#0d2e14;border:1px solid rgba(255,255,255,0.12);border-radius:14px;padding:14px;z-index:2500;box-shadow:0 8px 32px rgba(0,0,0,0.5);display:none;flex-direction:column;gap:10px;}
 .sound-popover.open{display:flex;}
 .sound-pop-label{font-size:10px;font-weight:500;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:0.1em;}
 .sound-pop-pills{display:flex;gap:5px;flex-wrap:wrap;}
@@ -478,7 +478,7 @@ body.dark-mode select{background:#22263a;color:#e8eaf0;border-color:rgba(255,255
       <div id="nb-notif-wrap"></div>
       <div class="nb-separator"></div>
       <img id="snakeCornerNav" src="" style="width:28px;height:28px;object-fit:contain;opacity:0.85;cursor:pointer;filter:drop-shadow(0 1px 4px rgba(0,0,0,0.3));transition:transform 0.15s,opacity 0.15s;" onclick="playSnakeSound()" title="Ssss..." onmouseover="this.style.transform='scale(1.12)'" onmouseout="this.style.transform='scale(1)'"/>
-      <button class="nb-icon-btn" onclick="toggleSoundPopover()" title="Sons de notificacao" style="padding:5px;display:flex;align-items:center;">
+      <button class="nb-icon-btn" onclick="toggleSoundPopover(event)" title="Sons de notificacao" style="padding:5px;display:flex;align-items:center;">
         <img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1781412558/notification-bell_jv13ng.png" style="width:18px;height:18px;object-fit:contain;"/>
       </button>
       <a href="https://portal.hashtagtreinamentos.com/" target="_blank" style="display:flex;align-items:center;">
@@ -789,11 +789,24 @@ window.toggleMute=function(){
   }
 };
 
-window.toggleSoundPopover=function(){
+window.toggleSoundPopover=function(e){
   const pop=document.getElementById('soundPopover');
   if(!pop) return;
-  pop.classList.toggle('open');
-  if(pop.classList.contains('open')) renderSoundPills();
+  const isOpen=pop.classList.contains('open');
+  if(isOpen){
+    pop.classList.remove('open');
+    return;
+  }
+  // Posiciona o popover dinamicamente abaixo do botao clicado
+  const btn=(e&&e.currentTarget)||document.querySelector('.nb-icon-btn[onclick*="toggleSoundPopover"]');
+  if(btn){
+    const rect=btn.getBoundingClientRect();
+    pop.style.top=(rect.bottom+8)+'px';
+    pop.style.right=(window.innerWidth-rect.right)+'px';
+    pop.style.left='auto';
+  }
+  pop.classList.add('open');
+  renderSoundPills();
 };
 
 function renderSoundPills(){
@@ -816,8 +829,9 @@ function renderSoundPills(){
 // Fecha popover ao clicar fora
 document.addEventListener('click',function(e){
   const pop=document.getElementById('soundPopover');
-  const fab=document.getElementById('soundFab');
-  if(pop&&pop.classList.contains('open')&&!pop.contains(e.target)&&e.target!==fab&&!fab.contains(e.target)){
+  if(!pop||!pop.classList.contains('open'))return;
+  const clickedBell=e.target.closest('.nb-icon-btn[onclick*="toggleSoundPopover"]');
+  if(!pop.contains(e.target)&&!clickedBell){
     pop.classList.remove('open');
   }
 });
