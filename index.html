@@ -488,7 +488,7 @@ body.dark-mode select{background:#22263a;color:#e8eaf0;border-color:rgba(255,255
       <button id="btn-dark-mode" class="nb-icon-btn" onclick="toggleDarkMode()" title="Modo noturno">🌙</button>
       <div class="nb-separator"></div>
       <!-- Termometro de Demanda (LED scoreboard) -->
-      <div id="led-termometro" class="led-board" onclick="abrirModalTermometro()" title="Termometro de Demanda">
+      <div id="led-termometro" class="led-board" onclick="clickLedTermometro()" title="Termometro de Demanda">
         <span id="led-termometro-text">CARREGANDO...</span>
       </div>
       <div class="nb-separator"></div>
@@ -946,6 +946,7 @@ window.navigate=async function(page){
   if(page==='formsplanilhas'){renderFormsplanilhas(mc);return;}
   if(page==='feriastime'){renderFeriasTime(mc);return;}
   if(page==='lembretes'){await renderLembretes(mc);return;}
+  if(page==='termometro'){await renderTermometroPagina(mc);return;}
   if(page==='basilisco'){await renderBasilisco(mc);return;}
   if(page==='perfis'){await renderPerfis(mc);return;}
   if(page==='caderno'){await renderCaderno(mc);return;}
@@ -6317,23 +6318,9 @@ async function updateLedTermometro(){
       led.classList.add(termCssClass(nivelMedio.id));
       txt.textContent='DEMANDA: '+nivelMedio.label.toUpperCase()+' ('+media.toFixed(1)+')';
     } else {
-      // Operador: so a partir das 17h30
-      if(!liberado){
-        led.classList.add('led-neutro');
-        txt.textContent='TERMOMETRO 17H30';
-        return;
-      }
-      const ref=doc(db,'temperaturas',data,'respostas',currentUser.uid);
-      const snap=await getDoc(ref);
-      const minhaResposta=snap.exists()?snap.data().voto:null;
-      if(minhaResposta){
-        const n=termNivelById(minhaResposta);
-        led.classList.add(termCssClass(minhaResposta));
-        txt.textContent=(n?n.label.toUpperCase():minhaResposta);
-      } else {
-        led.classList.add('led-neutro');
-        txt.textContent='COMO FOI O SEU DIA?';
-      }
+      // Operador: letreiro sempre estatico, sem revelar pergunta/resposta aqui
+      led.classList.add('led-neutro');
+      txt.textContent='TERMOMETRO';
     }
   }catch(e){
     led.classList.add('led-neutro');
@@ -6341,6 +6328,64 @@ async function updateLedTermometro(){
   }
 }
 window.updateLedTermometro=updateLedTermometro;
+
+// ── Roteia o clique no letreiro: coordenador abre modal, operador vai para a pagina ──
+window.clickLedTermometro=function(){
+  const {isCoord}=getPerms();
+  if(isCoord) abrirModalTermometro();
+  else navigate('termometro');
+};
+
+// ── Pagina dedicada de votacao (operador) ──
+async function renderTermometroPagina(mc){
+  const data=hojeStr();
+  const liberado=votacaoLiberada();
+  let minhaResposta=null;
+  try{
+    const ref=doc(db,'temperaturas',data,'respostas',currentUser.uid);
+    const snap=await getDoc(ref);
+    minhaResposta=snap.exists()?snap.data().voto:null;
+  }catch(e){/* ignora */}
+
+  let conteudo;
+  if(!liberado){
+    conteudo='<div style="text-align:center;padding:3rem 1rem;color:var(--text-3);">'+
+      '<div style="font-size:32px;margin-bottom:12px;">\ud83c\udf21\ufe0f</div>'+
+      '<div style="font-size:14px;">A votacao abre a partir das 17h30.</div>'+
+      '<div style="font-size:13px;margin-top:6px;">Pergunta do dia: "Como foi o seu dia?"</div>'+
+    '</div>';
+  } else {
+    const opcoesHtml=TERM_NIVEIS.map(n=>{
+      const selecionado=minhaResposta===n.id;
+      return '<button onclick="salvarTemperaturaPagina(\''+n.id+'\')" style="width:100%;display:flex;align-items:center;gap:10px;padding:14px 16px;border-radius:10px;border:2px solid '+(selecionado?n.cor:'var(--border-md)')+';background:'+(selecionado?n.cor+'18':'var(--surface)')+';cursor:pointer;font-family:var(--font);font-size:14px;color:var(--text);text-align:left;margin-bottom:10px;">'+
+        '<div style="width:18px;height:18px;border-radius:50%;background:'+n.cor+';flex-shrink:0;"></div>'+
+        '<span style="flex:1;font-weight:'+(selecionado?'600':'400')+';">'+n.label+'</span>'+
+        (selecionado?'<span style="font-size:11px;color:'+n.cor+';font-weight:700;">SELECIONADO</span>':'')+
+      '</button>';
+    }).join('');
+    conteudo='<div style="font-size:14px;color:var(--text-2);margin-bottom:18px;">Como foi o seu dia?</div>'+opcoesHtml;
+  }
+
+  mc.innerHTML=snakeHtml()+
+    '<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;">'+
+      '<div class="page-eyebrow">\ud83c\udf21\ufe0f Termometro</div>'+
+      '<div class="page-title">Termometro de Demanda</div>'+
+      '<div class="page-sub">Sua resposta e individual e ajuda a equipe a entender o volume do dia</div>'+
+    '</div>'+
+    '<div class="panel" style="max-width:480px;margin:0 auto;" id="termometro-pagina-content">'+conteudo+'</div>';
+}
+window.renderTermometroPagina=renderTermometroPagina;
+
+window.salvarTemperaturaPagina=async function(nivelId){
+  try{
+    const data=hojeStr();
+    const ref=doc(db,'temperaturas',data,'respostas',currentUser.uid);
+    await setDoc(ref,{voto:nivelId,nome:userProfile.nome||'',ts:Date.now()},{merge:true});
+    showToast('Resposta registrada!');
+    await updateLedTermometro();
+    await renderTermometroPagina(document.getElementById('mainContent'));
+  }catch(e){showToast('Erro: '+e.message);}
+};
 
 // ── Modal de escolha (operador) / visualizacao (coordenador) ──
 window.abrirModalTermometro=async function(){
