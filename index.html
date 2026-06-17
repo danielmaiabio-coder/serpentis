@@ -3116,12 +3116,6 @@ async function renderPerfil(mc){
   // Mural preview - own wall
   const muralSnap=await getDocs(query(collection(db,'mural',currentUser.uid,'recados'),orderBy('ts','desc'),limit(5)));
   const muralPosts=[];muralSnap.forEach(d=>muralPosts.push({id:d.id,...d.data()}));
-  // Slack prefs
-  mc.innerHTML+='<div class="panel" style="margin-bottom:1rem;">'+
-    '<div class="panel-title" style="margin-bottom:12px;">🔔 Notificações Slack</div>'+
-    '<div id="slack-prefs-container"><div style="font-size:12px;color:var(--text-3);">Acesse a aba Slack primeiro para carregar os canais.</div></div>'+
-  '</div>';
-  setTimeout(renderSlackPrefs, 100);
 
   mc.innerHTML+='<div class="panel">'+
     '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">'+
