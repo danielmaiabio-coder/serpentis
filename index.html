@@ -478,6 +478,9 @@ body.dark-mode select{background:#22263a;color:#e8eaf0;border-color:rgba(255,255
       <div id="nb-notif-wrap"></div>
       <div class="nb-separator"></div>
       <img id="snakeCornerNav" src="" style="width:28px;height:28px;object-fit:contain;opacity:0.85;cursor:pointer;filter:drop-shadow(0 1px 4px rgba(0,0,0,0.3));transition:transform 0.15s,opacity 0.15s;" onclick="playSnakeSound()" title="Ssss..." onmouseover="this.style.transform='scale(1.12)'" onmouseout="this.style.transform='scale(1)'"/>
+      <button class="nb-icon-btn" onclick="navigate('editarperfil')" title="Editar Perfil" style="padding:5px;display:flex;align-items:center;">
+        <img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1781717151/user_wh77ep.png" style="width:18px;height:18px;object-fit:contain;"/>
+      </button>
       <button class="nb-icon-btn" onclick="toggleSoundPopover(event)" title="Sons de notificacao" style="padding:5px;display:flex;align-items:center;">
         <img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1781412558/notification-bell_jv13ng.png" style="width:18px;height:18px;object-fit:contain;"/>
       </button>
@@ -503,7 +506,7 @@ body.dark-mode select{background:#22263a;color:#e8eaf0;border-color:rgba(255,255
         </div>
         <div class="nb-user-dropdown">
           <div class="nb-user-dropdown-inner">
-            <button class="nb-dd-item" onclick="goPage('perfil')">
+            <button class="nb-dd-item" onclick="navigate('editarperfil')">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
               Editar perfil
             </button>
@@ -960,6 +963,7 @@ window.navigate=async function(page){
   if(page==='formsplanilhas'){renderFormsplanilhas(mc);return;}
   if(page==='feriastime'){renderFeriasTime(mc);return;}
   if(page==='lembretes'){await renderLembretes(mc);return;}
+  if(page==='editarperfil'){await renderEditarPerfil(mc);return;}
   if(page==='termometro'){await renderTermometroPagina(mc);return;}
   if(page==='basilisco'){await renderBasilisco(mc);return;}
   if(page==='perfis'){await renderPerfis(mc);return;}
@@ -2929,35 +2933,99 @@ window.executarAcao=async function(acao){
   }
 };
 
+const TEMAS_BG=[
+  {nome:'Padrao',bg:''},
+  {nome:'Floresta',bg:'linear-gradient(135deg,#0d2e14,#1A5C2A)'},
+  {nome:'Oceano',bg:'linear-gradient(135deg,#0a1628,#1a3a6b)'},
+  {nome:'Aurora',bg:'linear-gradient(135deg,#6b21a8,#db2777)'},
+  {nome:'Por do Sol',bg:'linear-gradient(135deg,#c2410c,#d97706)'},
+  {nome:'Midnight',bg:'linear-gradient(135deg,#0f172a,#1e3a5f)'},
+  {nome:'Rosa Neon',bg:'linear-gradient(135deg,#be185d,#7c3aed)'},
+  {nome:'Turquesa',bg:'linear-gradient(135deg,#0e7490,#0f766e)'},
+  {nome:'Lavanda',bg:'linear-gradient(135deg,#4c1d95,#5b21b6)'},
+  {nome:'Fogo',bg:'linear-gradient(135deg,#7f1d1d,#c2410c)'},
+  {nome:'Cosmos',bg:'linear-gradient(135deg,#1e1b4b,#4338ca)'},
+  {nome:'Menta',bg:'linear-gradient(135deg,#064e3b,#065f46)'},
+  {nome:'Nude',bg:'linear-gradient(135deg,#78716c,#a8a29e)'},
+  {nome:'Cereja',bg:'linear-gradient(135deg,#881337,#be123c)'},
+  {nome:'Cobre',bg:'linear-gradient(135deg,#92400e,#b45309)'},
+  {nome:'Indigo',bg:'linear-gradient(135deg,#312e81,#4f46e5)'},
+  {nome:'Esmeralda',bg:'linear-gradient(135deg,#064e3b,#10b981)'},
+  {nome:'Safira',bg:'linear-gradient(135deg,#1e3a8a,#2563eb)'},
+  {nome:'Roxo Rosa',bg:'linear-gradient(135deg,#7e22ce,#ec4899)'},
+  {nome:'Grafite',bg:'linear-gradient(135deg,#111827,#374151)'},
+  {nome:'Dourado',bg:'linear-gradient(135deg,#78350f,#d97706)'},
+];
+
+// ── EDITAR PERFIL (nome + cor de fundo) ──
+async function renderEditarPerfil(mc){
+  const uid=currentUser.uid;
+  const snap=await getDoc(doc(db,'usuarios',uid));
+  const perfil=snap.exists()?snap.data():{};
+  const bgAtual=perfil.bgColor||'';
+  const TEMAS=TEMAS_BG;
+
+  mc.innerHTML=snakeHtml()+
+    '<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;">'+
+      '<div class="page-eyebrow">* CONTA</div>'+
+      '<div class="page-title">\u270f\ufe0f Editar Perfil</div>'+
+      '<div class="page-sub">Atualize seu nome e a cor de fundo do painel</div>'+
+    '</div>'+
+    '<div class="panel" style="margin-bottom:1.25rem;">'+
+    '<div style="display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;">'+
+    '<div style="flex:1;min-width:160px;"><label class="inp-label">Meu nome</label><input type="text" class="inp" id="ep-nome" value="'+(perfil.nome||'')+'" placeholder="Seu nome completo"/></div>'+
+    '<div style="flex:1;min-width:160px;">'+
+    '<button onclick="toggleBgPickerEp()" style="display:flex;align-items:center;gap:10px;padding:10px 16px;border:1px solid var(--border-md);border-radius:var(--radius);background:var(--bg);font-family:var(--font);font-size:13px;color:var(--text);cursor:pointer;width:100%;">'+
+    '<div style="width:24px;height:24px;border-radius:6px;background:'+(bgAtual||'linear-gradient(135deg,#0d2e14,#1A5C2A)')+';flex-shrink:0;"></div>'+
+    '<span>Cor de fundo</span>'+
+    '<svg style="margin-left:auto;" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></button>'+
+    '<div id="ep-bg-picker" style="display:none;">'+
+    '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:8px;">'+
+    TEMAS.map((t,i)=>'<div onclick="selecionarBgEp('+i+')" id="ep-bg-opt-'+i+'" style="cursor:pointer;height:44px;border-radius:10px;background:'+(t.bg||'linear-gradient(135deg,#f0fdf4,#dcfce7)')+';border:3px solid '+(bgAtual===t.bg?'#fff':'transparent')+';box-shadow:'+(bgAtual===t.bg?'0 0 0 2px var(--primary)':'0 2px 6px rgba(0,0,0,0.15)')+';transition:all 0.15s;display:flex;align-items:'+(t.bg?'flex-end':'center')+';justify-content:'+(t.bg?'flex-start':'center')+';padding:4px 6px;" title="'+t.nome+'">'+
+    '<span style="font-size:9px;color:'+(t.bg?'rgba(255,255,255,0.7)':'var(--text-3)')+';font-weight:500;">'+t.nome+'</span></div>').join('')+
+    '</div></div></div>'+
+    '<button class="btn-blue" onclick="salvarEditarPerfil()" style="height:42px;white-space:nowrap;align-self:flex-end;">Salvar alteracoes</button>'+
+    '</div>'+
+    '</div>';
+
+  window._epBgTemas=TEMAS;
+  window._epBgSelecionado=bgAtual;
+}
+
+window.toggleBgPickerEp=function(){
+  const el=document.getElementById('ep-bg-picker');
+  el.style.display=el.style.display==='none'?'block':'none';
+};
+
+window.selecionarBgEp=function(i){
+  window._epBgSelecionado=window._epBgTemas[i].bg;
+  document.querySelectorAll('[id^="ep-bg-opt-"]').forEach((el,j)=>{
+    el.style.border=j===i?'3px solid #fff':'3px solid transparent';
+    el.style.boxShadow=j===i?'0 0 0 2px var(--primary)':'0 2px 6px rgba(0,0,0,0.15)';
+  });
+};
+
+window.salvarEditarPerfil=async function(){
+  const nome=document.getElementById('ep-nome').value.trim();
+  const bgColor=window._epBgSelecionado!==undefined?window._epBgSelecionado:(userProfile.bgColor||'');
+  if(!nome){showToast('Digite seu nome.');return;}
+  try{
+    await setDoc(doc(db,'usuarios',currentUser.uid),{nome,bgColor},{merge:true});
+    userProfile.nome=nome;
+    userProfile.bgColor=bgColor;
+    aplicarBg(bgColor);
+    updateSidebarUser();
+    showToast('Perfil atualizado!');
+  }catch(e){showToast('Erro: '+e.message);}
+};
+
 async function renderPerfil(mc){
   const uid=currentUser.uid;
   const snap=await getDoc(doc(db,'usuarios',uid));
   const perfil=snap.exists()?snap.data():{};
   const bgAtual=perfil.bgColor||'';
 
-  const TEMAS=[
-    {nome:'Padrao',bg:''},
-    {nome:'Floresta',bg:'linear-gradient(135deg,#0d2e14,#1A5C2A)'},
-    {nome:'Oceano',bg:'linear-gradient(135deg,#0a1628,#1a3a6b)'},
-    {nome:'Aurora',bg:'linear-gradient(135deg,#6b21a8,#db2777)'},
-    {nome:'Por do Sol',bg:'linear-gradient(135deg,#c2410c,#d97706)'},
-    {nome:'Midnight',bg:'linear-gradient(135deg,#0f172a,#1e3a5f)'},
-    {nome:'Rosa Neon',bg:'linear-gradient(135deg,#be185d,#7c3aed)'},
-    {nome:'Turquesa',bg:'linear-gradient(135deg,#0e7490,#0f766e)'},
-    {nome:'Lavanda',bg:'linear-gradient(135deg,#4c1d95,#5b21b6)'},
-    {nome:'Fogo',bg:'linear-gradient(135deg,#7f1d1d,#c2410c)'},
-    {nome:'Cosmos',bg:'linear-gradient(135deg,#1e1b4b,#4338ca)'},
-    {nome:'Menta',bg:'linear-gradient(135deg,#064e3b,#065f46)'},
-    {nome:'Nude',bg:'linear-gradient(135deg,#78716c,#a8a29e)'},
-    {nome:'Cereja',bg:'linear-gradient(135deg,#881337,#be123c)'},
-    {nome:'Cobre',bg:'linear-gradient(135deg,#92400e,#b45309)'},
-    {nome:'Indigo',bg:'linear-gradient(135deg,#312e81,#4f46e5)'},
-    {nome:'Esmeralda',bg:'linear-gradient(135deg,#064e3b,#10b981)'},
-    {nome:'Safira',bg:'linear-gradient(135deg,#1e3a8a,#2563eb)'},
-    {nome:'Roxo Rosa',bg:'linear-gradient(135deg,#7e22ce,#ec4899)'},
-    {nome:'Grafite',bg:'linear-gradient(135deg,#111827,#374151)'},
-    {nome:'Dourado',bg:'linear-gradient(135deg,#78350f,#d97706)'},
-  ];
+  const TEMAS=TEMAS_BG;
 
   mc.innerHTML=snakeHtml()+'<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;"><div style="display:flex;flex-direction:column;align-items:center;text-align:center;padding:0.25rem 0;"><div class="page-eyebrow">* PAGINA INICIAL</div><div class="page-title" style="display:flex;align-items:center;gap:10px;justify-content:center;">Bem vindo ao Chocalho &nbsp;—&nbsp; <img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/e_bgremoval/q_auto/f_auto/v1780780614/chocalho_1_in7jon.png" style="width:36px;height:36px;object-fit:contain;vertical-align:middle;"/></div></div>'+
     '<div id="lembrete-notif-dot" onclick="navigate(\'lembretes\')" title="Lembretes" style="position:absolute;top:14px;right:14px;width:14px;height:14px;border-radius:50%;background:transparent;cursor:pointer;transition:background 0.2s;"></div>'+
@@ -2986,21 +3054,6 @@ async function renderPerfil(mc){
     '<div style="text-align:center;margin-bottom:1.25rem;padding:0.5rem 0;">'+
     '<div style="font-size:18px;font-weight:600;color:var(--text);">'+(perfil.nome||'&#8212;')+'</div>'+
     '<div style="font-size:12px;color:var(--text-3);">'+(userProfile.role==='coord'?'Coordenador':'Operador')+'</div>'+
-    '</div>'+
-    '<div class="panel" style="margin-bottom:1.25rem;">'+
-    '<div style="display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;">'+
-    '<div style="flex:1;min-width:160px;"><label class="inp-label">Meu nome</label><input type="text" class="inp" id="perfil-nome" value="'+(perfil.nome||'')+'" placeholder="Seu nome completo"/></div>'+
-    '<div style="flex:1;min-width:160px;">'+
-    '<button onclick="toggleBgPicker()" style="display:flex;align-items:center;gap:10px;padding:10px 16px;border:1px solid var(--border-md);border-radius:var(--radius);background:var(--bg);font-family:var(--font);font-size:13px;color:var(--text);cursor:pointer;width:100%;">'+
-    '<div style="width:24px;height:24px;border-radius:6px;background:'+(bgAtual||'linear-gradient(135deg,#0d2e14,#1A5C2A)')+';flex-shrink:0;"></div>'+
-    '<span>Cor de fundo</span>'+
-    '<svg style="margin-left:auto;" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></button>'+
-    '<div id="bg-picker" style="display:none;">'+
-    '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:8px;">'+
-    TEMAS.map((t,i)=>'<div onclick="selecionarBg('+i+')" id="bg-opt-'+i+'" style="cursor:pointer;height:44px;border-radius:10px;background:'+(t.bg||'linear-gradient(135deg,#f0fdf4,#dcfce7)')+';border:3px solid '+(bgAtual===t.bg?'#fff':'transparent')+';box-shadow:'+(bgAtual===t.bg?'0 0 0 2px var(--primary)':'0 2px 6px rgba(0,0,0,0.15)')+';transition:all 0.15s;display:flex;align-items:'+(t.bg?'flex-end':'center')+';justify-content:'+(t.bg?'flex-start':'center')+';padding:4px 6px;" title="'+t.nome+'">'+
-    '<span style="font-size:9px;color:'+(t.bg?'rgba(255,255,255,0.7)':'var(--text-3)')+';font-weight:500;">'+t.nome+'</span></div>').join('')+
-    '</div></div></div>'+
-    '<button class="btn-blue" onclick="salvarPerfil()" style="height:42px;white-space:nowrap;align-self:flex-end;">Salvar alteracoes</button>'+
     '</div>'+
     '<img id="perfil-foto-preview" src="'+(perfil.foto||'')+'" style="display:none;"/>'+
     '</div>';
