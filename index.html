@@ -439,6 +439,26 @@ body.dark-mode select{background:#22263a;color:#e8eaf0;border-color:rgba(255,255
     <button class="btn-primary" id="btnLogin" onclick="doLogin()">Entrar</button>
     <div class="login-err" id="loginErr">E-mail ou senha incorretos.</div>
     <span class="forgot-link" onclick="esqueceuSenha()">Esqueci minha senha</span>
+    <div style="margin-top:14px;text-align:center;font-size:13px;color:rgba(255,255,255,0.6);">
+      Ainda não tem conta? <span class="forgot-link" style="display:inline;margin:0;" onclick="mostrarTelaCadastro()">Criar conta</span>
+    </div>
+  </div>
+</div>
+
+<div id="signupScreen" style="display:none;align-items:center;justify-content:center;min-height:100vh;padding:2rem;background:linear-gradient(135deg,#0d2e14 0%,#1A5C2A 60%,#2E8B45 100%);">
+  <div class="login-box">
+    <div class="login-logo"><img id="signupSnake" src=""/><span>Contas a Receber</span></div>
+    <div class="login-title">Criar conta</div>
+    <div class="login-sub">Cadastre-se para acessar o painel</div>
+    <div class="field"><label>Nome completo</label><input type="text" id="signupNome" placeholder="Seu nome completo"/></div>
+    <div class="field"><label>E-mail</label><input type="email" id="signupEmail" placeholder="seu@email.com"/></div>
+    <div class="field"><label>Senha</label><input type="password" id="signupPass" placeholder="Minimo 6 caracteres"/></div>
+    <div class="field"><label>Confirmar senha</label><input type="password" id="signupPass2" placeholder="••••••••" onkeydown="if(event.key==='Enter')doSignup()"/></div>
+    <button class="btn-primary" id="btnSignup" onclick="doSignup()">Criar conta</button>
+    <div class="login-err" id="signupErr"></div>
+    <div style="margin-top:14px;text-align:center;font-size:13px;color:rgba(255,255,255,0.6);">
+      Ja tem conta? <span class="forgot-link" style="display:inline;margin:0;" onclick="mostrarTelaLogin()">Entrar</span>
+    </div>
   </div>
 </div>
 
@@ -543,7 +563,7 @@ body.dark-mode select{background:#22263a;color:#e8eaf0;border-color:rgba(255,255
 <div class="toast" id="toast"></div>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, updatePassword, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, updatePassword, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDocs, query, where, limit, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const SNAKE_IMG = "https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780709517/snake_jet3mt.png";
@@ -584,8 +604,11 @@ const SVG={
   feed:'<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780800099/foto_feed_zkeahk.png" style="width:15px;height:15px;object-fit:contain;vertical-align:middle;">',
 };
 
+let _signupInProgress=false;
+
 onAuthStateChanged(auth, async (user) => {
   hide('loadingScreen');
+  if(_signupInProgress) return; // espera doSignup terminar de criar o documento
   if(user){currentUser=user;await loadProfile(user.uid);}
   else showLogin();
 });
@@ -634,6 +657,63 @@ async function _2fa_sendCode(email, nome){
     throw new Error('EmailJS: '+(err.text||err.status||JSON.stringify(err)));
   });
 }
+
+window.mostrarTelaCadastro=function(){
+  document.getElementById('loginScreen').style.display='none';
+  document.getElementById('signupScreen').style.display='flex';
+  document.getElementById('signupErr').style.display='none';
+  document.getElementById('signupNome').value='';
+  document.getElementById('signupEmail').value='';
+  document.getElementById('signupPass').value='';
+  document.getElementById('signupPass2').value='';
+  const snake=document.getElementById('loginSnake');
+  if(snake) document.getElementById('signupSnake').src=snake.src;
+};
+
+window.mostrarTelaLogin=function(){
+  document.getElementById('signupScreen').style.display='none';
+  document.getElementById('loginScreen').style.display='flex';
+};
+
+window.doSignup=async function(){
+  const nome=document.getElementById('signupNome').value.trim();
+  const email=document.getElementById('signupEmail').value.trim();
+  const pass=document.getElementById('signupPass').value;
+  const pass2=document.getElementById('signupPass2').value;
+  const err=document.getElementById('signupErr');
+  const btn=document.getElementById('btnSignup');
+
+  err.style.display='none';
+
+  if(!nome){err.textContent='Digite seu nome completo.';err.style.display='block';return;}
+  if(!email){err.textContent='Digite seu e-mail.';err.style.display='block';return;}
+  if(pass.length<6){err.textContent='A senha deve ter no minimo 6 caracteres.';err.style.display='block';return;}
+  if(pass!==pass2){err.textContent='As senhas nao coincidem.';err.style.display='block';return;}
+
+  btn.disabled=true;btn.textContent='Criando conta...';
+  _signupInProgress=true;
+  try{
+    const cred=await createUserWithEmailAndPassword(auth,email,pass);
+    const uid=cred.user.uid;
+    await setDoc(doc(db,'usuarios',uid),{
+      nome,email,role:'op',criadoEm:Date.now()
+    });
+    showToast('Conta criada com sucesso!');
+    _signupInProgress=false;
+    currentUser=cred.user;
+    await loadProfile(uid);
+  }catch(e){
+    _signupInProgress=false;
+    let msg='Erro ao criar conta.';
+    if(e.code==='auth/email-already-in-use') msg='Este e-mail ja esta cadastrado.';
+    else if(e.code==='auth/invalid-email') msg='E-mail invalido.';
+    else if(e.code==='auth/weak-password') msg='Senha muito fraca.';
+    err.textContent=msg;
+    err.style.display='block';
+  }finally{
+    btn.disabled=false;btn.textContent='Criar conta';
+  }
+};
 
 window.doLogin=async function(){
   const email=document.getElementById('loginEmail').value.trim();
@@ -845,7 +925,7 @@ document.addEventListener('click',function(e){
   }
 });
 
-function showLogin(){hide('appShell');show('loginScreen','flex');}
+function showLogin(){hide('appShell');hide('signupScreen');show('loginScreen','flex');}
 
 function getPerms(){
   const isCoord = userProfile.role==='coord';
