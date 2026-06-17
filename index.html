@@ -3110,8 +3110,14 @@ async function renderPerfil(mc){
 
   const dispSnap = await getDoc(doc(db,'config','disparos'));
   const disp = dispSnap.exists()? dispSnap.data() : {};
-  const pedro = disp.pedro && disp.pedro.length>0 ? disp.pedro : [{hora:'',data:'',plat:'WATI PEDRO'}];
-  const daniel = disp.daniel && disp.daniel.length>0 ? disp.daniel : [{hora:'',data:'',plat:'WATI DANIEL'}];
+  // Migra dados antigos (pedro/daniel separados) para uma lista unica, se ainda nao migrado
+  let dispUnificado = disp.unificado;
+  if(!dispUnificado){
+    dispUnificado = [];
+    (disp.pedro||[]).forEach(s=>{if(s.hora||s.data)dispUnificado.push({hora:s.hora||'',data:s.data||'',plat:s.plat||'WATI Pedro'});});
+    (disp.daniel||[]).forEach(s=>{if(s.hora||s.data)dispUnificado.push({hora:s.hora||'',data:s.data||'',plat:s.plat||'WATI Daniel'});});
+    if(dispUnificado.length===0) dispUnificado=[{hora:'',data:'',plat:'WATI Pedro'}];
+  }
 
   // Check escala
   const escalaSnap=await getDoc(doc(db,'config','escala'));
@@ -3175,9 +3181,8 @@ async function renderPerfil(mc){
       '</div>'
     : '')+
     (!isViewer ?
-    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.25rem;">'+
-      renderDisparosCard('pedro','Disparos Wati Pedro',pedro,isCoord)+
-      renderDisparosCard('daniel','Disparos Wati Daniel',daniel,isCoord)+
+    '<div style="margin-bottom:1.25rem;">'+
+      renderDisparosCard(dispUnificado,isCoord)+
     '</div>' : '');
 
   // Mural preview - own wall
@@ -3207,74 +3212,83 @@ async function renderPerfil(mc){
   window._bgSelecionado = bgAtual;
   await updateLembreteNotifDot();
 }
-function renderDisparosCard(id, titulo, slots, isCoord){
-  const platDefault = id==='pedro'?'WATI PEDRO':'WATI DANIEL';
-  const watiUrl = id==='pedro'
-    ? 'https://live.wati.io/5869/teamInbox'
-    : 'https://live.wati.io/354531';
-  const watiLabel = id==='pedro'?'WATI Pedro':'WATI Daniel';
-  const watiLink = '<a href="'+watiUrl+'" target="_blank" style="display:inline-flex;align-items:center;gap:6px;padding:5px 12px;background:#fff;border:1px solid var(--border-md);border-radius:20px;text-decoration:none;font-size:12px;font-weight:500;color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,0.08);">'+
-    '<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780848930/wati_hbqyix.png" style="width:16px;height:16px;object-fit:contain;vertical-align:middle;"/>'+
-    'Abrir '+watiLabel+'</a>';
-  return '<div class="panel" id="card-disp-'+id+'">'+
-    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">'+
-      '<div class="panel-title" style="margin:0;">'+titulo+'</div>'+
-      (isCoord?'<button onclick="limparDisparos(\''+id+'\')" class="btn-ghost" style="font-size:11px;">Limpar</button>':'')+
+const DISP_PLATAFORMAS = ['WATI Pedro','WATI Daniel','Outra'];
+const DISP_WATI_LINKS = {
+  'WATI Pedro': 'https://live.wati.io/5869/teamInbox',
+  'WATI Daniel': 'https://live.wati.io/354531'
+};
+
+function renderDisparosCard(slots, isCoord){
+  const botoesWati = Object.keys(DISP_WATI_LINKS).map(label=>
+    '<a href="'+DISP_WATI_LINKS[label]+'" target="_blank" style="display:inline-flex;align-items:center;gap:6px;padding:5px 12px;background:#fff;border:1px solid var(--border-md);border-radius:20px;text-decoration:none;font-size:12px;font-weight:500;color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,0.08);">'+
+      '<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780848930/wati_hbqyix.png" style="width:16px;height:16px;object-fit:contain;vertical-align:middle;"/>'+
+      'Abrir '+label+'</a>'
+  ).join('');
+
+  return '<div class="panel" id="card-disp-unificado">'+
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px;">'+
+      '<div class="panel-title" style="margin:0;">Disparos</div>'+
+      (isCoord?'<button onclick="limparDisparos()" class="btn-ghost" style="font-size:11px;">Limpar</button>':'')+
     '</div>'+
-    '<div style="margin-bottom:12px;">'+watiLink+'</div>'+
-    '<div id="slots-'+id+'">'+
-    slots.map((s,i)=>dispSlotHtml(id,i,s,isCoord,platDefault)).join('')+
+    '<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">'+botoesWati+'</div>'+
+    '<div id="slots-unificado">'+
+    slots.map((s,i)=>dispSlotHtml(i,s,isCoord)).join('')+
     '</div>'+
     (isCoord?
       '<div style="display:flex;gap:8px;margin-top:8px;">'+
-      '<button onclick="addDispSlot(\''+id+'\')" class="btn-ghost" style="font-size:12px;">+ Adicionar</button>'+
-      '<button onclick="salvarDisparos(\''+id+'\')" class="btn-blue" style="font-size:12px;padding:7px 16px;">Salvar</button>'+
+      '<button onclick="addDispSlot()" class="btn-ghost" style="font-size:12px;">+ Adicionar</button>'+
+      '<button onclick="salvarDisparos()" class="btn-blue" style="font-size:12px;padding:7px 16px;">Salvar</button>'+
       '</div>':'')+
   '</div>';
 }
 
-function dispSlotHtml(id,i,s,isCoord,platDefault){
-  return '<div id="slot-'+id+'-'+i+'" style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">'+
-    '<input type="text" id="disp-'+id+'-hora-'+i+'" value="'+(s.hora||'')+'" placeholder="HH/MM" style="width:80px;padding:7px 10px;border:1px solid var(--border-md);border-radius:var(--radius);font-family:var(--font);font-size:12px;background:var(--bg);" '+(isCoord?'':'readonly')+'/>'+
+function dispSlotHtml(i,s,isCoord){
+  const plat=s.plat||'WATI Pedro';
+  return '<div id="slot-unificado-'+i+'" style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">'+
+    '<input type="text" id="disp-hora-'+i+'" value="'+(s.hora||'')+'" placeholder="HH:MM" style="width:80px;padding:7px 10px;border:1px solid var(--border-md);border-radius:var(--radius);font-family:var(--font);font-size:12px;background:var(--bg);" '+(isCoord?'':'readonly')+'/>'+
     '<span style="color:var(--text-3);font-size:12px;">—</span>'+
-    '<input type="text" id="disp-'+id+'-data-'+i+'" value="'+(s.data||'')+'" placeholder="DD/MM" style="width:80px;padding:7px 10px;border:1px solid var(--border-md);border-radius:var(--radius);font-family:var(--font);font-size:12px;background:var(--bg);" '+(isCoord?'':'readonly')+'/>'+
-    '<input type="text" id="disp-'+id+'-plat-'+i+'" value="'+(s.plat||platDefault)+'" placeholder="Plataforma" style="flex:1;padding:7px 10px;border:1px solid var(--border-md);border-radius:var(--radius);font-family:var(--font);font-size:12px;background:var(--bg);" '+(isCoord?'':'readonly')+'/>'+
-    (isCoord&&i>0?'<button onclick="removeDispSlot(\''+id+'\','+i+')" style="padding:4px 8px;border:none;background:none;color:var(--text-3);cursor:pointer;font-size:16px;">&#x2715;</button>':'')+
+    '<input type="text" id="disp-data-'+i+'" value="'+(s.data||'')+'" placeholder="DD/MM" style="width:80px;padding:7px 10px;border:1px solid var(--border-md);border-radius:var(--radius);font-family:var(--font);font-size:12px;background:var(--bg);" '+(isCoord?'':'readonly')+'/>'+
+    '<select id="disp-plat-'+i+'" style="flex:1;padding:7px 10px;border:1px solid var(--border-md);border-radius:var(--radius);font-family:var(--font);font-size:12px;background:var(--bg);color:var(--text);" '+(isCoord?'':'disabled')+'>'+
+      DISP_PLATAFORMAS.map(p=>'<option value="'+p+'" '+(plat===p?'selected':'')+'>'+p+'</option>').join('')+
+    '</select>'+
+    (isCoord&&i>0?'<button onclick="removeDispSlot('+i+')" style="padding:4px 8px;border:none;background:none;color:var(--text-3);cursor:pointer;font-size:16px;">&#x2715;</button>':'')+
   '</div>';
 }
 
-window._dispSlotCount={pedro:0,daniel:0};
+window._dispSlotCount=0;
 
-window.addDispSlot=function(id){
-  const container=document.getElementById('slots-'+id);
-  const platDefault=id==='pedro'?'WATI PEDRO':'WATI DANIEL';
-  const slots=container.querySelectorAll('[id^="slot-'+id+'-"]');
+window.addDispSlot=function(){
+  const container=document.getElementById('slots-unificado');
+  const slots=container.querySelectorAll('[id^="slot-unificado-"]');
   const i=slots.length;
-  window._dispSlotCount[id]=i;
+  window._dispSlotCount=i;
   const div=document.createElement('div');
-  div.innerHTML=dispSlotHtml(id,i,{},true,platDefault);
+  div.innerHTML=dispSlotHtml(i,{},true);
   container.appendChild(div.firstChild);
 };
 
-window.removeDispSlot=function(id,i){
-  const el=document.getElementById('slot-'+id+'-'+i);
+window.removeDispSlot=function(i){
+  const el=document.getElementById('slot-unificado-'+i);
   if(el)el.remove();
 };
 
-window.salvarDisparos=async function(id){
-  const container=document.getElementById('slots-'+id);
+window.salvarDisparos=async function(){
+  const container=document.getElementById('slots-unificado');
   const slots=[];
-  container.querySelectorAll('[id^="slot-'+id+'-"]').forEach(row=>{
+  container.querySelectorAll('[id^="slot-unificado-"]').forEach(row=>{
     const idx=row.id.split('-').pop();
-    const hora=(document.getElementById('disp-'+id+'-hora-'+idx)||{}).value||'';
-    const data=(document.getElementById('disp-'+id+'-data-'+idx)||{}).value||'';
-    const plat=(document.getElementById('disp-'+id+'-plat-'+idx)||{}).value||'';
+    const hora=(document.getElementById('disp-hora-'+idx)||{}).value||'';
+    const data=(document.getElementById('disp-data-'+idx)||{}).value||'';
+    const plat=(document.getElementById('disp-plat-'+idx)||{}).value||'WATI Pedro';
     if(hora||data) slots.push({hora,data,plat});
   });
   try{
     const snap=await getDoc(doc(db,'config','disparos'));
     const atual=snap.exists()?snap.data():{};
-    atual[id]=slots;
+    atual.unificado=slots;
+    // Remove campos legados para nao confundir leituras futuras
+    delete atual.pedro;
+    delete atual.daniel;
     atual.ts=Date.now();
     await setDoc(doc(db,'config','disparos'),atual);
     showToast('Disparos salvos!');
@@ -3313,13 +3327,14 @@ window.editarReuniaoAdicional=async function(){
   if(activePage==='agenda') await navigate('agenda');
 };
 
-window.limparDisparos=async function(id){
-  if(!confirm('Limpar todos os disparos de '+id+'?'))return;
+window.limparDisparos=async function(){
+  if(!confirm('Limpar todos os disparos?'))return;
   try{
     const snap=await getDoc(doc(db,'config','disparos'));
     const atual=snap.exists()?snap.data():{};
-    const platDefault=id==='pedro'?'WATI PEDRO':'WATI DANIEL';
-    atual[id]=[{hora:'',data:'',plat:platDefault}];
+    atual.unificado=[{hora:'',data:'',plat:'WATI Pedro'}];
+    delete atual.pedro;
+    delete atual.daniel;
     await setDoc(doc(db,'config','disparos'),atual);
     showToast('Limpo!');
     await renderPerfil(document.getElementById('mainContent'));
