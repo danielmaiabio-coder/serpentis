@@ -3700,6 +3700,30 @@ function renderDisparosCard(slots, isCoord){
       'Abrir '+label+'</a>'
   ).join('');
 
+  const secaoRelatorio = isCoord ? (
+    '<div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border);">'+
+      '<div style="font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:10px;display:flex;align-items:center;gap:6px;">'+
+        '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>'+
+        'Lançar no Relatório de Disparos'+
+      '</div>'+
+      '<div style="display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap;">'+
+        '<div><label class="inp-label">Data do disparo</label>'+
+          '<input type="date" id="rd-disp-data" style="padding:7px 10px;border:1px solid var(--border-md);border-radius:var(--radius);font-family:var(--font);font-size:12px;background:var(--bg);color:var(--text);" value="'+dataLocalStr()+'"/>'+
+        '</div>'+
+        '<div><label class="inp-label">Tipo de disparo</label>'+
+          '<select id="rd-disp-tipo" style="padding:7px 10px;border:1px solid var(--border-md);border-radius:var(--radius);font-family:var(--font);font-size:12px;background:var(--bg);color:var(--text);">'+
+            DISP_TIPOS.map(t=>'<option value="'+t+'">'+t+'</option>').join('')+
+          '</select>'+
+        '</div>'+
+        '<div><label class="inp-label">Qtd. de pessoas</label>'+
+          '<input type="number" id="rd-disp-qtd" min="0" placeholder="150" style="width:100px;padding:7px 10px;border:1px solid var(--border-md);border-radius:var(--radius);font-family:var(--font);font-size:12px;background:var(--bg);"/>'+
+        '</div>'+
+        '<button onclick="lancarNoRelatorioDisparos()" class="btn-blue" style="font-size:12px;padding:7px 14px;white-space:nowrap;">📊 Lançar</button>'+
+      '</div>'+
+      '<div id="rd-disp-status" style="display:none;font-size:11px;margin-top:8px;"></div>'+
+    '</div>'
+  ) : '';
+
   return '<div class="panel" id="card-disp-unificado">'+
     '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px;">'+
       '<div class="panel-title" style="margin:0;">Disparos</div>'+
@@ -3714,6 +3738,7 @@ function renderDisparosCard(slots, isCoord){
       '<button onclick="addDispSlot()" class="btn-ghost" style="font-size:12px;">+ Adicionar</button>'+
       '<button onclick="salvarDisparos()" class="btn-blue" style="font-size:12px;padding:7px 16px;">Salvar</button>'+
       '</div>':'')+
+    secaoRelatorio+
   '</div>';
 }
 
@@ -3761,7 +3786,6 @@ window.salvarDisparos=async function(){
     const snap=await getDoc(doc(db,'config','disparos'));
     const atual=snap.exists()?snap.data():{};
     atual.unificado=slots;
-    // Remove campos legados para nao confundir leituras futuras
     delete atual.pedro;
     delete atual.daniel;
     atual.ts=Date.now();
@@ -3773,6 +3797,46 @@ window.salvarDisparos=async function(){
     await renderPerfil(document.getElementById('mainContent'));
   }catch(e){showToast('Erro ao salvar.');}
 };
+
+window.lancarNoRelatorioDisparos=async function(){
+  const dataEl=document.getElementById('rd-disp-data');
+  const tipoEl=document.getElementById('rd-disp-tipo');
+  const qtdEl=document.getElementById('rd-disp-qtd');
+  const statusEl=document.getElementById('rd-disp-status');
+
+  const dataVal=dataEl?.value;
+  const tipo=tipoEl?.value;
+  const qtd=parseInt(qtdEl?.value)||0;
+
+  const setStatus=(msg,ok)=>{
+    if(!statusEl)return;
+    statusEl.style.display='block';
+    statusEl.style.color=ok?'var(--primary)':'#ef4444';
+    statusEl.textContent=msg;
+  };
+
+  if(!dataVal){setStatus('Selecione uma data.',false);return;}
+  if(!tipo){setStatus('Selecione o tipo de disparo.',false);return;}
+  if(qtd<=0){setStatus('Digite uma quantidade válida.',false);return;}
+
+  // Converte DD/MM ou YYYY-MM-DD para chave YYYY-MM-DD
+  let chave=dataVal; // input type=date já retorna YYYY-MM-DD
+
+  try{
+    const ref=doc(db,'relatorio_disparos',chave);
+    const snap=await getDoc(ref);
+    const atual=snap.exists()?snap.data():{};
+    const anterior=Number(atual[tipo])||0;
+    atual[tipo]=anterior+qtd;
+    await setDoc(ref,atual,{merge:true});
+    const dataFmt=new Date(chave+'T12:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
+    setStatus('✅ +'+qtd+' lançados em "'+tipo+'" no dia '+dataFmt+' (total: '+(anterior+qtd)+').',true);
+    if(qtdEl) qtdEl.value='';
+  }catch(e){
+    setStatus('Erro ao lançar: '+e.message,false);
+  }
+};
+
 
 window.editarReuniaoMensal=async function(){
   const snap=await getDoc(doc(db,'config','reuniao_mensal'));
