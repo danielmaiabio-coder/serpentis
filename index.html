@@ -3702,23 +3702,19 @@ function renderDisparosCard(slots, isCoord){
 
   const secaoRelatorio = isCoord ? (
     '<div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border);">'+
-      '<div style="font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:10px;display:flex;align-items:center;gap:6px;">'+
-        '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>'+
-        'Lançar no Relatório de Disparos'+
+      '<div style="font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">'+
+        '<span style="display:flex;align-items:center;gap:6px;">'+
+          '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>'+
+          'Lançar no Relatório de Disparos'+
+        '</span>'+
+        '<input type="date" id="rd-disp-data" value="'+dataLocalStr()+'" style="padding:5px 8px;border:1px solid var(--border-md);border-radius:var(--radius);font-family:var(--font);font-size:12px;background:var(--bg);color:var(--text);"/>'+
       '</div>'+
-      '<div style="display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap;">'+
-        '<div><label class="inp-label">Data do disparo</label>'+
-          '<input type="date" id="rd-disp-data" style="padding:7px 10px;border:1px solid var(--border-md);border-radius:var(--radius);font-family:var(--font);font-size:12px;background:var(--bg);color:var(--text);" value="'+dataLocalStr()+'"/>'+
-        '</div>'+
-        '<div><label class="inp-label">Tipo de disparo</label>'+
-          '<select id="rd-disp-tipo" style="padding:7px 10px;border:1px solid var(--border-md);border-radius:var(--radius);font-family:var(--font);font-size:12px;background:var(--bg);color:var(--text);">'+
-            DISP_TIPOS.map(t=>'<option value="'+t+'">'+t+'</option>').join('')+
-          '</select>'+
-        '</div>'+
-        '<div><label class="inp-label">Qtd. de pessoas</label>'+
-          '<input type="number" id="rd-disp-qtd" min="0" placeholder="150" style="width:100px;padding:7px 10px;border:1px solid var(--border-md);border-radius:var(--radius);font-family:var(--font);font-size:12px;background:var(--bg);"/>'+
-        '</div>'+
-        '<button onclick="lancarNoRelatorioDisparos()" class="btn-blue" style="font-size:12px;padding:7px 14px;white-space:nowrap;">📊 Lançar</button>'+
+      '<div id="rd-disp-linhas">'+
+        rdDispLinhaHtml(0)+
+      '</div>'+
+      '<div style="display:flex;align-items:center;gap:8px;margin-top:8px;">'+
+        '<button onclick="addRdDispLinha()" class="btn-ghost" style="font-size:12px;">+ Adicionar tipo</button>'+
+        '<button onclick="lancarNoRelatorioDisparos()" class="btn-blue" style="font-size:12px;padding:7px 16px;">📊 Lançar tudo</button>'+
       '</div>'+
       '<div id="rd-disp-status" style="display:none;font-size:11px;margin-top:8px;"></div>'+
     '</div>'
@@ -3798,15 +3794,33 @@ window.salvarDisparos=async function(){
   }catch(e){showToast('Erro ao salvar.');}
 };
 
+function rdDispLinhaHtml(i){
+  return '<div id="rd-disp-linha-'+i+'" style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">'+
+    '<select id="rd-disp-tipo-'+i+'" style="flex:1;padding:7px 10px;border:1px solid var(--border-md);border-radius:var(--radius);font-family:var(--font);font-size:12px;background:var(--bg);color:var(--text);">'+
+      DISP_TIPOS.map(t=>'<option value="'+t+'">'+t+'</option>').join('')+
+    '</select>'+
+    '<input type="number" id="rd-disp-qtd-'+i+'" min="0" placeholder="Qtd." style="width:90px;padding:7px 10px;border:1px solid var(--border-md);border-radius:var(--radius);font-family:var(--font);font-size:12px;background:var(--bg);"/>'+
+    (i>0?'<button onclick="removeRdDispLinha('+i+')" style="padding:4px 8px;border:none;background:none;color:var(--text-3);cursor:pointer;font-size:16px;">&#x2715;</button>':'')+
+  '</div>';
+}
+
+window.addRdDispLinha=function(){
+  const container=document.getElementById('rd-disp-linhas');
+  const count=container.querySelectorAll('[id^="rd-disp-linha-"]').length;
+  const div=document.createElement('div');
+  div.innerHTML=rdDispLinhaHtml(count);
+  container.appendChild(div.firstChild);
+};
+
+window.removeRdDispLinha=function(i){
+  const el=document.getElementById('rd-disp-linha-'+i);
+  if(el) el.remove();
+};
+
 window.lancarNoRelatorioDisparos=async function(){
   const dataEl=document.getElementById('rd-disp-data');
-  const tipoEl=document.getElementById('rd-disp-tipo');
-  const qtdEl=document.getElementById('rd-disp-qtd');
   const statusEl=document.getElementById('rd-disp-status');
-
-  const dataVal=dataEl?.value;
-  const tipo=tipoEl?.value;
-  const qtd=parseInt(qtdEl?.value)||0;
+  const chave=dataEl?.value;
 
   const setStatus=(msg,ok)=>{
     if(!statusEl)return;
@@ -3815,23 +3829,34 @@ window.lancarNoRelatorioDisparos=async function(){
     statusEl.textContent=msg;
   };
 
-  if(!dataVal){setStatus('Selecione uma data.',false);return;}
-  if(!tipo){setStatus('Selecione o tipo de disparo.',false);return;}
-  if(qtd<=0){setStatus('Digite uma quantidade válida.',false);return;}
+  if(!chave){setStatus('Selecione uma data.',false);return;}
 
-  // Converte DD/MM ou YYYY-MM-DD para chave YYYY-MM-DD
-  let chave=dataVal; // input type=date já retorna YYYY-MM-DD
+  // Coleta todas as linhas preenchidas
+  const linhas=[];
+  document.querySelectorAll('[id^="rd-disp-linha-"]').forEach(row=>{
+    const idx=row.id.split('-').pop();
+    const tipo=(document.getElementById('rd-disp-tipo-'+idx)||{}).value;
+    const qtd=parseInt((document.getElementById('rd-disp-qtd-'+idx)||{}).value)||0;
+    if(tipo&&qtd>0) linhas.push({tipo,qtd});
+  });
+
+  if(linhas.length===0){setStatus('Preencha ao menos um tipo com quantidade.',false);return;}
 
   try{
     const ref=doc(db,'relatorio_disparos',chave);
     const snap=await getDoc(ref);
     const atual=snap.exists()?snap.data():{};
-    const anterior=Number(atual[tipo])||0;
-    atual[tipo]=anterior+qtd;
+    linhas.forEach(({tipo,qtd})=>{
+      atual[tipo]=(Number(atual[tipo])||0)+qtd;
+    });
     await setDoc(ref,atual,{merge:true});
+
     const dataFmt=new Date(chave+'T12:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
-    setStatus('✅ +'+qtd+' lançados em "'+tipo+'" no dia '+dataFmt+' (total: '+(anterior+qtd)+').',true);
-    if(qtdEl) qtdEl.value='';
+    const resumo=linhas.map(({tipo,qtd})=>tipo+': +'+qtd).join(' | ');
+    setStatus('✅ Lançado em '+dataFmt+' — '+resumo,true);
+
+    // Limpa as quantidades
+    document.querySelectorAll('[id^="rd-disp-qtd-"]').forEach(el=>el.value='');
   }catch(e){
     setStatus('Erro ao lançar: '+e.message,false);
   }
