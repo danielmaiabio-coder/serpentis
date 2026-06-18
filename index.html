@@ -941,6 +941,16 @@ function getPerms(){
   return {isCoord, canManageIA, canLancar, canRenegoc, canBanco};
 }
 
+// Retorna a data atual no formato YYYY-MM-DD usando o horario LOCAL do navegador
+// (evita o bug de toISOString(), que usa UTC e pode adiantar o "dia" incorretamente)
+function dataLocalStr(d){
+  d=d||new Date();
+  const y=d.getFullYear();
+  const m=String(d.getMonth()+1).padStart(2,'0');
+  const day=String(d.getDate()).padStart(2,'0');
+  return y+'-'+m+'-'+day;
+}
+
 function setupApp(){
   hide('loginScreen');show('appShell','flex');
   updateSidebarUser();buildNav();
@@ -4548,7 +4558,7 @@ async function setupBadges(){
       const now = new Date();
       const dow = now.getDay();
       if(dow===0||dow===6) return; // só dias úteis
-      const todayStr = now.toISOString().slice(0,10);
+      const todayStr = dataLocalStr(now);
       const nowMin = now.getHours()*60+now.getMinutes();
 
       HF_SLOTS.forEach(slot=>{
@@ -6313,7 +6323,7 @@ async function carregarLembretes(){
   try{
     const q=query(collection(db,'usuarios',currentUser.uid,'lembretes'),orderBy('data','asc'));
     const snap=await getDocs(q);
-    const hojeStr=new Date().toISOString().slice(0,10);
+    const hojeStr=dataLocalStr();
     const itens=[];
     snap.forEach(d=>itens.push({id:d.id,...d.data()}));
     // Ordena por hora dentro de cada dia (client-side)
@@ -6347,7 +6357,7 @@ async function carregarLembretes(){
 
 window.abrirModalLembrete=function(){
   document.getElementById('lemb-desc').value='';
-  document.getElementById('lemb-data').value=new Date().toISOString().slice(0,10);
+  document.getElementById('lemb-data').value=dataLocalStr();
   document.getElementById('lemb-hora').value='';
   document.getElementById('modal-lembrete').style.display='flex';
   setTimeout(()=>document.getElementById('lemb-desc')?.focus(),50);
@@ -6390,7 +6400,7 @@ async function updateLembreteNotifDot(){
   const dot=document.getElementById('lembrete-notif-dot');
   if(!dot||!currentUser)return;
   try{
-    const hoje=new Date().toISOString().slice(0,10);
+    const hoje=dataLocalStr();
     const agora=new Date();
     const minutosAgora=agora.getHours()*60+agora.getMinutes();
     const q=query(collection(db,'usuarios',currentUser.uid,'lembretes'),where('data','==',hoje));
@@ -6438,7 +6448,13 @@ function votacaoLiberada(){
   const limite=TERM_HORARIO[0]*60+TERM_HORARIO[1];
   return m>=limite;
 }
-function hojeStr(){return new Date().toISOString().slice(0,10);}
+function hojeStr(){
+  const d=new Date();
+  const y=d.getFullYear();
+  const m=String(d.getMonth()+1).padStart(2,'0');
+  const day=String(d.getDate()).padStart(2,'0');
+  return y+'-'+m+'-'+day;
+}
 
 // ── Atualiza o letreiro do termometro ──
 async function updateLedTermometro(){
