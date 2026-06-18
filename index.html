@@ -3049,6 +3049,7 @@ const TEMAS_BG=[
 
 // ── EDITAR PERFIL (nome + cor de fundo) ──
 async function renderEditarPerfil(mc){
+  _vaultUnlocked=false; // sempre comeca bloqueado ao entrar/recarregar a pagina
   const uid=currentUser.uid;
   const snap=await getDoc(doc(db,'usuarios',uid));
   const perfil=snap.exists()?snap.data():{};
@@ -3088,6 +3089,14 @@ async function renderEditarPerfil(mc){
           '<span class="forgot-link" style="color:var(--primary);cursor:pointer;font-size:12px;" onclick="esqueceuSenhaEp()">Esqueci minha senha</span>'+
         '</div>'+
       '</div>'+
+    '</div>'+
+    '<div class="panel" style="margin-top:1.5rem;">'+
+      '<div class="panel-title" style="margin-bottom:12px;">\ud83d\udd10 Minhas Senhas</div>'+
+      '<div id="vault-locked-view">'+
+        '<div style="font-size:13px;color:var(--text-2);margin-bottom:14px;">Suas senhas pessoais ficam guardadas em sigilo. Para acessar, confirme sua senha de login e o codigo de verificacao enviado por e-mail.</div>'+
+        '<button class="btn-blue" onclick="abrirVaultUnlock()">\ud83d\udd13 Desbloquear acesso</button>'+
+      '</div>'+
+      '<div id="vault-unlocked-view" style="display:none;"></div>'+
     '</div>';
 
   window._epBgTemas=TEMAS;
@@ -3159,6 +3168,179 @@ window.alterarSenhaEp=async function(){
   }finally{
     btn.disabled=false;btn.textContent='Alterar senha';
   }
+};
+
+// ══════════════════════════════════════════
+// MINHAS SENHAS (cofre pessoal, protegido por senha + 2FA)
+// ══════════════════════════════════════════
+let _vaultOtpCode='';
+let _vaultOtpExpiry=0;
+let _vaultUnlocked=false;
+
+window.abrirVaultUnlock=function(){
+  showModalGeneric('Desbloquear Minhas Senhas',
+    '<div style="font-size:13px;color:var(--text-2);margin-bottom:14px;">Digite sua senha de login para continuar.</div>'+
+    '<input type="password" id="vault-pass-input" class="inp" placeholder="Sua senha de login" style="margin-bottom:10px;" onkeydown="if(event.key===\'Enter\')vaultEnviarOtp()"/>'+
+    '<div id="vault-step1-err" style="display:none;font-size:12px;color:var(--red);background:var(--red-light);padding:8px 10px;border-radius:var(--radius);margin-bottom:10px;"></div>'+
+    '<button class="btn-blue" id="vault-step1-btn" onclick="vaultEnviarOtp()" style="width:100%;">Continuar</button>'
+  );
+  setTimeout(()=>document.getElementById('vault-pass-input')?.focus(),100);
+};
+
+window.vaultEnviarOtp=async function(){
+  const pass=document.getElementById('vault-pass-input').value;
+  const err=document.getElementById('vault-step1-err');
+  const btn=document.getElementById('vault-step1-btn');
+  err.style.display='none';
+  if(!pass){err.textContent='Digite sua senha.';err.style.display='block';return;}
+
+  btn.disabled=true;btn.textContent='Verificando...';
+  try{
+    const cred=EmailAuthProvider.credential(currentUser.email,pass);
+    await reauthenticateWithCredential(currentUser,cred);
+
+    // Senha correta -> envia codigo OTP por email
+    _vaultOtpCode=String(Math.floor(100000+Math.random()*900000));
+    _vaultOtpExpiry=Date.now()+10*60*1000;
+    await emailjs.send(EMAILJS_SVC,EMAILJS_TPL,{
+      email:currentUser.email,
+      to_email:currentUser.email,
+      passcode:_vaultOtpCode,
+      time:new Date(_vaultOtpExpiry).toLocaleTimeString('pt-BR'),
+      nome:userProfile.nome||currentUser.email.split('@')[0],
+    },{publicKey:EMAILJS_KEY});
+
+    showModalGeneric('Codigo de verificacao',
+      '<div style="font-size:13px;color:var(--text-2);margin-bottom:14px;">Enviamos um codigo de 6 digitos para '+currentUser.email+'.</div>'+
+      '<input type="text" id="vault-otp-input" maxlength="6" placeholder="000000" style="width:100%;padding:10px 12px;border:1px solid var(--border-md);border-radius:var(--radius);background:var(--bg);color:var(--text);font-family:var(--font);font-size:20px;letter-spacing:6px;text-align:center;font-weight:600;box-sizing:border-box;margin-bottom:10px;" onkeydown="if(event.key===\'Enter\')vaultVerificarOtp()"/>'+
+      '<div id="vault-step2-err" style="display:none;font-size:12px;color:var(--red);background:var(--red-light);padding:8px 10px;border-radius:var(--radius);margin-bottom:10px;"></div>'+
+      '<button class="btn-blue" id="vault-step2-btn" onclick="vaultVerificarOtp()" style="width:100%;">Verificar</button>'
+    );
+    setTimeout(()=>document.getElementById('vault-otp-input')?.focus(),100);
+  }catch(e){
+    let msg='Erro ao verificar senha.';
+    if(e.code==='auth/wrong-password'||e.code==='auth/invalid-credential') msg='Senha incorreta.';
+    err.textContent=msg;err.style.display='block';
+    btn.disabled=false;btn.textContent='Continuar';
+  }
+};
+
+window.vaultVerificarOtp=async function(){
+  const input=document.getElementById('vault-otp-input').value.trim();
+  const err=document.getElementById('vault-step2-err');
+  err.style.display='none';
+  if(Date.now()>_vaultOtpExpiry){err.textContent='Codigo expirado. Tente desbloquear de novo.';err.style.display='block';return;}
+  if(input!==_vaultOtpCode){err.textContent='Codigo invalido.';err.style.display='block';return;}
+
+  _vaultUnlocked=true;
+  document.getElementById('modal-generic').style.display='none';
+  showToast('Acesso liberado!');
+  await renderVaultUnlocked();
+};
+
+async function renderVaultUnlocked(){
+  document.getElementById('vault-locked-view').style.display='none';
+  const view=document.getElementById('vault-unlocked-view');
+  view.style.display='block';
+  view.innerHTML='<div class="empty">Carregando...</div>';
+
+  let itens=[];
+  try{
+    const snap=await getDocs(collection(db,'usuarios',currentUser.uid,'minhas_senhas'));
+    snap.forEach(d=>itens.push({id:d.id,...d.data()}));
+    itens.sort((a,b)=>(a.servico||'').localeCompare(b.servico||''));
+  }catch(e){
+    view.innerHTML='<div class="empty">Erro ao carregar: '+e.message+'</div>';
+    return;
+  }
+
+  window._vaultItens=itens;
+
+  view.innerHTML=
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">'+
+      '<span style="font-size:12px;color:var(--primary);display:flex;align-items:center;gap:6px;">\ud83d\udd13 Desbloqueado</span>'+
+      '<div style="display:flex;gap:8px;">'+
+        '<button class="btn-ghost" onclick="bloquearVault()" style="font-size:12px;">\ud83d\udd12 Bloquear</button>'+
+        '<button class="btn-blue" onclick="abrirVaultModalItem()" style="font-size:12px;">+ Nova senha</button>'+
+      '</div>'+
+    '</div>'+
+    '<div id="vault-itens-list">'+renderVaultItensList(itens)+'</div>';
+}
+
+function renderVaultItensList(itens){
+  if(itens.length===0) return '<div class="empty">Nenhuma senha cadastrada ainda.</div>';
+  return '<div style="display:flex;flex-direction:column;gap:10px;">'+
+    itens.map(it=>
+      '<div style="display:flex;align-items:center;gap:14px;padding:12px 14px;background:var(--surface);border-radius:12px;border:1px solid var(--border-md);">'+
+        '<div style="flex:1;min-width:0;">'+
+          '<div style="font-size:13px;font-weight:600;color:var(--text);">'+(it.servico||'Sem nome')+'</div>'+
+          (it.usuario?'<div style="font-size:11px;color:var(--text-3);">'+it.usuario+'</div>':'')+
+        '</div>'+
+        '<div style="display:flex;align-items:center;gap:6px;min-width:160px;">'+
+          '<span id="vault-senha-'+it.id+'" style="font-family:var(--font-mono);font-size:13px;color:var(--text);letter-spacing:1px;">'+'\u2022'.repeat(Math.min((it.senha||'').length||8,12))+'</span>'+
+          '<button onclick="vaultToggleOlho(\''+it.id+'\')" id="vault-olho-'+it.id+'" title="Mostrar/ocultar" style="background:none;border:none;cursor:pointer;color:var(--text-3);padding:2px;">'+
+            '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>'+
+          '</button>'+
+        '</div>'+
+        '<button onclick="excluirVaultItem(\''+it.id+'\')" title="Excluir" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:15px;padding:4px;">\u2715</button>'+
+      '</div>'
+    ).join('')+
+  '</div>';
+}
+
+window.vaultToggleOlho=function(id){
+  const item=(window._vaultItens||[]).find(x=>x.id===id);
+  if(!item)return;
+  const span=document.getElementById('vault-senha-'+id);
+  const isHidden=span.dataset.hidden!=='false';
+  if(isHidden){
+    span.textContent=item.senha||'';
+    span.dataset.hidden='false';
+  }else{
+    span.textContent='\u2022'.repeat(Math.min((item.senha||'').length||8,12));
+    span.dataset.hidden='true';
+  }
+};
+
+window.bloquearVault=function(){
+  _vaultUnlocked=false;
+  document.getElementById('vault-unlocked-view').style.display='none';
+  document.getElementById('vault-unlocked-view').innerHTML='';
+  document.getElementById('vault-locked-view').style.display='block';
+};
+
+window.abrirVaultModalItem=function(){
+  showModalGeneric('Nova senha',
+    '<div style="display:flex;flex-direction:column;gap:12px;">'+
+      '<div><label class="inp-label">Servico / Nome</label><input type="text" class="inp" id="vault-item-servico" placeholder="Ex: WATI, E-mail, Hotmart..."/></div>'+
+      '<div><label class="inp-label">Usuario / E-mail (opcional)</label><input type="text" class="inp" id="vault-item-usuario" placeholder="usuario@exemplo.com"/></div>'+
+      '<div><label class="inp-label">Senha</label><input type="text" class="inp" id="vault-item-senha" placeholder="Senha"/></div>'+
+      '<button class="btn-blue" onclick="salvarVaultItem()" style="width:100%;">Salvar</button>'+
+    '</div>'
+  );
+  setTimeout(()=>document.getElementById('vault-item-servico')?.focus(),100);
+};
+
+window.salvarVaultItem=async function(){
+  const servico=document.getElementById('vault-item-servico').value.trim();
+  const usuario=document.getElementById('vault-item-usuario').value.trim();
+  const senha=document.getElementById('vault-item-senha').value;
+  if(!servico||!senha){showToast('Preencha servico e senha.');return;}
+  try{
+    await addDoc(collection(db,'usuarios',currentUser.uid,'minhas_senhas'),{servico,usuario,senha,ts:Date.now()});
+    document.getElementById('modal-generic').style.display='none';
+    showToast('Senha salva!');
+    await renderVaultUnlocked();
+  }catch(e){showToast('Erro: '+e.message);}
+};
+
+window.excluirVaultItem=async function(id){
+  if(!confirm('Excluir esta senha?'))return;
+  try{
+    await deleteDoc(doc(db,'usuarios',currentUser.uid,'minhas_senhas',id));
+    showToast('Excluida.');
+    await renderVaultUnlocked();
+  }catch(e){showToast('Erro: '+e.message);}
 };
 
 async function renderPerfil(mc){
