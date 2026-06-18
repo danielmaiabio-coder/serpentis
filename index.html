@@ -982,10 +982,20 @@ function buildNav(){
   const chev='<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>';
   function ddItem(id,label){return '<button class="nb-dd-item" id="nav-'+id+'" data-page="'+id+'" onclick="nbClose();navigate(this.dataset.page)">'+label+'<span class="nav-badge" id="badge-'+id+'" style="display:none;"></span></button>';}
   function singleItem(id,label){return '<button class="nb-btn-single" id="nav-'+id+'" data-page="'+id+'" onclick="navigate(this.dataset.page)">'+label+'<span class="nav-badge" id="badge-'+id+'" style="display:none;"></span></button>';}
-  function group(id,label,items){return '<div class="nb-item"><button class="nb-btn" id="nbg-'+id+'" data-gid="'+id+'" onclick="nbToggle(this.dataset.gid)">'+label+' '+chev+'</button><div class="nb-dropdown" id="nbd-'+id+'"><div class="nb-dropdown-inner">'+items+'</div></div></div>';}
+  const ICONES_GRUPO={
+    painel:'https://res.cloudinary.com/dbd9hpwyb/image/upload/v1781760201/transp_jmngye.png',
+    equipe:'https://res.cloudinary.com/dbd9hpwyb/image/upload/v1781760201/visaoequipe_opqppv.png',
+    social:'https://res.cloudinary.com/dbd9hpwyb/image/upload/v1781760201/social_nkej4v.png',
+    utils:'https://res.cloudinary.com/dbd9hpwyb/image/upload/v1781760201/utility_m4nc4g.png',
+    conta:'https://res.cloudinary.com/dbd9hpwyb/image/upload/v1781760201/user_1_ao8zct.png',
+  };
+  function group(id,label,items,semSeparador){
+    const icone=ICONES_GRUPO[id]?'<img src="'+ICONES_GRUPO[id]+'" style="width:16px;height:16px;object-fit:contain;vertical-align:middle;margin-right:6px;"/>':'';
+    return (semSeparador?'':'<div class="nb-separator"></div>')+'<div class="nb-item"><button class="nb-btn" id="nbg-'+id+'" data-gid="'+id+'" onclick="nbToggle(this.dataset.gid)">'+icone+label+' '+chev+'</button><div class="nb-dropdown" id="nbd-'+id+'"><div class="nb-dropdown-inner">'+items+'</div></div></div>';
+  }
   let html='';
   let painelItems=ddItem('resultado','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780802683/result_e5qm9r.png" style="width:15px;height:15px;object-fit:contain;vertical-align:middle;margin-right:5px;"/>Resultado')+ddItem('historico','📖 Historico')+ddItem('notas','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780802759/chat_x8kvyk.png" style="width:15px;height:15px;object-fit:contain;vertical-align:middle;margin-right:5px;"/>Analise de Chat')+ddItem('dashboard','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780802810/dash_bztgjy.png" style="width:15px;height:15px;object-fit:contain;vertical-align:middle;margin-right:5px;"/>Dashboard');
-  html+=group('painel','Painel Brille',painelItems);
+  html+=group('painel','Painel Brille',painelItems,true);
   if(isCoord){
     let equipeItems=ddItem('equipe','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780874328/time_uxtxl2.png" style="width:15px;height:15px;object-fit:contain;vertical-align:middle;margin-right:5px;"/>Minha Equipe')+ddItem('lancar','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780883836/results_eysruv.png" style="width:15px;height:15px;object-fit:contain;vertical-align:middle;margin-right:5px;"/>Lancar Resultados')+ddItem('escritorio','🗂️ Escritorio')+ddItem('relatorio_disparos','📊 Relatorio de Disparos');
     html+=group('equipe','Visao da Equipe',equipeItems);
