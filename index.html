@@ -488,11 +488,10 @@ body.dark-mode select{background:#22263a;color:#e8eaf0;border-color:rgba(255,255
   <nav class="navbar">
     <!-- Brand -->
     <div class="nb-brand nb-bordered" onclick="goPage('perfil')" style="cursor:pointer;">
-      <img class="nb-chocalho" id="chocalho-logo" src="https://res.cloudinary.com/dbd9hpwyb/image/upload/e_bgremoval/q_auto/f_auto/v1780780614/chocalho_1_in7jon.png" onclick="event.stopPropagation();balancaChocalho()"/>
       <div>
         <div class="nb-brand-name">Chocalho</div>
-        <div class="nb-brand-sub" id="sbSub">—</div>
       </div>
+      <img class="nb-chocalho" id="chocalho-logo" src="https://res.cloudinary.com/dbd9hpwyb/image/upload/e_bgremoval/q_auto/f_auto/v1780780614/chocalho_1_in7jon.png" onclick="event.stopPropagation();balancaChocalho()"/>
     </div>
     <!-- Nav groups -->
     <div class="nb-nav nb-bordered" id="navItems"></div>
@@ -975,7 +974,7 @@ function updateSidebarUser(){
   const ini=(userProfile.nome||'?').split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
   document.getElementById('sbName').textContent=userProfile.nome||'&#8212;';
   document.getElementById('sbRole').textContent=userProfile.role==='coord'?'Coordenador':'Operador';
-  document.getElementById('sbSub').textContent=userProfile.role==='coord'?'Visao da equipe':(userProfile.role==='viewer'?'Painel Brille':'Painel Brille');
+  // sbSub removido
   const av=document.getElementById('sbAvatar');
   if(userProfile.foto){av.innerHTML='<img src="'+userProfile.foto+'" alt="foto"/>';}
   else{av.textContent=ini;av.style.background=userProfile.cor||'#1A5C2A';av.style.color='#fff';}
