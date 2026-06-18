@@ -3649,15 +3649,27 @@ async function renderPerfil(mc){
         adicBanner+
       '</div>'
     : '')+
-    // Bloco Links da Rotina
+    // Bloco Links de Rotina
     '<div class="panel" style="margin-bottom:1.25rem;">'+
-      '<div class="panel-title" style="margin-bottom:12px;">🔗 Links da Rotina</div>'+
-      '<div style="display:flex;gap:10px;flex-wrap:wrap;">'+
-        '<a href="'+DISP_WATI_LINKS['WATI Pedro']+'" target="_blank" style="display:inline-flex;align-items:center;gap:7px;padding:8px 16px;background:var(--primary);color:#fff;border-radius:var(--radius);font-family:var(--font);font-size:13px;font-weight:500;text-decoration:none;"><img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780848930/wati_hbqyix.png" style="width:16px;height:16px;object-fit:contain;"/>WATI Pedro</a>'+
-        '<a href="'+DISP_WATI_LINKS['WATI Daniel']+'" target="_blank" style="display:inline-flex;align-items:center;gap:7px;padding:8px 16px;background:var(--primary);color:#fff;border-radius:var(--radius);font-family:var(--font);font-size:13px;font-weight:500;text-decoration:none;"><img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780848930/wati_hbqyix.png" style="width:16px;height:16px;object-fit:contain;"/>WATI Daniel</a>'+
-        '<a href="https://app.hotmart.com/subscriptions" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:7px;padding:8px 16px;background:var(--primary);color:#fff;border-radius:var(--radius);font-family:var(--font);font-size:13px;font-weight:500;text-decoration:none;">\ud83d\uded2 Gerenciar Minhas Assinaturas</a>'+
-        '<a href="https://app.hotmart.com/sales" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:7px;padding:8px 16px;background:var(--primary);color:#fff;border-radius:var(--radius);font-family:var(--font);font-size:13px;font-weight:500;text-decoration:none;">\ud83d\udcb3 Transacoes</a>'+
-        '<a href="https://app.hotmart.com/sales?tab=smartRecoveries&type=sales" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:7px;padding:8px 16px;background:var(--primary);color:#fff;border-radius:var(--radius);font-family:var(--font);font-size:13px;font-weight:500;text-decoration:none;">\ud83d\udd04 Recuperacao de Vendas</a>'+
+      '<div class="panel-title" style="margin-bottom:12px;">🔗 Links de Rotina</div>'+
+      '<div style="display:flex;gap:12px;flex-wrap:wrap;">'+
+        // Mini bloco WATI
+        '<div style="flex:1;min-width:200px;background:var(--bg);border:1px solid var(--border-md);border-radius:10px;padding:12px;">'+
+          '<div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-3);margin-bottom:10px;display:flex;align-items:center;gap:5px;"><img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780848930/wati_hbqyix.png" style="width:13px;height:13px;object-fit:contain;"/>WATI</div>'+
+          '<div style="display:flex;gap:8px;flex-wrap:wrap;">'+
+            '<a href="'+DISP_WATI_LINKS['WATI Pedro']+'" target="_blank" style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:var(--primary);color:#fff;border-radius:var(--radius);font-family:var(--font);font-size:12px;font-weight:500;text-decoration:none;">WATI Pedro</a>'+
+            '<a href="'+DISP_WATI_LINKS['WATI Daniel']+'" target="_blank" style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:var(--primary);color:#fff;border-radius:var(--radius);font-family:var(--font);font-size:12px;font-weight:500;text-decoration:none;">WATI Daniel</a>'+
+          '</div>'+
+        '</div>'+
+        // Mini bloco Hotmart
+        '<div style="flex:2;min-width:280px;background:var(--bg);border:1px solid var(--border-md);border-radius:10px;padding:12px;">'+
+          '<div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-3);margin-bottom:10px;">\ud83d\uded2 Hotmart</div>'+
+          '<div style="display:flex;gap:8px;flex-wrap:wrap;">'+
+            '<a href="https://app.hotmart.com/subscriptions" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:var(--primary);color:#fff;border-radius:var(--radius);font-family:var(--font);font-size:12px;font-weight:500;text-decoration:none;">Gerenciar Assinaturas</a>'+
+            '<a href="https://app.hotmart.com/sales" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:var(--primary);color:#fff;border-radius:var(--radius);font-family:var(--font);font-size:12px;font-weight:500;text-decoration:none;">Transacoes</a>'+
+            '<a href="https://app.hotmart.com/sales?tab=smartRecoveries&type=sales" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:var(--primary);color:#fff;border-radius:var(--radius);font-family:var(--font);font-size:12px;font-weight:500;text-decoration:none;">Recuperacao de Vendas</a>'+
+          '</div>'+
+        '</div>'+
       '</div>'+
     '</div>'+
     (!isViewer ?
