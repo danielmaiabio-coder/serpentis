@@ -563,7 +563,7 @@ body.dark-mode select{background:#22263a;color:#e8eaf0;border-color:rgba(255,255
 <div class="toast" id="toast"></div>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, updatePassword, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, updatePassword, sendPasswordResetEmail, EmailAuthProvider, reauthenticateWithCredential } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDocs, query, where, limit, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const SNAKE_IMG = "https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780709517/snake_jet3mt.png";
@@ -3076,6 +3076,15 @@ async function renderEditarPerfil(mc){
     '</div></div></div>'+
     '<button class="btn-blue" onclick="salvarEditarPerfil()" style="height:42px;white-space:nowrap;align-self:flex-end;">Salvar alteracoes</button>'+
     '</div>'+
+    '<div class="panel" style="margin-bottom:1.25rem;">'+
+      '<div class="panel-title" style="margin-bottom:12px;">\ud83d\udd12 Alterar Senha</div>'+
+      '<div style="display:flex;flex-direction:column;gap:12px;max-width:420px;">'+
+        '<div><label class="inp-label">Senha atual</label><input type="password" class="inp" id="ep-senha-atual" placeholder="Digite sua senha atual"/></div>'+
+        '<div><label class="inp-label">Nova senha</label><input type="password" class="inp" id="ep-senha-nova" placeholder="Minimo 6 caracteres"/></div>'+
+        '<div><label class="inp-label">Confirmar nova senha</label><input type="password" class="inp" id="ep-senha-confirma" placeholder="Repita a nova senha" onkeydown="if(event.key===\'Enter\')alterarSenhaEp()"/></div>'+
+        '<div id="ep-senha-err" style="display:none;font-size:12px;color:var(--red);background:var(--red-light);padding:8px 10px;border-radius:var(--radius);"></div>'+
+        '<button class="btn-blue" onclick="alterarSenhaEp()" id="ep-senha-btn" style="align-self:flex-start;">Alterar senha</button>'+
+      '</div>'+
     '</div>';
 
   window._epBgTemas=TEMAS;
@@ -3107,6 +3116,38 @@ window.salvarEditarPerfil=async function(){
     updateSidebarUser();
     showToast('Perfil atualizado!');
   }catch(e){showToast('Erro: '+e.message);}
+};
+
+window.alterarSenhaEp=async function(){
+  const atual=document.getElementById('ep-senha-atual').value;
+  const nova=document.getElementById('ep-senha-nova').value;
+  const confirma=document.getElementById('ep-senha-confirma').value;
+  const err=document.getElementById('ep-senha-err');
+  const btn=document.getElementById('ep-senha-btn');
+  err.style.display='none';
+
+  if(!atual){err.textContent='Digite sua senha atual.';err.style.display='block';return;}
+  if(nova.length<6){err.textContent='A nova senha deve ter no minimo 6 caracteres.';err.style.display='block';return;}
+  if(nova!==confirma){err.textContent='As senhas nao coincidem.';err.style.display='block';return;}
+
+  btn.disabled=true;btn.textContent='Alterando...';
+  try{
+    const cred=EmailAuthProvider.credential(currentUser.email,atual);
+    await reauthenticateWithCredential(currentUser,cred);
+    await updatePassword(currentUser,nova);
+    document.getElementById('ep-senha-atual').value='';
+    document.getElementById('ep-senha-nova').value='';
+    document.getElementById('ep-senha-confirma').value='';
+    showToast('Senha alterada com sucesso!');
+  }catch(e){
+    let msg='Erro ao alterar senha.';
+    if(e.code==='auth/wrong-password'||e.code==='auth/invalid-credential') msg='Senha atual incorreta.';
+    else if(e.code==='auth/too-many-requests') msg='Muitas tentativas. Tente novamente mais tarde.';
+    err.textContent=msg;
+    err.style.display='block';
+  }finally{
+    btn.disabled=false;btn.textContent='Alterar senha';
+  }
 };
 
 async function renderPerfil(mc){
