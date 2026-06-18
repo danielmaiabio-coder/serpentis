@@ -2661,18 +2661,20 @@ function renderCalc(mc){
         '<span id="moeda-atualizado" style="font-size:11px;color:var(--text-3);"></span>'+
       '</div>'+
       '<div style="display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;">'+
-        '<div style="flex:1;min-width:140px;"><label class="inp-label">Valor</label><input type="number" class="inp" id="moeda-valor" placeholder="100" value="1" oninput="calcularMoeda()"/></div>'+
-        '<div style="flex:1;min-width:160px;"><label class="inp-label">Moeda de origem</label>'+
+        '<div style="flex:1;min-width:140px;"><label class="inp-label" id="moeda-label-valor">Valor</label><input type="number" class="inp" id="moeda-valor" placeholder="100" value="1" oninput="calcularMoeda()"/></div>'+
+        '<div style="flex:1;min-width:160px;"><label class="inp-label" id="moeda-label-origem">Moeda de origem</label>'+
           '<select class="inp" id="moeda-origem" onchange="calcularMoeda()" style="cursor:pointer;">'+
             MOEDAS_LISTA.map(m=>'<option value="'+m.code+'" '+(m.code==='USD'?'selected':'')+'>'+m.flag+' '+m.code+' - '+m.nome+'</option>').join('')+
           '</select>'+
         '</div>'+
-        '<div style="padding-bottom:10px;color:var(--text-3);font-size:18px;">\u2192</div>'+
-        '<div style="flex:1;min-width:140px;"><label class="inp-label">Convertido para</label>'+
-          '<div style="padding:10px 0;font-size:13px;color:var(--text-2);">\ud83c\udde7\ud83c\uddf7 BRL - Real</div>'+
+        '<button onclick="inverterMoeda()" title="Inverter direcao" style="padding:10px;border:1px solid var(--border-md);border-radius:50%;background:var(--bg);color:var(--primary);cursor:pointer;display:flex;align-items:center;justify-content:center;width:40px;height:40px;flex-shrink:0;">'+
+          '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>'+
+        '</button>'+
+        '<div style="flex:1;min-width:140px;"><label class="inp-label" id="moeda-label-destino">Convertido para</label>'+
+          '<div id="moeda-destino-display" style="padding:10px 0;font-size:13px;color:var(--text-2);">\ud83c\udde7\ud83c\uddf7 BRL - Real</div>'+
         '</div>'+
       '</div>'+
-      '<div class="calc-result" style="margin-top:14px;"><div class="calc-result-label">Valor convertido</div><div class="calc-result-val" id="moeda-resultado">R$ 0,00</div><div style="font-size:11px;opacity:0.75;margin-top:4px;" id="moeda-detalhe">Carregando cotacao...</div></div>'+
+      '<div class="calc-result" style="margin-top:14px;"><div class="calc-result-label" id="moeda-result-label">Valor convertido</div><div class="calc-result-val" id="moeda-resultado">R$ 0,00</div><div style="font-size:11px;opacity:0.75;margin-top:4px;" id="moeda-detalhe">Carregando cotacao...</div></div>'+
     '</div>';
   carregarCotacoes();
 }
@@ -2691,6 +2693,7 @@ const MOEDAS_LISTA=[
 ];
 
 window._cotacoesCache=null;
+window._moedaDirecao='paraReal'; // 'paraReal' ou 'doReal'
 
 async function carregarCotacoes(){
   const pares=MOEDAS_LISTA.map(m=>m.code+'-BRL').join(',');
@@ -2708,20 +2711,62 @@ async function carregarCotacoes(){
   }
 }
 
+window.inverterMoeda=function(){
+  window._moedaDirecao = window._moedaDirecao==='paraReal' ? 'doReal' : 'paraReal';
+  renderMoedaCampos();
+  calcularMoeda();
+};
+
+function renderMoedaCampos(){
+  const moedaAtual=document.getElementById('moeda-origem').value;
+  const origemWrap=document.getElementById('moeda-origem').closest('div');
+  const destinoWrap=document.getElementById('moeda-destino-display').closest('div');
+  const labelValor=document.getElementById('moeda-label-valor');
+  const resultLabel=document.getElementById('moeda-result-label');
+
+  if(window._moedaDirecao==='doReal'){
+    origemWrap.innerHTML='<label class="inp-label">Moeda de origem</label><div style="padding:10px 0;font-size:13px;color:var(--text-2);">\ud83c\udde7\ud83c\uddf7 BRL - Real</div>';
+    destinoWrap.innerHTML='<label class="inp-label">Converter para</label>'+
+      '<select class="inp" id="moeda-origem" onchange="calcularMoeda()" style="cursor:pointer;">'+
+        MOEDAS_LISTA.map(m=>'<option value="'+m.code+'" '+(m.code===moedaAtual?'selected':'')+'>'+m.flag+' '+m.code+' - '+m.nome+'</option>').join('')+
+      '</select>';
+    labelValor.textContent='Valor em Reais (R$)';
+    resultLabel.textContent='Valor convertido';
+  } else {
+    origemWrap.innerHTML='<label class="inp-label">Moeda de origem</label>'+
+      '<select class="inp" id="moeda-origem" onchange="calcularMoeda()" style="cursor:pointer;">'+
+        MOEDAS_LISTA.map(m=>'<option value="'+m.code+'" '+(m.code===moedaAtual?'selected':'')+'>'+m.flag+' '+m.code+' - '+m.nome+'</option>').join('')+
+      '</select>';
+    destinoWrap.innerHTML='<label class="inp-label">Convertido para</label><div id="moeda-destino-display" style="padding:10px 0;font-size:13px;color:var(--text-2);">\ud83c\udde7\ud83c\uddf7 BRL - Real</div>';
+    labelValor.textContent='Valor';
+    resultLabel.textContent='Valor convertido';
+  }
+}
+
 window.calcularMoeda=function(){
   const valor=parseFloat(document.getElementById('moeda-valor').value)||0;
-  const origem=document.getElementById('moeda-origem').value;
+  const moedaCode=document.getElementById('moeda-origem').value;
   const resultEl=document.getElementById('moeda-resultado');
   const detEl=document.getElementById('moeda-detalhe');
   const cache=window._cotacoesCache;
   if(!cache){detEl.textContent='Carregando cotacao...';return;}
-  const key=origem+'BRL';
+  const key=moedaCode+'BRL';
   const info=cache[key];
   if(!info){detEl.textContent='Cotacao indisponivel para esta moeda.';return;}
   const cotacao=parseFloat(info.bid);
-  const total=valor*cotacao;
-  resultEl.textContent='R$ '+total.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
-  detEl.textContent='1 '+origem+' = R$ '+cotacao.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:4})+' (variacao hoje: '+(parseFloat(info.pctChange)>=0?'+':'')+info.pctChange+'%)';
+  const moeda=MOEDAS_LISTA.find(m=>m.code===moedaCode);
+
+  if(window._moedaDirecao==='doReal'){
+    // BRL -> moeda estrangeira
+    const total=valor/cotacao;
+    resultEl.textContent=moeda.flag+' '+total.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:4})+' '+moedaCode;
+    detEl.textContent='1 '+moedaCode+' = R$ '+cotacao.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:4})+' (variacao hoje: '+(parseFloat(info.pctChange)>=0?'+':'')+info.pctChange+'%)';
+  } else {
+    // moeda estrangeira -> BRL
+    const total=valor*cotacao;
+    resultEl.textContent='R$ '+total.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+    detEl.textContent='1 '+moedaCode+' = R$ '+cotacao.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:4})+' (variacao hoje: '+(parseFloat(info.pctChange)>=0?'+':'')+info.pctChange+'%)';
+  }
 };
 
 window.calcularQuit=function(){
