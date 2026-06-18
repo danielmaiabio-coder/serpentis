@@ -3083,7 +3083,10 @@ async function renderEditarPerfil(mc){
         '<div><label class="inp-label">Nova senha</label><input type="password" class="inp" id="ep-senha-nova" placeholder="Minimo 6 caracteres"/></div>'+
         '<div><label class="inp-label">Confirmar nova senha</label><input type="password" class="inp" id="ep-senha-confirma" placeholder="Repita a nova senha" onkeydown="if(event.key===\'Enter\')alterarSenhaEp()"/></div>'+
         '<div id="ep-senha-err" style="display:none;font-size:12px;color:var(--red);background:var(--red-light);padding:8px 10px;border-radius:var(--radius);"></div>'+
-        '<button class="btn-blue" onclick="alterarSenhaEp()" id="ep-senha-btn" style="align-self:flex-start;">Alterar senha</button>'+
+        '<div style="display:flex;align-items:center;gap:16px;">'+
+          '<button class="btn-blue" onclick="alterarSenhaEp()" id="ep-senha-btn">Alterar senha</button>'+
+          '<span class="forgot-link" style="color:var(--primary);cursor:pointer;font-size:12px;" onclick="esqueceuSenhaEp()">Esqueci minha senha</span>'+
+        '</div>'+
       '</div>'+
     '</div>';
 
@@ -3116,6 +3119,14 @@ window.salvarEditarPerfil=async function(){
     updateSidebarUser();
     showToast('Perfil atualizado!');
   }catch(e){showToast('Erro: '+e.message);}
+};
+
+window.esqueceuSenhaEp=async function(){
+  if(!currentUser||!currentUser.email){showToast('Email nao encontrado.');return;}
+  try{
+    await sendPasswordResetEmail(auth,currentUser.email);
+    showToast('E-mail de recuperacao enviado para '+currentUser.email);
+  }catch(e){showToast('Erro ao enviar e-mail: '+e.message);}
 };
 
 window.alterarSenhaEp=async function(){
