@@ -3477,9 +3477,11 @@ async function renderPerfil(mc){
   const TEMAS=TEMAS_BG;
 
   mc.innerHTML=snakeHtml()+'<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;"><div style="display:flex;flex-direction:column;align-items:center;text-align:center;padding:0.25rem 0;"><div class="page-eyebrow">* PAGINA INICIAL</div><div class="page-title" style="display:flex;align-items:center;gap:10px;justify-content:center;">Bem vindo ao Chocalho &nbsp;—&nbsp; <img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/e_bgremoval/q_auto/f_auto/v1780780614/chocalho_1_in7jon.png" style="width:36px;height:36px;object-fit:contain;vertical-align:middle;"/></div>'+
-    '<a href="https://app.hotmart.com/subscriptions" target="_blank" rel="noopener noreferrer" style="margin-top:14px;display:inline-flex;align-items:center;gap:8px;padding:9px 18px;background:var(--primary);color:#fff;border-radius:var(--radius);font-family:var(--font);font-size:13px;font-weight:500;text-decoration:none;">'+
-      '\ud83d\uded2 Gerenciar Minhas Assinaturas'+
-    '</a>'+
+    '<div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;justify-content:center;">'+
+      '<a href="https://app.hotmart.com/subscriptions" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:8px;padding:9px 18px;background:var(--primary);color:#fff;border-radius:var(--radius);font-family:var(--font);font-size:13px;font-weight:500;text-decoration:none;">\ud83d\uded2 Gerenciar Minhas Assinaturas</a>'+
+      '<a href="https://app.hotmart.com/sales" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:8px;padding:9px 18px;background:var(--primary);color:#fff;border-radius:var(--radius);font-family:var(--font);font-size:13px;font-weight:500;text-decoration:none;">\ud83d\udcb3 Transacoes</a>'+
+      '<a href="https://app.hotmart.com/sales?tab=smartRecoveries&type=sales" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:8px;padding:9px 18px;background:var(--primary);color:#fff;border-radius:var(--radius);font-family:var(--font);font-size:13px;font-weight:500;text-decoration:none;">\ud83d\udd04 Recuperacao de Vendas</a>'+
+    '</div>'+
     '</div>'+
     '<div id="lembrete-notif-dot" onclick="navigate(\'lembretes\')" title="Lembretes" style="position:absolute;top:14px;right:14px;width:14px;height:14px;border-radius:50%;background:transparent;cursor:pointer;transition:background 0.2s;"></div>'+
     '</div>'+
