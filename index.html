@@ -2654,8 +2654,75 @@ function renderCalc(mc){
           '<p style="font-size:11px;color:var(--text-3);margin-top:12px;">* Envie sua planilha para atualizar esta tabela</p>'+
         '</div>'+
       '</div>'+
+    '</div>'+
+    '<div class="panel">'+
+      '<div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);padding-bottom:10px;margin-bottom:1rem;">'+
+        '<div style="font-size:15px;font-weight:500;color:var(--text);">\ud83d\udcb1 Conversor de Moedas</div>'+
+        '<span id="moeda-atualizado" style="font-size:11px;color:var(--text-3);"></span>'+
+      '</div>'+
+      '<div style="display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;">'+
+        '<div style="flex:1;min-width:140px;"><label class="inp-label">Valor</label><input type="number" class="inp" id="moeda-valor" placeholder="100" value="1" oninput="calcularMoeda()"/></div>'+
+        '<div style="flex:1;min-width:160px;"><label class="inp-label">Moeda de origem</label>'+
+          '<select class="inp" id="moeda-origem" onchange="calcularMoeda()" style="cursor:pointer;">'+
+            MOEDAS_LISTA.map(m=>'<option value="'+m.code+'" '+(m.code==='USD'?'selected':'')+'>'+m.flag+' '+m.code+' - '+m.nome+'</option>').join('')+
+          '</select>'+
+        '</div>'+
+        '<div style="padding-bottom:10px;color:var(--text-3);font-size:18px;">\u2192</div>'+
+        '<div style="flex:1;min-width:140px;"><label class="inp-label">Convertido para</label>'+
+          '<div style="padding:10px 0;font-size:13px;color:var(--text-2);">\ud83c\udde7\ud83c\uddf7 BRL - Real</div>'+
+        '</div>'+
+      '</div>'+
+      '<div class="calc-result" style="margin-top:14px;"><div class="calc-result-label">Valor convertido</div><div class="calc-result-val" id="moeda-resultado">R$ 0,00</div><div style="font-size:11px;opacity:0.75;margin-top:4px;" id="moeda-detalhe">Carregando cotacao...</div></div>'+
     '</div>';
+  carregarCotacoes();
 }
+
+const MOEDAS_LISTA=[
+  {code:'USD',nome:'Dolar Americano',flag:'\ud83c\uddfa\ud83c\uddf8'},
+  {code:'EUR',nome:'Euro',flag:'\ud83c\uddea\ud83c\uddfa'},
+  {code:'GBP',nome:'Libra Esterlina',flag:'\ud83c\uddec\ud83c\udde7'},
+  {code:'ARS',nome:'Peso Argentino',flag:'\ud83c\udde6\ud83c\uddf7'},
+  {code:'BTC',nome:'Bitcoin',flag:'\u20bf'},
+  {code:'JPY',nome:'Iene Japones',flag:'\ud83c\uddef\ud83c\uddf5'},
+  {code:'CHF',nome:'Franco Suico',flag:'\ud83c\udde8\ud83c\udded'},
+  {code:'CAD',nome:'Dolar Canadense',flag:'\ud83c\udde8\ud83c\udde6'},
+  {code:'AUD',nome:'Dolar Australiano',flag:'\ud83c\udde6\ud83c\uddfa'},
+  {code:'CNY',nome:'Yuan Chines',flag:'\ud83c\udde8\ud83c\uddf3'},
+];
+
+window._cotacoesCache=null;
+
+async function carregarCotacoes(){
+  const pares=MOEDAS_LISTA.map(m=>m.code+'-BRL').join(',');
+  try{
+    const res=await fetch('https://economia.awesomeapi.com.br/json/last/'+pares);
+    if(!res.ok) throw new Error('Falha ao buscar cotacoes');
+    const data=await res.json();
+    window._cotacoesCache=data;
+    const horaEl=document.getElementById('moeda-atualizado');
+    if(horaEl) horaEl.textContent='Atualizado: '+new Date().toLocaleTimeString('pt-BR');
+    calcularMoeda();
+  }catch(e){
+    const det=document.getElementById('moeda-detalhe');
+    if(det) det.textContent='Erro ao carregar cotacao. Tente novamente mais tarde.';
+  }
+}
+
+window.calcularMoeda=function(){
+  const valor=parseFloat(document.getElementById('moeda-valor').value)||0;
+  const origem=document.getElementById('moeda-origem').value;
+  const resultEl=document.getElementById('moeda-resultado');
+  const detEl=document.getElementById('moeda-detalhe');
+  const cache=window._cotacoesCache;
+  if(!cache){detEl.textContent='Carregando cotacao...';return;}
+  const key=origem+'BRL';
+  const info=cache[key];
+  if(!info){detEl.textContent='Cotacao indisponivel para esta moeda.';return;}
+  const cotacao=parseFloat(info.bid);
+  const total=valor*cotacao;
+  resultEl.textContent='R$ '+total.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+  detEl.textContent='1 '+origem+' = R$ '+cotacao.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:4})+' (variacao hoje: '+(parseFloat(info.pctChange)>=0?'+':'')+info.pctChange+'%)';
+};
 
 window.calcularQuit=function(){
   const total=parseFloat(document.getElementById('quit-total').value)||0;
