@@ -162,10 +162,12 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
 .page-title{font-size:24px;font-weight:500;color:var(--text);margin-bottom:3px;}
 .page-sub{font-size:13px;color:var(--text-2);margin-bottom:1.75rem;}
 .cards-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:1.25rem;}
+.cards-row.cols-4{grid-template-columns:repeat(4,1fr);}
 .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem;border-top:3px solid transparent;}
 .stat-card.blue{border-top-color:var(--primary-mid);}
 .stat-card.green{border-top-color:#1D9E75;}
 .stat-card.amber{border-top-color:var(--amber);}
+.stat-card.purple{border-top-color:#8b5cf6;}
 .sc-label{font-size:10px;font-weight:500;color:var(--text-3);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:10px;}
 .sc-value{font-size:26px;font-weight:500;color:var(--text);line-height:1;}
 .sc-sub{font-size:11px;color:var(--text-3);margin-top:6px;}
@@ -1128,6 +1130,7 @@ async function renderLancar(mc){
       '<div style="margin-bottom:10px;"><label class="inp-label">Descricao da semana</label><input type="text" class="inp" id="desc-'+op.uid+'" placeholder="Ex: Semana 24 – 09 a 13 de Jun"/></div>'+
       '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px;"><div><label class="inp-label">Valor recuperado (R$)</label><input type="number" class="inp" id="valor-'+op.uid+'" placeholder="48320"/></div><div><label class="inp-label">Atendimentos</label><input type="number" class="inp" id="atend-'+op.uid+'" placeholder="87"/></div><div><label class="inp-label">Cobrancas totais</label><input type="number" class="inp" id="cobr-'+op.uid+'" placeholder="124"/></div></div>'+
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;"><div><label class="inp-label">Média atend./dia</label><input type="number" step="0.1" class="inp" id="media-'+op.uid+'" placeholder="17.4"/></div><div><label class="inp-label">Ticket Médio (R$)</label><input type="number" step="0.01" class="inp" id="ticket-'+op.uid+'" placeholder="555.40"/></div></div>'+
+      '<div style="margin-bottom:14px;"><label class="inp-label">Valor por dia (R$)</label><input type="number" step="0.01" class="inp" id="valordia-'+op.uid+'" placeholder="9664.00"/></div>'+
       '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">'+
       '<button class="btn-blue" onclick="salvarResultado(\''+op.uid+'\')">Salvar resultados de '+op.nome.split(' ')[0]+'</button>'+
         '<label style="display:inline-flex;align-items:center;gap:5px;padding:8px 14px;border:1px solid #1D6F42;border-radius:var(--radius);cursor:pointer;font-size:12px;color:#1D6F42;background:var(--surface);">📊 Importar Excel<input type="file" accept=".xlsx,.xls" onchange="importarResultadoExcel(this,\''+op.uid+'\');" style="display:none;"/></label>'+
@@ -1167,6 +1170,7 @@ window.importarResultadosTodos=async function(input){
     const iMedia=ci('media');
     const iCobr=ci('cobran');
     const iTicket=ci('ticket');
+    const iValorDia=hdr.findIndex(h=>h.includes('valor') && h.includes('dia'));
     const iOp=ci('operador');
 
     if(iOp===-1){setS('❌ Coluna "Operador" não encontrada na planilha.','#ef4444');return;}
@@ -1206,11 +1210,13 @@ window.importarResultadosTodos=async function(input){
       const media=iMedia>=0?parseFloat((row[iMedia]+'').replace(',','.'))||0:0;
       const cobr=iCobr>=0?parseInt(row[iCobr])||0:0;
       const ticket=iTicket>=0?parseFloat((row[iTicket]+'').replace(',','.'))||0:0;
+      const valorDia=iValorDia>=0?parseFloat((row[iValorDia]+'').replace(/[^0-9.,]/g,'').replace(',','.'))||0:0;
 
       if(!desc&&!valor) continue;
 
       const valorFmt=valor?valor.toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0}):'R$ 0';
       const ticketFmt=ticket?ticket.toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:2}):'';
+      const valorDiaFmt=valorDia?valorDia.toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:2}):'';
 
       // Load previous week for delta
       const semSnap=await getDoc(doc(db,'semanas',uid));
@@ -1218,10 +1224,10 @@ window.importarResultadosTodos=async function(input){
       const pRaw=semAnterior?semAnterior.raw||0:0;
       const diff=valor-pRaw;const pct=pRaw?((diff/pRaw)*100).toFixed(1):'0.0';const up=diff>=0;
 
-      await setDoc(doc(db,'semanas',uid),{descricao:desc,atual:{valor:valorFmt,atend,cobr,media,ticket,ticketFmt,raw:valor},passada:semAnterior||{valor:'R$ 0',raw:0}});
+      await setDoc(doc(db,'semanas',uid),{descricao:desc,atual:{valor:valorFmt,atend,cobr,media,ticket,ticketFmt,valorDia,valorDiaFmt,raw:valor},passada:semAnterior||{valor:'R$ 0',raw:0}});
       const ordemSnap=await getDocs(collection(db,'historico',uid,'semanas'));
       const ordem=ordemSnap.size+1;
-      await setDoc(doc(db,'historico',uid,'semanas','sem-'+ordem),{semana:desc,valor:valorFmt,raw:valor,media,ticket,ticketFmt,delta:(up?'+':'')+pct+'%',up,ordem});
+      await setDoc(doc(db,'historico',uid,'semanas','sem-'+ordem),{semana:desc,valor:valorFmt,raw:valor,media,ticket,ticketFmt,valorDia,valorDiaFmt,delta:(up?'+':'')+pct+'%',up,ordem});
 
       // Fill fields visually too
       const setVal=(id,v)=>{const el=document.getElementById(id);if(el)el.value=v||'';};
@@ -1231,6 +1237,7 @@ window.importarResultadosTodos=async function(input){
       setVal('cobr-'+uid,cobr||'');
       setVal('media-'+uid,media||'');
       setVal('ticket-'+uid,ticket||'');
+      setVal('valordia-'+uid,valorDia||'');
       const s=document.getElementById('saved-'+uid);if(s){s.style.display='inline';setTimeout(()=>s.style.display='none',4000);}
 
       matched++;
@@ -1253,20 +1260,23 @@ window.salvarResultado=async function(uid){
   const cobr=parseInt(document.getElementById('cobr-'+uid).value);
   const mediaEl=document.getElementById('media-'+uid);
   const ticketEl=document.getElementById('ticket-'+uid);
+  const valorDiaEl=document.getElementById('valordia-'+uid);
   const media=mediaEl?parseFloat(mediaEl.value)||0:0;
   const ticket=ticketEl?parseFloat(ticketEl.value)||0:0;
+  const valorDia=valorDiaEl?parseFloat(valorDiaEl.value)||0:0;
   if(!desc||isNaN(valor)||isNaN(atend)||isNaN(cobr)){showToast('Preencha todos os campos.');return;}
   const semSnap=await getDoc(doc(db,'semanas',uid));
   const semAnterior=semSnap.exists()?semSnap.data().atual:null;
   const valorFmt=valor.toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0});
   const ticketFmt=ticket?ticket.toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:2}):'';
+  const valorDiaFmt=valorDia?valorDia.toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:2}):'';
   try{
-    await setDoc(doc(db,'semanas',uid),{descricao:desc,atual:{valor:valorFmt,atend,cobr,media,ticket,ticketFmt,raw:valor},passada:semAnterior||{valor:'R$ 0',raw:0}});
+    await setDoc(doc(db,'semanas',uid),{descricao:desc,atual:{valor:valorFmt,atend,cobr,media,ticket,ticketFmt,valorDia,valorDiaFmt,raw:valor},passada:semAnterior||{valor:'R$ 0',raw:0}});
     const ordemSnap=await getDocs(collection(db,'historico',uid,'semanas'));
     const ordem=ordemSnap.size+1;
     const pRaw=semAnterior?semAnterior.raw||0:0;
     const diff=valor-pRaw;const pct=pRaw?((diff/pRaw)*100).toFixed(1):'0.0';const up=diff>=0;
-    await setDoc(doc(db,'historico',uid,'semanas','sem-'+ordem),{semana:desc,valor:valorFmt,raw:valor,media,ticket,ticketFmt,delta:(up?'+':'')+pct+'%',up,ordem});
+    await setDoc(doc(db,'historico',uid,'semanas','sem-'+ordem),{semana:desc,valor:valorFmt,raw:valor,media,ticket,ticketFmt,valorDia,valorDiaFmt,delta:(up?'+':'')+pct+'%',up,ordem});
     const s=document.getElementById('saved-'+uid);s.style.display='inline';setTimeout(()=>s.style.display='none',3000);
     showToast('Resultados salvos!');
   }catch(e){showToast('Erro ao salvar.');}
@@ -1297,13 +1307,14 @@ window.importarResultadoExcel=async function(input,uid){
     }
     if(!dataRow){setS('❌ Nenhum dado encontrado.','#ef4444');return;}
 
-    // Map columns: A=desc, B=valor, C=atend, D=media, E=cobr, F=ticket
+    // Map columns: A=desc, B=valor, C=atend, D=media, E=cobr, F=ticket, G=valor por dia
     const desc=(dataRow[0]+'').trim();
     const valor=parseFloat((dataRow[1]+'').replace(/[^0-9.,]/g,'').replace(',','.'));
     const atend=parseInt(dataRow[2])||0;
     const media=parseFloat((dataRow[3]+'').replace(',','.'))||0;
     const cobr=parseInt(dataRow[4])||0;
     const ticket=parseFloat((dataRow[5]+'').replace(',','.'))||0;
+    const valorDia=parseFloat((dataRow[6]+'').replace(/[^0-9.,]/g,'').replace(',','.'))||0;
 
     // Fill fields
     const setVal=(id,v)=>{const el=document.getElementById(id);if(el)el.value=v||'';};
@@ -1313,6 +1324,7 @@ window.importarResultadoExcel=async function(input,uid){
     setVal('cobr-'+uid, cobr||'');
     setVal('media-'+uid, media||'');
     setVal('ticket-'+uid, ticket||'');
+    setVal('valordia-'+uid, valorDia||'');
 
     setS('✅ Campos preenchidos! Confira e salve.','var(--primary)');
     input.value='';
@@ -1359,9 +1371,11 @@ async function renderResultado(mc,op){
   mc.innerHTML=snakeHtml()+
     pageHeaderOp(op,isCoord,'Resultado Semanal','Semana atual',sem.descricao||'Semana em andamento')+
     banner+
-    '<div class="cards-row"><div class="stat-card blue"><div class="sc-label">Valor Recuperado</div><div class="sc-value">'+atual.valor+'</div><div class="sc-sub">esta semana</div></div>'+
+    '<div class="cards-row'+(atual.valorDiaFmt?' cols-4':'')+'"><div class="stat-card blue"><div class="sc-label">Valor Recuperado</div><div class="sc-value">'+atual.valor+'</div><div class="sc-sub">esta semana</div></div>'+
     '<div class="stat-card green"><div class="sc-label">Atendimentos</div><div class="sc-value">'+atual.atend+'</div><div class="sc-sub">esta semana</div></div>'+
-    '<div class="stat-card amber"><div class="sc-label">Cobrancas Totais</div><div class="sc-value">'+atual.cobr+'</div><div class="sc-sub">esta semana</div></div></div>'+
+    '<div class="stat-card amber"><div class="sc-label">Cobrancas Totais</div><div class="sc-value">'+atual.cobr+'</div><div class="sc-sub">esta semana</div></div>'+
+    (atual.valorDiaFmt?'<div class="stat-card purple"><div class="sc-label">Valor por Dia</div><div class="sc-value">'+atual.valorDiaFmt+'</div><div class="sc-sub">media diaria</div></div>':'')+
+    '</div>'+
     '<div class="panel"><div class="panel-title">Comparativo semanal</div>'+
     '<div class="compare-grid"><div class="cmp-item"><div class="cmp-label">Semana atual</div><div class="cmp-val">'+atual.valor+'</div></div>'+
     '<div class="cmp-item"><div class="cmp-label">Semana passada</div><div class="cmp-val">'+passada.valor+'</div></div></div>'+
@@ -1406,7 +1420,7 @@ async function renderHistorico(mc,op){
     '<div class="panel">'+
       (rows.length===0?'<div class="empty">Nenhum registro ainda.</div>':
       '<table class="hist-table"><thead><tr><th>Semana</th><th>Valor recuperado</th>'+
-        (isCoord?'<th>Atend.</th><th>Cobr.</th><th>Média/dia</th><th>Ticket</th>':'')+
+        (isCoord?'<th>Atend.</th><th>Cobr.</th><th>Média/dia</th><th>Ticket</th><th>Valor/dia</th>':'')+
         '<th>Variação</th>'+
         (isCoord?'<th style="width:80px;"></th>':'')+
       '</tr></thead><tbody>'+
@@ -1417,7 +1431,8 @@ async function renderHistorico(mc,op){
           '<td>'+(r.atend||'—')+'</td>'+
           '<td>'+(r.cobr||'—')+'</td>'+
           '<td>'+(r.media||'—')+'</td>'+
-          '<td>'+(r.ticketFmt||r.ticket||'—')+'</td>'
+          '<td>'+(r.ticketFmt||r.ticket||'—')+'</td>'+
+          '<td>'+(r.valorDiaFmt||'—')+'</td>'
         :'')+
         '<td><span class="pill '+(r.up?'pill-up':'pill-dn')+'">'+r.delta+'</span></td>'+
         (isCoord?
@@ -1445,6 +1460,7 @@ async function renderHistorico(mc,op){
           '<div class="field"><label>Média atend./dia</label><input id="hm-media" type="number" step="0.1" placeholder="17.4"/></div>'+
           '<div class="field"><label>Ticket Médio (R$)</label><input id="hm-ticket" type="number" step="0.01" placeholder="555.40"/></div>'+
         '</div>'+
+        '<div class="field"><label>Valor por dia (R$)</label><input id="hm-valordia" type="number" step="0.01" placeholder="9664.00"/></div>'+
         '<div style="display:flex;gap:10px;margin-top:4px;">'+
           '<button onclick="histModalClose()" style="flex:1;padding:9px;border:1px solid var(--border-md);border-radius:var(--radius);background:transparent;color:var(--text-2);font-family:var(--font);font-size:13px;cursor:pointer;">Cancelar</button>'+
           '<button onclick="histModalSave()" class="btn-primary" style="flex:2;margin-top:0;">Salvar</button>'+
@@ -1459,7 +1475,7 @@ async function renderHistorico(mc,op){
     if(!window.XLSX){showToast('SheetJS não carregado.');return;}
     const nomeOp=(isCoord?op.nome:'Meu Histórico');
     // Monta dados para a planilha
-    const cabecalho=['Semana','Valor Recuperado','Atendimentos','Cobranças','Média Atend./dia','Ticket Médio','Variação','Tendência'];
+    const cabecalho=['Semana','Valor Recuperado','Atendimentos','Cobranças','Média Atend./dia','Ticket Médio','Valor por Dia','Variação','Tendência'];
     const dados=rows.map(r=>[
       r.semana||'',
       r.raw||'',
@@ -1467,12 +1483,13 @@ async function renderHistorico(mc,op){
       r.cobr||'',
       r.media||'',
       r.ticket||'',
+      r.valorDia||'',
       r.delta||'',
       r.up?'▲ Alta':'▼ Baixa'
     ]);
     const ws=XLSX.utils.aoa_to_sheet([cabecalho,...dados]);
     // Largura das colunas
-    ws['!cols']=[{wch:30},{wch:18},{wch:14},{wch:12},{wch:16},{wch:14},{wch:12},{wch:10}];
+    ws['!cols']=[{wch:30},{wch:18},{wch:14},{wch:12},{wch:16},{wch:14},{wch:16},{wch:12},{wch:10}];
     const wb=XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb,ws,'Histórico');
     const dataHoje=new Date().toLocaleDateString('pt-BR').replace(/\//g,'-');
@@ -1492,13 +1509,14 @@ async function renderHistorico(mc,op){
     document.getElementById('hm-cobr').value=r.cobr||'';
     document.getElementById('hm-media').value=r.media||'';
     document.getElementById('hm-ticket').value=r.ticket||'';
+    document.getElementById('hm-valordia').value=r.valorDia||'';
     document.getElementById('hist-modal').style.display='flex';
   };
 
   window.histAddSemana=function(){
     document.getElementById('hist-modal-title').textContent='Nova semana';
     document.getElementById('hist-modal-id').value='';
-    ['hm-desc','hm-valor','hm-atend','hm-cobr','hm-media','hm-ticket'].forEach(id=>{document.getElementById(id).value='';});
+    ['hm-desc','hm-valor','hm-atend','hm-cobr','hm-media','hm-ticket','hm-valordia'].forEach(id=>{document.getElementById(id).value='';});
     document.getElementById('hist-modal').style.display='flex';
   };
 
@@ -1509,9 +1527,11 @@ async function renderHistorico(mc,op){
     const cobr=parseInt(document.getElementById('hm-cobr').value)||0;
     const media=parseFloat(document.getElementById('hm-media').value)||0;
     const ticket=parseFloat(document.getElementById('hm-ticket').value)||0;
+    const valorDia=parseFloat(document.getElementById('hm-valordia').value)||0;
     if(!semana||!raw){showToast('Preencha ao menos descrição e valor.');return;}
     const valor=raw.toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0});
     const ticketFmt=ticket?ticket.toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:2}):'';
+    const valorDiaFmt=valorDia?valorDia.toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:2}):'';
     const uid=document.getElementById('hist-modal-uid').value;
     const id=document.getElementById('hist-modal-id').value;
     try{
@@ -1521,10 +1541,10 @@ async function renderHistorico(mc,op){
         const prev=rows[idx+1]; // older entry (rows sorted desc)
         const pRaw=prev?prev.raw||0:0;
         const diff=raw-pRaw; const pct=pRaw?((diff/pRaw)*100).toFixed(1):'0.0'; const up=diff>=0;
-        await setDoc(doc(db,'historico',uid,'semanas',id),{semana,valor,raw,atend,cobr,media,ticket,ticketFmt,delta:(up?'+':'')+pct+'%',up,ordem:rows[idx].ordem||0},{merge:true});
+        await setDoc(doc(db,'historico',uid,'semanas',id),{semana,valor,raw,atend,cobr,media,ticket,ticketFmt,valorDia,valorDiaFmt,delta:(up?'+':'')+pct+'%',up,ordem:rows[idx].ordem||0},{merge:true});
         // Update in local array
         const r=rows.find(x=>x._id===id);
-        Object.assign(r,{semana,valor,raw,atend,cobr,media,ticket,ticketFmt});
+        Object.assign(r,{semana,valor,raw,atend,cobr,media,ticket,ticketFmt,valorDia,valorDiaFmt});
       } else {
         // New entry
         const ordemSnap=await getDocs(collection(db,'historico',uid,'semanas'));
@@ -1532,8 +1552,8 @@ async function renderHistorico(mc,op){
         const prev=rows[0]; const pRaw=prev?prev.raw||0:0;
         const diff=raw-pRaw; const pct=pRaw?((diff/pRaw)*100).toFixed(1):'0.0'; const up=diff>=0;
         const newRef=doc(collection(db,'historico',uid,'semanas'));
-        await setDoc(newRef,{semana,valor,raw,atend,cobr,media,ticket,ticketFmt,delta:(up?'+':'')+pct+'%',up,ordem});
-        rows.unshift({_id:newRef.id,semana,valor,raw,atend,cobr,media,ticket,ticketFmt,delta:(up?'+':'')+pct+'%',up,ordem});
+        await setDoc(newRef,{semana,valor,raw,atend,cobr,media,ticket,ticketFmt,valorDia,valorDiaFmt,delta:(up?'+':'')+pct+'%',up,ordem});
+        rows.unshift({_id:newRef.id,semana,valor,raw,atend,cobr,media,ticket,ticketFmt,valorDia,valorDiaFmt,delta:(up?'+':'')+pct+'%',up,ordem});
       }
       showToast('Salvo!');
       document.getElementById('hist-modal').style.display='none';
