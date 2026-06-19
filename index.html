@@ -498,6 +498,9 @@ body.dark-mode select{background:#22263a;color:#e8eaf0;border-color:rgba(255,255
     <!-- Right side -->
     <div class="nb-right">
       <div class="nb-bordered" style="display:flex;align-items:center;gap:8px;">
+        <button class="nb-icon-btn" onclick="openQuickSearch()" title="Busca rapida (Ctrl+K)" style="padding:5px;display:flex;align-items:center;gap:4px;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        </button>
         <div id="nb-notif-wrap"></div>
         <img id="snakeCornerNav" src="" style="width:28px;height:28px;object-fit:contain;opacity:0.85;cursor:pointer;filter:drop-shadow(0 1px 4px rgba(0,0,0,0.3));transition:transform 0.15s,opacity 0.15s;" onclick="playSnakeSound()" title="Ssss..." onmouseover="this.style.transform='scale(1.12)'" onmouseout="this.style.transform='scale(1)'"/>
         <button class="nb-icon-btn" onclick="navigate('editarperfil')" title="Editar Perfil" style="padding:5px;display:flex;align-items:center;">
@@ -550,6 +553,17 @@ body.dark-mode select{background:#22263a;color:#e8eaf0;border-color:rgba(255,255
   </div>
 </div>
 <div style="display:none;"><img id="snakeCorner" src=""/></div>
+<!-- Busca Rapida (Ctrl+K) -->
+<div id="quickSearchOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:5000;align-items:flex-start;justify-content:center;padding-top:14vh;" onclick="if(event.target===this)closeQuickSearch()">
+  <div style="background:var(--surface);border-radius:14px;width:100%;max-width:560px;box-shadow:0 20px 60px rgba(0,0,0,0.4);overflow:hidden;border:1px solid var(--border-md);">
+    <div style="display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--border);">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input id="quickSearchInput" type="text" placeholder="Buscar uma pagina... (ex: lembretes, disparos, termometro)" autocomplete="off" style="flex:1;border:none;outline:none;background:none;font-family:var(--font);font-size:15px;color:var(--text);" oninput="quickSearchFilter(this.value)" onkeydown="quickSearchKeydown(event)"/>
+      <kbd style="font-size:10px;color:var(--text-3);border:1px solid var(--border-md);border-radius:4px;padding:2px 6px;">ESC</kbd>
+    </div>
+    <div id="quickSearchResults" style="max-height:50vh;overflow-y:auto;padding:6px;"></div>
+  </div>
+</div>
 <!-- Sound FAB + Popover -->
 <div id="soundPopover" class="sound-popover">
   <div class="sound-pop-label">Sons Padrão</div>
@@ -1032,6 +1046,127 @@ window.nbToggle=nbToggle;
 window.nbClose=nbClose;
 
 window.goPage=function(p){navigate(p);};
+// ══════════════════════════════════════════
+// BUSCA RAPIDA (Ctrl+K)
+// ══════════════════════════════════════════
+const QUICK_SEARCH_PAGES=[
+  {page:'perfil',label:'Pagina Inicial',icon:'🏠'},
+  {page:'resultado',label:'Resultado',icon:'📈'},
+  {page:'historico',label:'Historico',icon:'🗂️'},
+  {page:'lancar',label:'Lancar Resultados',icon:'✍️'},
+  {page:'equipe',label:'Minha Equipe',icon:'👥'},
+  {page:'escritorio',label:'Escritorio',icon:'🗂️'},
+  {page:'relatorio_disparos',label:'Relatorio de Disparos',icon:'📊'},
+  {page:'dashboard',label:'Dashboard',icon:'📊'},
+  {page:'notas',label:'Analise de Chat',icon:'💬'},
+  {page:'feedback',label:'Feedbacks',icon:'📝'},
+  {page:'feed',label:'Feed / Social',icon:'📰'},
+  {page:'acido',label:'Chat Acido',icon:'🔥'},
+  {page:'basilisco',label:'Basilisco (Xadrez)',icon:'♟️'},
+  {page:'agenda',label:'Agenda',icon:'📅'},
+  {page:'caderno',label:'Caderno',icon:'📓'},
+  {page:'feriastime',label:'Ferias do Time',icon:'🏖️'},
+  {page:'lembretes',label:'Lembretes',icon:'⏰'},
+  {page:'editarperfil',label:'Editar Perfil',icon:'✏️'},
+  {page:'copys',label:'Banco de Copys',icon:'📋'},
+  {page:'links',label:'Links de Renegociacao',icon:'🔗'},
+  {page:'escala',label:'Escala de Roteamento',icon:'🧭'},
+  {page:'calc',label:'Calculadoras',icon:'🧮'},
+  {page:'infos',label:'Informacoes Uteis',icon:'💡'},
+  {page:'codigosoferta',label:'Codigo de Oferta',icon:'📊'},
+  {page:'formsplanilhas',label:'Forms/Planilhas',icon:'📋'},
+  {page:'termometro',label:'Termometro de Demanda',icon:'🌡️'},
+  {page:'slack',label:'Slack',icon:'💬'},
+  {page:'perfis',label:'Perfis da Equipe',icon:'👤'},
+];
+
+let _qsSelectedIdx=0;
+let _qsFiltered=QUICK_SEARCH_PAGES;
+
+window.openQuickSearch=function(){
+  const overlay=document.getElementById('quickSearchOverlay');
+  overlay.style.display='flex';
+  const input=document.getElementById('quickSearchInput');
+  input.value='';
+  _qsSelectedIdx=0;
+  quickSearchFilter('');
+  setTimeout(()=>input.focus(),50);
+};
+
+window.closeQuickSearch=function(){
+  document.getElementById('quickSearchOverlay').style.display='none';
+};
+
+function quickSearchNormalize(s){
+  return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+}
+
+window.quickSearchFilter=function(q){
+  const nq=quickSearchNormalize(q.trim());
+  _qsFiltered = nq
+    ? QUICK_SEARCH_PAGES.filter(p=>quickSearchNormalize(p.label).includes(nq))
+    : QUICK_SEARCH_PAGES;
+  _qsSelectedIdx=0;
+  renderQuickSearchResults();
+};
+
+function renderQuickSearchResults(){
+  const container=document.getElementById('quickSearchResults');
+  if(_qsFiltered.length===0){
+    container.innerHTML='<div style="padding:24px;text-align:center;color:var(--text-3);font-size:13px;">Nenhuma pagina encontrada.</div>';
+    return;
+  }
+  container.innerHTML=_qsFiltered.map((p,i)=>
+    '<div onclick="quickSearchGo('+i+')" onmouseover="quickSearchHover('+i+')" id="qs-item-'+i+'" style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:8px;cursor:pointer;background:'+(i===_qsSelectedIdx?'var(--primary-light)':'transparent')+';">'+
+      '<span style="font-size:18px;">'+p.icon+'</span>'+
+      '<span style="font-size:14px;color:var(--text);">'+p.label+'</span>'+
+    '</div>'
+  ).join('');
+}
+
+window.quickSearchHover=function(i){
+  _qsSelectedIdx=i;
+  renderQuickSearchResults();
+};
+
+window.quickSearchGo=function(i){
+  const p=_qsFiltered[i];
+  if(!p)return;
+  closeQuickSearch();
+  navigate(p.page);
+};
+
+window.quickSearchKeydown=function(e){
+  if(e.key==='ArrowDown'){
+    e.preventDefault();
+    _qsSelectedIdx=Math.min(_qsSelectedIdx+1,_qsFiltered.length-1);
+    renderQuickSearchResults();
+    document.getElementById('qs-item-'+_qsSelectedIdx)?.scrollIntoView({block:'nearest'});
+  } else if(e.key==='ArrowUp'){
+    e.preventDefault();
+    _qsSelectedIdx=Math.max(_qsSelectedIdx-1,0);
+    renderQuickSearchResults();
+    document.getElementById('qs-item-'+_qsSelectedIdx)?.scrollIntoView({block:'nearest'});
+  } else if(e.key==='Enter'){
+    e.preventDefault();
+    quickSearchGo(_qsSelectedIdx);
+  } else if(e.key==='Escape'){
+    closeQuickSearch();
+  }
+};
+
+document.addEventListener('keydown',function(e){
+  const overlay=document.getElementById('quickSearchOverlay');
+  const isOpen=overlay&&overlay.style.display==='flex';
+  if((e.ctrlKey||e.metaKey)&&e.key==='k'){
+    e.preventDefault();
+    if(isOpen) closeQuickSearch();
+    else openQuickSearch();
+  } else if(e.key==='Escape'&&isOpen){
+    closeQuickSearch();
+  }
+});
+
 window.navigate=async function(page){
   activePage=page;
   // Atualiza item ativo na navbar
