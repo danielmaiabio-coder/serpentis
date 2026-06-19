@@ -54,13 +54,13 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
 #appShell{display:none;height:100vh;flex-direction:column;}
 /* ── NAVBAR HORIZONTAL ── */
 .sidebar{display:none;}
-.navbar{width:100%;background:var(--bg);display:flex;align-items:center;min-height:56px;padding:0.5rem 1.25rem;gap:1rem;position:relative;z-index:500;flex-shrink:0;flex-wrap:wrap;row-gap:8px;}
+.navbar{width:100%;background:var(--bg);display:grid;grid-template-columns:1fr auto 1fr;align-items:center;min-height:56px;padding:0.5rem 1.25rem;gap:1rem;position:relative;z-index:500;flex-shrink:0;row-gap:8px;}
 .nb-brand{display:flex;align-items:center;gap:10px;margin-right:8px;}
 .nb-brand-name{font-size:20px;font-weight:400;color:#fff;font-family:'UnifrakturMaguntia',serif;letter-spacing:1px;white-space:nowrap;}
 .nb-brand-sub{font-size:10px;color:rgba(255,255,255,0.45);}
 .nb-chocalho{width:36px;height:36px;object-fit:contain;cursor:pointer;transform-origin:center bottom;}
 .nb-chocalho.shaking{animation:chocalho-shake 0.6s ease;}
-.nb-nav{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 auto;}
+.nb-nav{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:center;}
 .nb-item{position:relative;}
 .nb-btn{display:flex;align-items:center;gap:7px;padding:10.5px 18px;border:none;background:var(--primary);color:#fff;font-family:var(--font);font-size:14px;cursor:pointer;border-radius:10px;transition:all 0.15s;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.15);}
 .nb-btn:hover,.nb-btn.open{background:var(--primary-mid);color:#fff;}
@@ -80,7 +80,7 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
 .nb-badge{display:inline-block;width:7px;height:7px;border-radius:50%;background:#4CAF6A;margin-left:auto;flex-shrink:0;box-shadow:0 0 4px #4CAF6A;}
 .nb-badge.red{background:#e53e3e;box-shadow:0 0 6px #e53e3e;}
 .nb-badge.pulse{animation:pulse-badge 1s infinite;}
-.nb-right{display:flex;align-items:center;gap:8px;margin-left:auto;}
+.nb-right{display:flex;align-items:center;gap:8px;justify-self:end;}
 .nb-avatar{width:32px;height:32px;border-radius:50%;overflow:hidden;flex-shrink:0;cursor:pointer;}
 .nb-avatar img{width:100%;height:100%;object-fit:cover;}
 .nb-user-info{cursor:pointer;}
