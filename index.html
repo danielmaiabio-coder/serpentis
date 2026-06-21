@@ -6244,6 +6244,7 @@ function renderInfosUteis(mc){
     return '<tr style="border-bottom:0.5px solid var(--border);">'+
       '<td style="padding:8px 12px;font-size:13px;color:var(--text);font-weight:500;">'+label+'</td>'+
       '<td style="padding:8px 12px;font-size:12px;color:var(--text-3);">'+tel+'</td>'+
+      '<td style="padding:8px 12px;font-size:11px;color:var(--text-3);font-family:var(--font-mono);"><a href="'+href+'" target="_blank" style="color:var(--primary);text-decoration:none;word-break:break-all;">'+href+'</a></td>'+
       '<td style="padding:8px 8px;text-align:center;"><a href="'+href+'" target="_blank" style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:#25D366;color:#fff;border-radius:20px;font-size:11px;text-decoration:none;font-weight:500;">WhatsApp →</a></td>'+
     '</tr>';
   }
@@ -6312,7 +6313,7 @@ function renderInfosUteis(mc){
       '<div style="font-size:12px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:0.07em;margin:0.75rem 0 0.25rem;">📱 WhatsApp — Setores</div>'+
       '<div style="border-radius:10px;border:1px solid var(--border);overflow:hidden;margin-bottom:1rem;">'+
         '<table style="width:100%;border-collapse:collapse;">'+
-          '<thead><tr style="background:var(--primary);color:#fff;"><th style="padding:8px 12px;text-align:left;font-size:12px;">Setor</th><th style="padding:8px 12px;text-align:left;font-size:12px;">Número</th><th style="padding:8px 8px;text-align:center;font-size:12px;width:100px;">Ação</th></tr></thead>'+
+          '<thead><tr style="background:var(--primary);color:#fff;"><th style="padding:8px 12px;text-align:left;font-size:12px;">Setor</th><th style="padding:8px 12px;text-align:left;font-size:12px;">Número</th><th style="padding:8px 12px;text-align:left;font-size:12px;">Link wa.me</th><th style="padding:8px 8px;text-align:center;font-size:12px;width:100px;">Ação</th></tr></thead>'+
           '<tbody>'+
           [['Suporte','https://wa.me/556193314870'],['Renovação (persona Marcus)','https://wa.me/5521971419046'],['Cobrança Ativa + Renegociação (persona Daniel)','https://wa.me/5521967760689'],['CS (persona Renan)','https://wa.me/5521972394185'],['InCompany','https://wa.me/5521995115669'],['Venda Passiva + Recuperação de Venda','https://wa.me/5521996582442'],['Cobrança Passiva (persona Pedro)','https://wa.me/5521997321507'],['Banco de Vagas/Inglês','https://wa.me/5521988665281'],['CS InCompany','https://wa.me/5521991085400'],['WhatsApp de Dúvidas (leads)','https://wa.me/+5521967218715'],['Capacitaciones','https://wa.me/+5521987571404'],['Pós (inside sales)','https://wa.me/552123913845'],['Pós (cobrança)','https://wa.me/5521923675995'],['Pós (CS)','https://wa.me/552123913961'],
           ].map(r=>waRow(r[0],r[1])).join('')+
