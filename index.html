@@ -1009,7 +1009,7 @@ function buildNav(){
   };
   function group(id,label,items){
     const ic=ICONES_GRUPO[id];
-    const icone=ic?'<img id="nbicon-'+id+'" src="'+ic.estatico+'" data-static="'+ic.estatico+'" data-animated="'+ic.animado+'" style="width:16px;height:16px;object-fit:contain;vertical-align:middle;margin-right:6px;"/>':'';
+    const icone=ic?'<img id="nbicon-'+id+'" src="'+ic.estatico+'" data-static="'+ic.estatico+'" data-animated="'+ic.animado+'" style="width:24px;height:24px;object-fit:contain;vertical-align:middle;margin-right:6px;"/>':'';
     const hoverAttrs=ic?' onmouseenter="const i=document.getElementById(\'nbicon-'+id+'\');if(i)i.src=i.dataset.animated;" onmouseleave="const i=document.getElementById(\'nbicon-'+id+'\');if(i)i.src=i.dataset.static;"':'';
     return '<div class="nb-item"'+hoverAttrs+'><button class="nb-btn" id="nbg-'+id+'" data-gid="'+id+'" onclick="nbToggle(this.dataset.gid)">'+icone+label+' '+chev+'</button><div class="nb-dropdown" id="nbd-'+id+'"><div class="nb-dropdown-inner">'+items+'</div></div></div>';
   }
