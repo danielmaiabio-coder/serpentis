@@ -3347,9 +3347,17 @@ async function loadFaceApi(){
         await new Promise((resolve,reject)=>{
           const s=document.createElement('script');
           s.src=FACE_API_CDN;
-          s.onload=resolve;s.onerror=()=>reject(new Error('Falha ao carregar biblioteca de reconhecimento facial.'));
+          s.onload=resolve;s.onerror=()=>reject(new Error('Falha ao carregar biblioteca de reconhecimento facial (verifique sua conexao).'));
           document.head.appendChild(s);
         });
+      }
+      if(!window.faceapi){
+        throw new Error('Biblioteca de reconhecimento facial nao carregou corretamente.');
+      }
+      // Garante que o TensorFlow.js tem um backend pronto antes de carregar os modelos
+      // (sem isso, a deteccao pode travar silenciosamente em alguns navegadores)
+      if(faceapi.tf && faceapi.tf.ready){
+        await faceapi.tf.ready();
       }
       await Promise.all([
         faceapi.nets.tinyFaceDetector.loadFromUri(FACE_MODELS_CDN),
@@ -3360,7 +3368,8 @@ async function loadFaceApi(){
       return true;
     }catch(e){
       _faceApiLoading=null;
-      throw e;
+      console.error('Erro ao carregar face-api:',e);
+      throw new Error('Nao foi possivel carregar os modelos de reconhecimento facial. '+(e.message||''));
     }
   })();
   return _faceApiLoading;
@@ -3489,17 +3498,30 @@ window.iniciarCapturaFace=async function(){
     '</div>'
   );
 
+  const statusEl=document.getElementById('face-cad-status');
   try{
+    statusEl.textContent='Carregando modelos de reconhecimento (pode levar alguns segundos)...';
     await loadFaceApi();
+
+    statusEl.textContent='Acessando camera...';
     const video=document.getElementById('face-cad-video');
     const stream=await navigator.mediaDevices.getUserMedia({video:{width:320,height:240}});
     video.srcObject=stream;
     window._faceCadStream=stream;
     window._faceCadDescritores=[];
-    document.getElementById('face-cad-status').textContent='Posicione seu rosto e capture 3 fotos em angulos levemente diferentes.';
+
+    // Aguarda o video realmente comecar a tocar com dimensoes validas
+    await new Promise((resolve)=>{
+      if(video.readyState>=2 && video.videoWidth>0){resolve();return;}
+      video.onloadeddata=()=>resolve();
+      setTimeout(resolve,3000); // timeout de seguranca
+    });
+
+    statusEl.textContent='Posicione seu rosto e capture 3 fotos em angulos levemente diferentes.';
     document.getElementById('face-cad-btn').disabled=false;
   }catch(e){
-    document.getElementById('face-cad-status').textContent='Erro ao acessar camera: '+e.message;
+    console.error('Erro no cadastro facial:',e);
+    statusEl.textContent='Erro: '+(e.message||'falha desconhecida ao iniciar camera/modelos.');
   }
 };
 
@@ -3509,10 +3531,21 @@ window.capturarFotoFace=async function(){
   const btn=document.getElementById('face-cad-btn');
   btn.disabled=true;
   statusEl.textContent='Analisando rosto...';
+
+  // Timeout de seguranca: nunca deixa o botao travado para sempre
+  const safetyTimeout=setTimeout(()=>{
+    statusEl.textContent='Tempo esgotado ao analisar. Tente novamente.';
+    btn.disabled=false;
+  },8000);
+
   try{
-    const det=await faceapi.detectSingleFace(video,new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptor();
+    if(!video || video.readyState<2 || video.videoWidth===0){
+      throw new Error('Camera ainda nao esta pronta. Aguarde um instante e tente novamente.');
+    }
+    const det=await faceapi.detectSingleFace(video,new faceapi.TinyFaceDetectorOptions({inputSize:320,scoreThreshold:0.4})).withFaceLandmarks().withFaceDescriptor();
+    clearTimeout(safetyTimeout);
     if(!det){
-      statusEl.textContent='Nenhum rosto detectado. Ajuste a iluminacao/posicao e tente novamente.';
+      statusEl.textContent='Nenhum rosto detectado. Aproxime-se da camera, melhore a iluminacao e tente novamente.';
       btn.disabled=false;
       return;
     }
@@ -3527,7 +3560,9 @@ window.capturarFotoFace=async function(){
       btn.disabled=false;
     }
   }catch(e){
-    statusEl.textContent='Erro: '+e.message;
+    clearTimeout(safetyTimeout);
+    console.error('Erro ao capturar rosto:',e);
+    statusEl.textContent='Erro: '+(e.message||'falha desconhecida ao analisar rosto.');
     btn.disabled=false;
   }
 };
