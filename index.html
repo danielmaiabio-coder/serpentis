@@ -1918,7 +1918,7 @@ async function renderAnaliseChatHistorico(op,filtroDe,filtroAte){
 
   const hoje=new Date();
   const inicio30=new Date();inicio30.setDate(inicio30.getDate()-30);
-  const fmtInput=d=>d.toISOString().slice(0,10);
+  const fmtInput=d=>dataLocalStr(d);
   const de=filtroDe||fmtInput(inicio30);
   const ate=filtroAte||fmtInput(hoje);
 
@@ -7746,7 +7746,7 @@ window.closeModalGeneric=function(){
 window.renderTermometroHistorico=async function(container){
   const hoje=new Date();
   const inicio30=new Date();inicio30.setDate(inicio30.getDate()-30);
-  const fmtInput=d=>d.toISOString().slice(0,10);
+  const fmtInput=d=>dataLocalStr(d);
 
   container.innerHTML=
     '<div style="margin-bottom:1rem;">'+
@@ -7781,7 +7781,7 @@ async function carregarTermometroHistorico(){
     const datas=[];
     let cur=new Date(de+'T00:00:00');
     const fim=new Date(ate+'T00:00:00');
-    while(cur<=fim){datas.push(cur.toISOString().slice(0,10));cur.setDate(cur.getDate()+1);}
+    while(cur<=fim){datas.push(dataLocalStr(cur));cur.setDate(cur.getDate()+1);}
 
     const linhas=[];
     for(const d of datas){
