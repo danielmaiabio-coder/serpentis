@@ -1025,7 +1025,7 @@ function buildNav(){
   let socialItems=ddItem('acido','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780767902/uol_dqoo8g.webp" style="width:15px;height:15px;object-fit:contain;vertical-align:middle;margin-right:4px;"/>Chat da Uol')+ddItem('feed','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780800099/foto_feed_zkeahk.png" style="width:15px;height:15px;object-fit:contain;vertical-align:middle;margin-right:5px;"/>Feed da Cobranca')+(isViewer?'':ddItem('slack','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780945202/slack_z3jpfx.png" style="width:13px;height:13px;object-fit:contain;vertical-align:middle;margin-right:3px;"/>Slack'))+ddItem('perfis','👥 Perfis');
   html+=group('social','Social',socialItems);
   if(!isViewer){
-    let utilItems=ddItem('copys','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780800196/copy_b0dpnq.png" style="width:15px;height:15px;object-fit:contain;vertical-align:middle;margin-right:5px;"/>Banco de Copys')+ddItem('links','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780800378/links_wnwufb.jpg" style="width:15px;height:15px;object-fit:contain;vertical-align:middle;margin-right:5px;"/>Links de Reneg.')+ddItem('escala','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780800513/rotear_wgszyx.png" style="width:15px;height:15px;object-fit:contain;vertical-align:middle;margin-right:5px;"/>Escala de Roteamento')+ddItem('calc','🧮 Calculadoras')+ddItem('infos','💡 Informacoes Uteis')+ddItem('codigosoferta','📊 Cod. de Oferta')+ddItem('formsplanilhas','📋 Forms/Planilhas');
+    let utilItems=ddItem('copys','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780800196/copy_b0dpnq.png" style="width:15px;height:15px;object-fit:contain;vertical-align:middle;margin-right:5px;"/>Banco de Copys')+ddItem('links','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780800378/links_wnwufb.jpg" style="width:15px;height:15px;object-fit:contain;vertical-align:middle;margin-right:5px;"/>Links de Reneg.')+ddItem('escala','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780800513/rotear_wgszyx.png" style="width:15px;height:15px;object-fit:contain;vertical-align:middle;margin-right:5px;"/>Escala de Roteamento')+ddItem('calc','🧮 Calculadoras')+ddItem('infos','💡 Informacoes Uteis')+ddItem('codigosoferta','📊 Cod. de Oferta')+ddItem('formsplanilhas','📋 Forms/Planilhas')+ddItem('hashtube','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1782141103/youtube_yoeuub.png" style="width:15px;height:15px;object-fit:contain;vertical-align:middle;margin-right:5px;"/>Hashtube');
     html+=group('utils','Utilidades',utilItems);
   }
   let contaItems=ddItem('perfil','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780845592/home_w6kzpw.png" style="width:15px;height:15px;object-fit:contain;vertical-align:middle;margin-right:5px;"/>Pagina Inicial')+ddItem('agenda','📅 Agenda')+ddItem('caderno','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780802371/historico_zbvzr3.png" style="width:15px;height:15px;object-fit:contain;vertical-align:middle;margin-right:5px;"/>Caderno')+ddItem('basilisco','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780873587/dark_snake_puyvhs.png" style="width:15px;height:15px;object-fit:contain;vertical-align:middle;margin-right:5px;"/>Basilisco')+ddItem('feriastime','🏖️ Ferias do Time')+ddItem('lembretes','⏰ Lembretes')+ddItem('baterponto','🕒 Bater Ponto')+(!isViewer?ddItem('feedback','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780803681/chatting_xdxyho.png" style="width:15px;height:15px;object-fit:contain;vertical-align:middle;margin-right:5px;"/>Feedbacks'):'');
@@ -1077,6 +1077,7 @@ const QUICK_SEARCH_PAGES=[
   {page:'infos',label:'Informacoes Uteis',icon:'💡'},
   {page:'codigosoferta',label:'Codigo de Oferta',icon:'📊'},
   {page:'formsplanilhas',label:'Forms/Planilhas',icon:'📋'},
+  {page:'hashtube',label:'Hashtube',icon:'▶️'},
   {page:'termometro',label:'Termometro de Demanda',icon:'🌡️'},
   {page:'slack',label:'Slack',icon:'💬'},
   {page:'perfis',label:'Perfis da Equipe',icon:'👤'},
@@ -1202,6 +1203,7 @@ window.navigate=async function(page){
   if(page==='agenda'){await renderAgenda(mc);return;}
   if(page==='codigosoferta'){await renderCodigosOferta(mc);return;}
   if(page==='formsplanilhas'){renderFormsplanilhas(mc);return;}
+  if(page==='hashtube'){await renderHashtube(mc);return;}
   if(page==='feriastime'){renderFeriasTime(mc);return;}
   if(page==='lembretes'){await renderLembretes(mc);return;}
   if(page==='baterponto'){await renderBaterPonto(mc);return;}
@@ -8142,6 +8144,258 @@ window.pipCobrancaSalvar=async function(){
 };
 
 
+
+// ── HASHTUBE ─────────────────────────────────────────────────────────────────
+const HASHTUBE_CATS=[
+  {id:'reparcelamento', label:'Criação de links de reparcelamento'},
+  {id:'pagamento',      label:'Como gerar um pagamento'},
+];
+
+async function renderHashtube(mc){
+  const {isCoord}=getPerms();
+  const snap=await getDocs(collection(db,'hashtube'));
+  const videos=[];
+  snap.forEach(d=>videos.push({id:d.id,...d.data()}));
+
+  let activeCat=window._hashtubeActiveCat||HASHTUBE_CATS[0].id;
+  window._hashtubeActiveCat=activeCat;
+
+  function catBtn(cat){
+    const active=activeCat===cat.id;
+    return `<button onclick="window._hashtubeActiveCat='${cat.id}';renderHashtube(document.getElementById('mainContent'))"
+      style="display:flex;align-items:center;gap:10px;width:100%;padding:14px 16px;background:${active?'rgba(255,255,255,0.13)':'transparent'};border:none;border-radius:10px;cursor:pointer;text-align:left;transition:background 0.15s;color:#fff;font-family:var(--font);font-size:14px;font-weight:${active?'600':'400'};">
+      <span style="font-size:18px;">▶️</span>
+      <span style="flex:1;">${cat.label}</span>
+      ${active?'<span style="width:6px;height:6px;border-radius:50%;background:#ff4444;flex-shrink:0;"></span>':''}
+    </button>`;
+  }
+
+  const catVideos=videos.filter(v=>v.categoria===activeCat);
+  const activeCatLabel=HASHTUBE_CATS.find(c=>c.id===activeCat)?.label||'';
+
+  function videoCard(v){
+    const thumb=v.thumb||'';
+    const thumbHtml=thumb
+      ?`<img src="${thumb}" style="width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:8px 8px 0 0;">`
+      :`<div style="width:100%;aspect-ratio:16/9;background:linear-gradient(135deg,#1a1a2e,#16213e);border-radius:8px 8px 0 0;display:flex;align-items:center;justify-content:center;"><span style="font-size:40px;opacity:0.4;">▶</span></div>`;
+    return `<div style="background:rgba(255,255,255,0.07);border-radius:10px;overflow:hidden;cursor:pointer;transition:transform 0.15s,background 0.15s;"
+        onmouseover="this.style.background='rgba(255,255,255,0.12)';this.style.transform='translateY(-2px)'"
+        onmouseout="this.style.background='rgba(255,255,255,0.07)';this.style.transform='none'"
+        onclick="window._hashtubePlayVideo('${v.id}')">
+      ${thumbHtml}
+      <div style="padding:12px;">
+        <div style="font-size:13px;font-weight:600;color:#fff;margin-bottom:4px;line-height:1.4;">${v.titulo}</div>
+        ${v.descricao?`<div style="font-size:11px;color:rgba(255,255,255,0.5);line-height:1.4;">${v.descricao}</div>`:''}
+      </div>
+      ${isCoord?`<div style="padding:0 12px 12px;display:flex;gap:6px;">
+        <button onclick="event.stopPropagation();window._hashtubeDeleteVideo('${v.id}')" style="font-size:11px;padding:4px 8px;background:rgba(163,45,45,0.4);color:#ffaaaa;border:none;border-radius:6px;cursor:pointer;">🗑 Excluir</button>
+      </div>`:''}
+    </div>`;
+  }
+
+  mc.innerHTML=`
+  <div style="min-height:100%;background:#0f0f0f;display:flex;flex-direction:column;">
+
+    <!-- Header -->
+    <div style="background:linear-gradient(135deg,#0f0f0f 0%,#1a0000 100%);padding:20px 24px;display:flex;align-items:center;gap:14px;border-bottom:1px solid rgba(255,255,255,0.07);">
+      <img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1782141103/youtube_yoeuub.png" style="width:36px;height:36px;object-fit:contain;">
+      <div>
+        <div style="font-size:22px;font-weight:700;color:#fff;letter-spacing:0.5px;">Hashtube</div>
+        <div style="font-size:12px;color:rgba(255,255,255,0.4);">Tutoriais internos da equipe</div>
+      </div>
+      ${isCoord?`<button onclick="window._hashtubeOpenUpload()" style="margin-left:auto;display:flex;align-items:center;gap:8px;padding:10px 18px;background:#ff0000;color:#fff;border:none;border-radius:8px;font-family:var(--font);font-size:13px;font-weight:600;cursor:pointer;">
+        ⬆ Enviar vídeo
+      </button>`:''}
+    </div>
+
+    <!-- Body: sidebar + content -->
+    <div style="display:flex;flex:1;min-height:0;">
+
+      <!-- Sidebar de categorias -->
+      <div style="width:260px;flex-shrink:0;background:rgba(255,255,255,0.03);border-right:1px solid rgba(255,255,255,0.07);padding:16px 10px;">
+        <div style="font-size:10px;font-weight:600;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:0.1em;padding:0 8px;margin-bottom:8px;">Categorias</div>
+        ${HASHTUBE_CATS.map(catBtn).join('')}
+      </div>
+
+      <!-- Grade de vídeos -->
+      <div style="flex:1;padding:24px;overflow-y:auto;">
+        <div style="font-size:16px;font-weight:600;color:#fff;margin-bottom:18px;">${activeCatLabel}</div>
+        ${catVideos.length===0
+          ?`<div style="color:rgba(255,255,255,0.3);font-size:14px;text-align:center;padding:60px 0;">Nenhum vídeo nessa categoria ainda.</div>`
+          :`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:18px;">${catVideos.map(videoCard).join('')}</div>`
+        }
+      </div>
+    </div>
+
+    <!-- Modal de upload (oculto) -->
+    <div id="hashtube-upload-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:3000;align-items:center;justify-content:center;">
+      <div style="background:#1c1c1c;border:1px solid rgba(255,255,255,0.12);border-radius:14px;padding:28px;width:100%;max-width:480px;box-shadow:0 20px 60px rgba(0,0,0,0.6);">
+        <div style="font-size:17px;font-weight:600;color:#fff;margin-bottom:20px;">⬆ Enviar vídeo</div>
+
+        <div style="margin-bottom:14px;">
+          <label style="font-size:11px;font-weight:500;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:6px;">Título *</label>
+          <input id="ht-titulo" type="text" placeholder="Ex: Como criar link de reparcelamento" style="width:100%;padding:10px 12px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:#fff;font-family:var(--font);font-size:14px;">
+        </div>
+
+        <div style="margin-bottom:14px;">
+          <label style="font-size:11px;font-weight:500;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:6px;">Categoria *</label>
+          <select id="ht-cat" style="width:100%;padding:10px 12px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:#fff;font-family:var(--font);font-size:14px;">
+            ${HASHTUBE_CATS.map(c=>`<option value="${c.id}" style="background:#1c1c1c;">${c.label}</option>`).join('')}
+          </select>
+        </div>
+
+        <div style="margin-bottom:14px;">
+          <label style="font-size:11px;font-weight:500;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:6px;">Descrição (opcional)</label>
+          <input id="ht-desc" type="text" placeholder="Breve descrição do conteúdo" style="width:100%;padding:10px 12px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:#fff;font-family:var(--font);font-size:14px;">
+        </div>
+
+        <div style="margin-bottom:20px;">
+          <label style="font-size:11px;font-weight:500;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:6px;">Arquivo de vídeo * <span style="font-weight:400;color:rgba(255,255,255,0.3);">(MP4/MOV — máx. 100MB)</span></label>
+          <label id="ht-file-label" style="display:flex;align-items:center;gap:10px;padding:12px;background:rgba(255,255,255,0.05);border:1px dashed rgba(255,255,255,0.2);border-radius:8px;cursor:pointer;color:rgba(255,255,255,0.5);font-size:13px;">
+            <span style="font-size:20px;">🎬</span>
+            <span id="ht-file-name">Clique para selecionar o vídeo</span>
+            <input id="ht-file" type="file" accept="video/mp4,video/quicktime,video/avi,video/mov" style="display:none;" onchange="window._hashtubeFileChosen(this)">
+          </label>
+        </div>
+
+        <div id="ht-progress" style="display:none;margin-bottom:16px;">
+          <div style="font-size:12px;color:rgba(255,255,255,0.5);margin-bottom:6px;" id="ht-progress-label">Enviando...</div>
+          <div style="height:6px;background:rgba(255,255,255,0.1);border-radius:3px;overflow:hidden;">
+            <div id="ht-progress-bar" style="height:100%;background:#ff0000;width:0%;transition:width 0.3s;border-radius:3px;"></div>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:10px;justify-content:flex-end;">
+          <button onclick="window._hashtubeCloseUpload()" style="padding:10px 20px;background:rgba(255,255,255,0.08);color:#fff;border:none;border-radius:8px;font-family:var(--font);font-size:13px;cursor:pointer;">Cancelar</button>
+          <button id="ht-save-btn" onclick="window._hashtubeSalvar()" style="padding:10px 20px;background:#ff0000;color:#fff;border:none;border-radius:8px;font-family:var(--font);font-size:13px;font-weight:600;cursor:pointer;">Enviar vídeo</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal de player (oculto) -->
+    <div id="hashtube-player-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:3000;align-items:center;justify-content:center;flex-direction:column;gap:16px;">
+      <button onclick="window._hashtubeClosePlayer()" style="position:absolute;top:20px;right:24px;background:rgba(255,255,255,0.1);border:none;border-radius:8px;color:#fff;font-size:18px;cursor:pointer;padding:8px 14px;">✕</button>
+      <div id="hashtube-player-title" style="color:#fff;font-size:16px;font-weight:600;text-align:center;max-width:700px;padding:0 60px;"></div>
+      <video id="hashtube-player-video" controls style="max-width:min(860px,90vw);max-height:75vh;border-radius:10px;background:#000;"></video>
+    </div>
+
+  </div>`;
+
+  // Funções globais
+  window._hashtubeOpenUpload=function(){
+    document.getElementById('hashtube-upload-modal').style.display='flex';
+  };
+  window._hashtubeCloseUpload=function(){
+    document.getElementById('hashtube-upload-modal').style.display='none';
+    document.getElementById('ht-titulo').value='';
+    document.getElementById('ht-desc').value='';
+    document.getElementById('ht-file').value='';
+    document.getElementById('ht-file-name').textContent='Clique para selecionar o vídeo';
+    document.getElementById('ht-progress').style.display='none';
+    document.getElementById('ht-progress-bar').style.width='0%';
+    document.getElementById('ht-save-btn').disabled=false;
+  };
+  window._hashtubeFileChosen=function(input){
+    const file=input.files[0];
+    if(!file)return;
+    if(file.size>100*1024*1024){showToast('Arquivo muito grande! Máximo 100MB.');input.value='';return;}
+    document.getElementById('ht-file-name').textContent=file.name+' ('+Math.round(file.size/1024/1024*10)/10+'MB)';
+  };
+  window._hashtubeSalvar=async function(){
+    const titulo=document.getElementById('ht-titulo').value.trim();
+    const cat=document.getElementById('ht-cat').value;
+    const desc=document.getElementById('ht-desc').value.trim();
+    const fileInput=document.getElementById('ht-file');
+    const file=fileInput.files[0];
+    if(!titulo){showToast('Informe o título.');return;}
+    if(!file){showToast('Selecione um arquivo de vídeo.');return;}
+
+    document.getElementById('ht-save-btn').disabled=true;
+    document.getElementById('ht-progress').style.display='block';
+    document.getElementById('ht-progress-label').textContent='Enviando para o Cloudinary...';
+    document.getElementById('ht-progress-bar').style.width='10%';
+
+    try{
+      // Upload via XMLHttpRequest para ter progresso real
+      const formData=new FormData();
+      formData.append('file',file);
+      formData.append('upload_preset','ml_default');
+      formData.append('resource_type','video');
+
+      const xhr=new XMLHttpRequest();
+      xhr.open('POST','https://api.cloudinary.com/v1_1/dbd9hpwyb/video/upload');
+
+      xhr.upload.onprogress=function(e){
+        if(e.lengthComputable){
+          const pct=Math.round(e.loaded/e.total*85);
+          document.getElementById('ht-progress-bar').style.width=pct+'%';
+          document.getElementById('ht-progress-label').textContent='Enviando... '+pct+'%';
+        }
+      };
+
+      const result=await new Promise((resolve,reject)=>{
+        xhr.onload=()=>{
+          if(xhr.status===200)resolve(JSON.parse(xhr.responseText));
+          else reject(new Error('Upload falhou: '+xhr.status));
+        };
+        xhr.onerror=()=>reject(new Error('Erro de rede'));
+        xhr.send(formData);
+      });
+
+      document.getElementById('ht-progress-bar').style.width='95%';
+      document.getElementById('ht-progress-label').textContent='Salvando metadados...';
+
+      // Gerar thumbnail via Cloudinary (frame do segundo 2)
+      const publicId=result.public_id;
+      const thumbUrl=`https://res.cloudinary.com/dbd9hpwyb/video/upload/so_2,w_480,h_270,c_fill,q_auto,f_jpg/${publicId}.jpg`;
+
+      await addDoc(collection(db,'hashtube'),{
+        titulo,
+        categoria:cat,
+        descricao:desc,
+        url:result.secure_url,
+        publicId,
+        thumb:thumbUrl,
+        ts:Date.now(),
+        uid:currentUser.uid,
+      });
+
+      document.getElementById('ht-progress-bar').style.width='100%';
+      showToast('Vídeo publicado com sucesso!');
+      setTimeout(()=>{
+        window._hashtubeCloseUpload();
+        renderHashtube(document.getElementById('mainContent'));
+      },600);
+    }catch(err){
+      showToast('Erro ao enviar: '+err.message);
+      document.getElementById('ht-save-btn').disabled=false;
+      document.getElementById('ht-progress').style.display='none';
+    }
+  };
+  window._hashtubePlayVideo=function(vid){
+    const v=videos.find(x=>x.id===vid);
+    if(!v)return;
+    document.getElementById('hashtube-player-title').textContent=v.titulo;
+    const player=document.getElementById('hashtube-player-video');
+    player.src=v.url;
+    player.play();
+    document.getElementById('hashtube-player-modal').style.display='flex';
+  };
+  window._hashtubeClosePlayer=function(){
+    const player=document.getElementById('hashtube-player-video');
+    player.pause();
+    player.src='';
+    document.getElementById('hashtube-player-modal').style.display='none';
+  };
+  window._hashtubeDeleteVideo=async function(vid){
+    if(!confirm('Excluir este vídeo? A ação não pode ser desfeita.'))return;
+    try{
+      await deleteDoc(doc(db,'hashtube',vid));
+      showToast('Vídeo excluído.');
+      renderHashtube(document.getElementById('mainContent'));
+    }catch(e){showToast('Erro ao excluir.');}
+  };
+}
 
 async function renderCodigosOferta(mc){
   const MS_CLIENT_ID = '48d20a5c-edc2-4109-8c74-b9169a0e5b98';
