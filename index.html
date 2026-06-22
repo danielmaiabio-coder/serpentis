@@ -1120,9 +1120,9 @@ function renderQuickSearchResults(){
     return;
   }
   container.innerHTML=_qsFiltered.map((p,i)=>
-    '<div onclick="quickSearchGo('+i+')" onmouseover="quickSearchHover('+i+')" id="qs-item-'+i+'" style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:8px;cursor:pointer;background:'+(i===_qsSelectedIdx?'var(--primary-light)':'transparent')+';">'+
+    '<div onclick="quickSearchGo('+i+')" onmouseover="quickSearchHover('+i+')" id="qs-item-'+i+'" style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:8px;cursor:pointer;background:'+(i===_qsSelectedIdx?'var(--primary)':'transparent')+';transition:background 0.1s;">'+
       '<span style="font-size:18px;">'+p.icon+'</span>'+
-      '<span style="font-size:14px;color:var(--text);">'+p.label+'</span>'+
+      '<span style="font-size:14px;color:'+(i===_qsSelectedIdx?'#fff':' var(--text)')+';">'+p.label+'</span>'+
     '</div>'
   ).join('');
 }
