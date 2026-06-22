@@ -1120,11 +1120,32 @@ function renderQuickSearchResults(){
     return;
   }
   container.innerHTML=_qsFiltered.map((p,i)=>
-    '<div onclick="quickSearchGo('+i+')" onmouseover="quickSearchHover('+i+')" id="qs-item-'+i+'" style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:8px;cursor:pointer;background:'+(i===_qsSelectedIdx?'var(--primary)':'transparent')+';transition:background 0.1s;">'+
-      '<span style="font-size:18px;">'+p.icon+'</span>'+
-      '<span style="font-size:14px;color:'+(i===_qsSelectedIdx?'#fff':' var(--text)')+';">'+p.label+'</span>'+
+    '<div data-qsidx="'+i+'" id="qs-item-'+i+'" style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:8px;cursor:pointer;background:'+(i===_qsSelectedIdx?'var(--primary)':'transparent')+';transition:background 0.1s;">'+
+      '<span style="font-size:18px;pointer-events:none;">'+p.icon+'</span>'+
+      '<span style="font-size:14px;pointer-events:none;color:'+(i===_qsSelectedIdx?'#fff':'var(--text)')+';">'+p.label+'</span>'+
     '</div>'
   ).join('');
+  // Event delegation — evita recriar DOM no hover/click
+  container.onclick=function(e){
+    const item=e.target.closest('[data-qsidx]');
+    if(item) quickSearchGo(parseInt(item.dataset.qsidx));
+  };
+  container.onmouseover=function(e){
+    const item=e.target.closest('[data-qsidx]');
+    if(item){
+      const idx=parseInt(item.dataset.qsidx);
+      if(idx!==_qsSelectedIdx){
+        _qsSelectedIdx=idx;
+        // Apenas atualiza estilos sem recriar o DOM
+        container.querySelectorAll('[data-qsidx]').forEach(el=>{
+          const i=parseInt(el.dataset.qsidx);
+          el.style.background=i===_qsSelectedIdx?'var(--primary)':'transparent';
+          const txt=el.querySelector('span:last-child');
+          if(txt) txt.style.color=i===_qsSelectedIdx?'#fff':'var(--text)';
+        });
+      }
+    }
+  };
 }
 
 window.quickSearchHover=function(i){
