@@ -8126,34 +8126,14 @@ window.pipSalvarUrl=async function(){
 window.pipCobrancaAbrir=function(){
   var url=(window.userProfile&&window.userProfile.pip_url)||PIP_APPS_URL;
   if(!url){showToast('Configure sua URL do Apps Script primeiro.');return;}
-  if(document.getElementById('pip-cobranca'))return;
-  var pip=document.createElement('div');
-  pip.id='pip-cobranca';
-  pip.style.cssText='position:fixed;bottom:80px;right:24px;width:300px;background:var(--surface);border-radius:14px;box-shadow:0 8px 32px rgba(0,0,0,0.25);z-index:9999;font-family:var(--font);border:1px solid var(--border-md);overflow:hidden;';
-  pip.innerHTML=
-    '<div id="pip-drag" style="background:var(--primary);color:#fff;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;cursor:grab;user-select:none;">'+
-      '<span style="font-size:13px;font-weight:600;">Cobranca Ativa</span>'+
-      '<button onclick="document.getElementById(\'pip-cobranca\').remove()" style="background:none;border:none;color:#fff;font-size:16px;cursor:pointer;padding:0;line-height:1;">x</button>'+
-    '</div>'+
-    '<div style="padding:14px;display:flex;flex-direction:column;gap:10px;">'+
-      '<div>'+
-        '<div style="font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-2);margin-bottom:4px;">Email (Coluna A)</div>'+
-        '<input id="pip-email-input" type="email" placeholder="email@aluno.com" style="width:100%;padding:9px 11px;border:1px solid var(--border-md);border-radius:var(--radius);background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px;box-sizing:border-box;" onkeydown="if(event.key===\'Enter\')pipCobrancaSalvar()"/>'+
-      '</div>'+
-      '<div>'+
-        '<div style="font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-2);margin-bottom:4px;">Cod. de Transacao (Coluna B)</div>'+
-        '<input id="pip-codigo-input" type="text" placeholder="HP0000000000" style="width:100%;padding:9px 11px;border:1px solid var(--border-md);border-radius:var(--radius);background:var(--bg);color:var(--text);font-family:var(--font-mono);font-size:13px;box-sizing:border-box;" onkeydown="if(event.key===\'Enter\')pipCobrancaSalvar()"/>'+
-      '</div>'+
-      '<div id="pip-status" style="font-size:11px;min-height:16px;"></div>'+
-      '<button onclick="pipCobrancaSalvar()" style="width:100%;padding:9px;background:var(--primary);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:13px;font-weight:500;cursor:pointer;">Salvar na planilha</button>'+
-    '</div>';
-  document.body.appendChild(pip);
-  var drag=document.getElementById('pip-drag');
-  var dragging=false,ox=0,oy=0;
-  drag.addEventListener('mousedown',function(e){dragging=true;ox=e.clientX-pip.getBoundingClientRect().left;oy=e.clientY-pip.getBoundingClientRect().top;drag.style.cursor='grabbing';});
-  document.addEventListener('mousemove',function(e){if(!dragging)return;pip.style.left=(e.clientX-ox)+'px';pip.style.top=(e.clientY-oy)+'px';pip.style.right='auto';pip.style.bottom='auto';});
-  document.addEventListener('mouseup',function(){dragging=false;if(drag)drag.style.cursor='grab';});
-  setTimeout(function(){var el=document.getElementById('pip-email-input');if(el)el.focus();},100);
+  var encodedUrl=encodeURIComponent(url);
+  var winUrl='/pip.html?url='+encodedUrl;
+  var pip=window.open(winUrl,'pip-cobranca','width=360,height=280,resizable=yes,scrollbars=no,status=no,toolbar=no,menubar=no,location=no');
+  if(!pip||pip.closed||typeof pip.closed==='undefined'){
+    showToast('Popup bloqueado! Permita popups para este site nas configurações do navegador.');
+    return;
+  }
+  pip.focus();
 };
 
 window.pipCobrancaSalvar=async function(){

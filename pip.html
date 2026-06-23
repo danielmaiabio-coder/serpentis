@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Cobrança Ativa</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{
+    font-family:'Inter Tight','Inter',sans-serif;
+    background:#1A5C2A;
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:16px;
+  }
+  .card{
+    background:#fff;
+    border-radius:14px;
+    overflow:hidden;
+    width:100%;
+    max-width:320px;
+    box-shadow:0 8px 32px rgba(0,0,0,0.3);
+  }
+  .header{
+    background:#1A5C2A;
+    color:#fff;
+    padding:12px 16px;
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .header-title{font-size:14px;font-weight:600;}
+  .header-sub{font-size:11px;opacity:0.7;margin-top:1px;}
+  .body{padding:16px;display:flex;flex-direction:column;gap:12px;}
+  label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.07em;color:#666;display:block;margin-bottom:4px;}
+  input{
+    width:100%;padding:9px 11px;
+    border:1px solid #ddd;border-radius:8px;
+    font-size:13px;font-family:inherit;
+    color:#111;background:#f9f9f9;
+    transition:border 0.15s;
+    outline:none;
+  }
+  input:focus{border-color:#1A5C2A;background:#fff;}
+  #pip-codigo-input{font-family:'DM Mono','Courier New',monospace;}
+  button.salvar{
+    width:100%;padding:10px;
+    background:#1A5C2A;color:#fff;
+    border:none;border-radius:8px;
+    font-size:13px;font-weight:600;
+    font-family:inherit;cursor:pointer;
+    transition:background 0.15s;
+  }
+  button.salvar:hover{background:#2E8B45;}
+  button.salvar:disabled{background:#999;cursor:not-allowed;}
+  #status{
+    font-size:12px;min-height:18px;text-align:center;
+    color:#666;padding:0 4px;
+  }
+  #status.ok{color:#1A5C2A;font-weight:600;}
+  #status.err{color:#c0392b;}
+</style>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600&family=DM+Mono&display=swap" rel="stylesheet"/>
+</head>
+<body>
+<div class="card">
+  <div class="header">
+    <div>
+      <div class="header-title">🐍 Cobrança Ativa</div>
+      <div class="header-sub">Salva direto na planilha</div>
+    </div>
+  </div>
+  <div class="body">
+    <div>
+      <label>Email (Coluna A)</label>
+      <input id="pip-email-input" type="email" placeholder="email@aluno.com" autocomplete="off"/>
+    </div>
+    <div>
+      <label>Cód. de Transação (Coluna B)</label>
+      <input id="pip-codigo-input" type="text" placeholder="HP0000000000" autocomplete="off"/>
+    </div>
+    <div id="status"></div>
+    <button class="salvar" id="btn-salvar" onclick="salvar()">Salvar na planilha</button>
+  </div>
+</div>
+
+<script>
+  // Pega a URL do Apps Script passada como query param
+  const params = new URLSearchParams(window.location.search);
+  const SCRIPT_URL = params.get('url') || '';
+
+  // Foca no email ao abrir
+  document.getElementById('pip-email-input').focus();
+
+  // Enter em qualquer campo salva
+  document.addEventListener('keydown', function(e){
+    if(e.key === 'Enter') salvar();
+  });
+
+  async function salvar(){
+    const email = document.getElementById('pip-email-input').value.trim();
+    const codigo = document.getElementById('pip-codigo-input').value.trim();
+    const status = document.getElementById('status');
+    const btn = document.getElementById('btn-salvar');
+
+    if(!email && !codigo){
+      status.className='err';
+      status.textContent='Preencha ao menos um campo.';
+      return;
+    }
+    if(!SCRIPT_URL){
+      status.className='err';
+      status.textContent='URL do Apps Script não configurada.';
+      return;
+    }
+
+    btn.disabled = true;
+    status.className='';
+    status.textContent='Salvando...';
+
+    try{
+      const qs = new URLSearchParams();
+      if(email)  qs.set('email', email);
+      if(codigo) qs.set('codigo', codigo);
+
+      const res = await fetch(SCRIPT_URL + '?' + qs.toString(), {mode:'no-cors'});
+
+      status.className='ok';
+      status.textContent='✅ Salvo na planilha!';
+      document.getElementById('pip-email-input').value='';
+      document.getElementById('pip-codigo-input').value='';
+      document.getElementById('pip-email-input').focus();
+    } catch(e){
+      status.className='err';
+      status.textContent='Erro ao salvar. Tente novamente.';
+    } finally{
+      btn.disabled = false;
+    }
+  }
+</script>
+</body>
+</html>
