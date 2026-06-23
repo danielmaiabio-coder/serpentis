@@ -2787,10 +2787,7 @@ window.salvarEscala=async function(){
   catch(e){showToast('Erro.');}
 };
 
-const CURSOS=[
-  {nome:'Assinatura Vitalicia',parcelas:24,valorParcela:199},{nome:'Assinatura Vitalicia',parcelas:18,valorParcela:199},
-  {nome:'Curso Avancado',parcelas:12,valorParcela:299},{nome:'Curso Basico',parcelas:6,valorParcela:149},{nome:'Mentoria Premium',parcelas:12,valorParcela:399},
-];
+let CURSOS=[];
 function renderCalc(mc){
   mc.innerHTML=snakeHtml()+
     '<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;"><div class="page-eyebrow">🧮 Calculadoras</div><div class="page-title">Calculadoras</div><div class="page-sub">Quitacao e Renegociacao em um so lugar</div></div>'+
@@ -2848,10 +2845,12 @@ function renderCalc(mc){
           '<div class="calc-result"><div class="calc-result-label">Valor a vista para renegociacao</div><div class="calc-result-val" id="calc-resultado">R$ 0,00</div><div style="font-size:11px;opacity:0.75;margin-top:4px;" id="calc-detalhe">Preencha os campos acima</div></div>'+
         '</div>'+
         '<div class="calc-box">'+
-          '<div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:12px;">Tabela de cursos</div>'+
-          '<div class="search-box"><svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="number" id="busca-parcela" placeholder="Digite o valor da parcela (ex: 199)" oninput="buscarCurso()"/></div>'+
-          '<div id="lista-cursos">'+CURSOS.map(c=>'<div class="curso-row" data-parc="'+c.valorParcela+'"><div class="curso-nome">'+c.parcelas+'x de R$ '+c.valorParcela.toLocaleString("pt-BR",{minimumFractionDigits:2})+' - '+c.nome+'</div><div class="curso-val">R$ '+(c.parcelas*c.valorParcela).toLocaleString("pt-BR",{minimumFractionDigits:2})+'</div></div>').join('')+'</div>'+
-          '<p style="font-size:11px;color:var(--text-3);margin-top:12px;">* Envie sua planilha para atualizar esta tabela</p>'+
+          '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">'+
+            '<div style="font-size:13px;font-weight:500;color:var(--text);">Tabela de cursos</div>'+
+            (getPerms().isCoord ? \'<label style="display:flex;align-items:center;gap:6px;padding:5px 10px;background:var(--primary);color:#fff;border-radius:6px;font-size:11px;font-weight:500;cursor:pointer;">📥 Atualizar tabela<input type="file" accept=".xlsx" style="display:none;" onchange="cursosImportarExcel(this)"/></label>\' : \'\') +
+          '</div>'+
+          '<div class="search-box"><svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" id="busca-curso" placeholder="Buscar por lote, faixa, nome..." oninput="buscarCurso()"/></div>'+
+          '<div id="lista-cursos" style="margin-top:8px;max-height:340px;overflow-y:auto;"></div>'+
         '</div>'+
       '</div>'+
     '</div>'+
@@ -2877,6 +2876,18 @@ function renderCalc(mc){
       '<div class="calc-result" style="margin-top:14px;"><div class="calc-result-label" id="moeda-result-label">Valor convertido</div><div class="calc-result-val" id="moeda-resultado">R$ 0,00</div><div style="font-size:11px;opacity:0.75;margin-top:4px;" id="moeda-detalhe">Carregando cotacao...</div></div>'+
     '</div>';
   carregarCotacoes();
+  cursosCarregar();
+}
+
+async function cursosCarregar(){
+  try{
+    const snap=await getDoc(doc(db,'config','tabela_cursos'));
+    if(snap.exists()&&snap.data().cursos){
+      CURSOS=snap.data().cursos;
+    }
+  }catch(e){}
+  cursosRenderTabela('');
+}
 }
 
 const MOEDAS_LISTA=[
@@ -3272,7 +3283,86 @@ window.calcular=function(){
   document.getElementById('calc-resultado').textContent=vista.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
   document.getElementById('calc-detalhe').textContent=restantes+' parcelas restantes x R$ '+valorParc.toFixed(2).replace('.',',');
 };
-window.buscarCurso=function(){const val=parseFloat(document.getElementById('busca-parcela').value)||0;document.querySelectorAll('.curso-row').forEach(el=>{el.classList.toggle('highlight',val>0&&parseFloat(el.dataset.parc)===val);});};
+window.buscarCurso=function(){
+  const q=(document.getElementById('busca-curso').value||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  cursosRenderTabela(q);
+};
+
+function cursosRenderTabela(q){
+  const container=document.getElementById('lista-cursos');
+  if(!container) return;
+  if(CURSOS.length===0){
+    container.innerHTML='<div style="text-align:center;color:var(--text-3);font-size:12px;padding:20px;">Nenhuma tabela carregada ainda.'+(getPerms().isCoord?' Use o botão 📥 Atualizar tabela.':'')+'</div>';
+    return;
+  }
+  const filtered=q
+    ? CURSOS.filter(c=>{
+        const hay=(c.nome+' '+c.lote+' '+c.faixa).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+        return q.split(' ').every(w=>hay.includes(w));
+      })
+    : CURSOS;
+  if(filtered.length===0){
+    container.innerHTML='<div style="text-align:center;color:var(--text-3);font-size:12px;padding:20px;">Nenhum resultado encontrado.</div>';
+    return;
+  }
+  container.innerHTML=`
+    <table style="width:100%;border-collapse:collapse;font-size:11px;">
+      <thead>
+        <tr style="background:var(--primary);color:#fff;">
+          <th style="padding:6px 8px;text-align:left;border-radius:6px 0 0 0;">Curso</th>
+          <th style="padding:6px 8px;text-align:left;">Lote</th>
+          <th style="padding:6px 8px;text-align:left;">Faixa</th>
+          <th style="padding:6px 8px;text-align:right;">À vista</th>
+          <th style="padding:6px 8px;text-align:right;">12x</th>
+          <th style="padding:6px 8px;text-align:right;">18x</th>
+          <th style="padding:6px 8px;text-align:right;border-radius:0 6px 0 0;">24x</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${filtered.map((c,i)=>`
+          <tr style="background:${i%2===0?'transparent':'rgba(0,0,0,0.03)'};" onmouseover="this.style.background='rgba(26,92,42,0.08)'" onmouseout="this.style.background='${i%2===0?'transparent':'rgba(0,0,0,0.03)'}'">
+            <td style="padding:6px 8px;color:var(--text);">${c.nome}</td>
+            <td style="padding:6px 8px;color:var(--text-2);">${c.lote}</td>
+            <td style="padding:6px 8px;color:var(--text-2);">${c.faixa}</td>
+            <td style="padding:6px 8px;text-align:right;font-weight:600;color:var(--primary);">${c.avista}</td>
+            <td style="padding:6px 8px;text-align:right;color:var(--text-2);">${c.p12||'—'}</td>
+            <td style="padding:6px 8px;text-align:right;color:var(--text-2);">${c.p18||'—'}</td>
+            <td style="padding:6px 8px;text-align:right;color:var(--text-2);">${c.p24||'—'}</td>
+          </tr>`).join('')}
+      </tbody>
+    </table>`;
+}
+
+window.cursosImportarExcel=async function(input){
+  const file=input.files[0];
+  if(!file) return;
+  try{
+    if(!window.XLSX) await new Promise((res,rej)=>{const s=document.createElement('script');s.src='https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js';s.onload=res;s.onerror=rej;document.head.appendChild(s);});
+    const buf=await file.arrayBuffer();
+    const wb=window.XLSX.read(buf,{type:'array'});
+    const ws=wb.Sheets[wb.SheetNames[0]];
+    const rows=window.XLSX.utils.sheet_to_json(ws,{defval:''});
+    const parsed=rows.map(r=>({
+      nome: String(r['Nome do curso']||r[Object.keys(r)[0]]||'').trim(),
+      lote: String(r['Lote']||r[Object.keys(r)[1]]||'').trim(),
+      faixa:String(r['Público/Faixa']||r['Publico/Faixa']||r[Object.keys(r)[2]]||'').trim(),
+      avista:String(r['À vista']||r['A vista']||r[Object.keys(r)[3]]||'').trim(),
+      p12:  String(r['12x']||r[Object.keys(r)[4]]||'').trim(),
+      p18:  String(r['18x']||r[Object.keys(r)[5]]||'').trim(),
+      p24:  String(r['24x']||r[Object.keys(r)[6]]||'').trim(),
+    })).filter(r=>r.nome&&r.avista);
+    if(parsed.length===0){showToast('Nenhuma linha válida encontrada no arquivo.');return;}
+    // Salva no Firestore
+    await setDoc(doc(db,'config','tabela_cursos'),{cursos:parsed,ts:Date.now()},{merge:false});
+    CURSOS=parsed;
+    cursosRenderTabela('');
+    showToast('✅ Tabela atualizada com '+parsed.length+' linhas!');
+  }catch(e){
+    showToast('Erro ao importar: '+e.message);
+  }finally{
+    input.value='';
+  }
+};
 
 
 const SCRIPT_URL='https://script.google.com/macros/s/AKfycbw7CfLpq-AnDFXMSKwpMizpYLrwG0PCn7CE7rMvi1sShgfCuAtHi1spCYd4mMThLUI8WQ/exec';
