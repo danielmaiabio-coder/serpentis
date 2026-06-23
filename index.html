@@ -3,8 +3,15 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="theme-color" content="#1A5C2A"/>
+<meta name="description" content="Painel interno da equipe de Contas a Receber — Hashtag Treinamentos"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="Chocalho"/>
+<link rel="manifest" href="/manifest.json"/>
   <link rel="icon" type="image/png" href="https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780709517/snake_jet3mt.png"/>
-  <link rel="icon" type="image/png" href="https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780709517/snake_jet3mt.png"/>
+  <link rel="apple-touch-icon" href="https://res.cloudinary.com/dbd9hpwyb/image/upload/w_192,h_192,c_fill,f_png/v1780780614/chocalho_1_in7jon.png"/>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=UnifrakturMaguntia&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600&family=DM+Mono:wght@400;500&family=DotGothic16&display=swap" rel="stylesheet"/>
@@ -4029,6 +4036,15 @@ async function renderPerfil(mc){
         adicBanner+
       '</div>'
     : '')+
+    // Botão de instalar PWA (aparece só quando disponível)
+    '<div id="pwa-install-btn" style="display:none;align-items:center;gap:12px;padding:14px 18px;background:linear-gradient(135deg,var(--primary),var(--primary-mid));border-radius:12px;margin-bottom:1.25rem;cursor:pointer;box-shadow:0 4px 14px rgba(26,92,42,0.3);" onclick="pwaInstalar()">'+
+      '<span style="font-size:24px;">📲</span>'+
+      '<div>'+
+        '<div style="font-size:14px;font-weight:600;color:#fff;">Instalar o Chocalho</div>'+
+        '<div style="font-size:12px;color:rgba(255,255,255,0.75);">Acesse como app, sem precisar abrir o navegador</div>'+
+      '</div>'+
+      '<span style="margin-left:auto;font-size:12px;font-weight:600;color:#fff;background:rgba(255,255,255,0.2);padding:6px 12px;border-radius:8px;">Instalar</span>'+
+    '</div>'+
     // Bloco Links de Rotina
     '<div class="panel" style="margin-bottom:1.25rem;">'+
       '<div class="panel-title" style="margin-bottom:12px;">🔗 Links de Rotina</div>'+
@@ -9132,6 +9148,35 @@ window.perguntarBasilisco=async function(){
     botDiv.textContent=resposta;msgsEl.appendChild(botDiv);
   }catch(e){loading.style.display='none';showToast('Erro de conexao.');}
   msgsEl.scrollTop=msgsEl.scrollHeight;
+};
+</script>
+<script>
+if('serviceWorker' in navigator){
+  window.addEventListener('load',function(){
+    navigator.serviceWorker.register('/sw.js').then(function(reg){
+      console.log('SW registrado:',reg.scope);
+    }).catch(function(err){
+      console.log('SW erro:',err);
+    });
+  });
+}
+let _pwaInstallPrompt=null;
+window.addEventListener('beforeinstallprompt',function(e){
+  e.preventDefault();
+  _pwaInstallPrompt=e;
+  const btn=document.getElementById('pwa-install-btn');
+  if(btn) btn.style.display='flex';
+});
+window.pwaInstalar=function(){
+  if(!_pwaInstallPrompt)return;
+  _pwaInstallPrompt.prompt();
+  _pwaInstallPrompt.userChoice.then(function(result){
+    if(result.outcome==='accepted'){
+      const btn=document.getElementById('pwa-install-btn');
+      if(btn) btn.style.display='none';
+    }
+    _pwaInstallPrompt=null;
+  });
 };
 </script>
 </body>
