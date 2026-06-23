@@ -2847,7 +2847,7 @@ function renderCalc(mc){
         '<div class="calc-box">'+
           '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">'+
             '<div style="font-size:13px;font-weight:500;color:var(--text);">Tabela de cursos</div>'+
-            (getPerms().isCoord ? "<label style='display:flex;align-items:center;gap:6px;padding:5px 10px;background:var(--primary);color:#fff;border-radius:6px;font-size:11px;font-weight:500;cursor:pointer;'>📥 Atualizar tabela<input type='file' accept='.xlsx' style='display:none;' onchange='cursosImportarExcel(this)'/></label>" : '') +
+            "<label style='display:flex;align-items:center;gap:6px;padding:5px 10px;background:var(--primary);color:#fff;border-radius:6px;font-size:11px;font-weight:500;cursor:pointer;'>📥 Atualizar tabela<input type='file' accept='.xlsx' style='display:none;' onchange='cursosImportarExcel(this)'/></label>" +
           '</div>'+
           '<div class="search-box"><svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" id="busca-curso" placeholder="Buscar por lote, faixa, nome..." oninput="buscarCurso()"/></div>'+
           '<div id="lista-cursos" style="margin-top:8px;max-height:340px;overflow-y:auto;"></div>'+
