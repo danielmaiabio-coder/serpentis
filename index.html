@@ -3296,8 +3296,8 @@ function cursosRenderTabela(q){
   }
   const filtered=q
     ? CURSOS.filter(c=>{
-        const hay=(c.nome+' '+c.lote+' '+c.faixa).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-        return q.split(' ').every(w=>hay.includes(w));
+        const hay=(c.nome+' '+c.lote+' '+c.faixa+' '+c.avista+' '+c.p12+' '+c.p18+' '+c.p24).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+        return q.split(' ').filter(Boolean).every(w=>hay.includes(w));
       })
     : CURSOS;
   if(filtered.length===0){
