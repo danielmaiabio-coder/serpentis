@@ -809,15 +809,19 @@ window.doVerifyOtp=async function(){
     // Re-autentica (signOut foi feito antes do OTP)
     const email=_pendingUser.email;
     const pass=_pendingUser.pass;
-    await signInWithEmailAndPassword(auth,email,pass);
-    // onAuthStateChanged está bloqueado, então carregamos manualmente
-    currentUser=auth.currentUser;
+    console.log('[OTP] Iniciando re-login para:', email);
+    const cred = await signInWithEmailAndPassword(auth,email,pass);
+    console.log('[OTP] Re-login ok, uid:', cred.user.uid);
+    currentUser=cred.user;
     _otpInProgress=false;
+    console.log('[OTP] Chamando loadProfile...');
     await loadProfile(currentUser.uid);
+    console.log('[OTP] loadProfile concluído');
   }catch(e){
+    console.error('[OTP] Erro:', e);
     _otpInProgress=false;
     document.getElementById('loginScreen').style.display='flex';
-    showToast('Erro ao entrar. Tente novamente.');
+    showToast('Erro: '+e.message);
   }
   btn.disabled=false;btn.textContent='Verificar';
 };
