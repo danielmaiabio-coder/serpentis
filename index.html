@@ -635,7 +635,7 @@ onAuthStateChanged(auth, async (user) => {
   if(_signupInProgress) return;
   if(_otpInProgress) return; // OTP flow gerencia o loadProfile manualmente
   if(user){currentUser=user;await loadProfile(user.uid);}
-  else showLogin();
+  else if(!_otpInProgress) showLogin();
 });
 
 async function loadProfile(uid){
@@ -813,10 +813,11 @@ window.doVerifyOtp=async function(){
     const cred = await signInWithEmailAndPassword(auth,email,pass);
     console.log('[OTP] Re-login ok, uid:', cred.user.uid);
     currentUser=cred.user;
-    _otpInProgress=false;
     console.log('[OTP] Chamando loadProfile...');
     await loadProfile(currentUser.uid);
     console.log('[OTP] loadProfile concluído');
+    // Só libera a flag após o app estar montado
+    setTimeout(()=>{ _otpInProgress=false; }, 2000);
   }catch(e){
     console.error('[OTP] Erro:', e);
     _otpInProgress=false;
