@@ -980,6 +980,21 @@ function dataLocalStr(d){
   return y+'-'+m+'-'+day;
 }
 
+function aplicarBg(bg){
+  if(!bg){document.body.style.removeProperty('--primary');document.body.style.removeProperty('--primary-mid');document.body.style.removeProperty('--primary-light');document.body.style.removeProperty('--primary-dark');document.body.style.removeProperty('--sidebar-bg');return;}
+  const temas=window._bgTemas||[];
+  const t=temas.find(x=>x.bg===bg);
+  if(t){
+    document.body.style.setProperty('--primary',t.primary||bg);
+    document.body.style.setProperty('--primary-mid',t.mid||bg);
+    document.body.style.setProperty('--primary-light',t.light||bg);
+    document.body.style.setProperty('--primary-dark',t.dark||bg);
+    document.body.style.setProperty('--sidebar-bg',t.sidebar||bg);
+  } else {
+    document.body.style.setProperty('--primary',bg);
+  }
+}
+
 function setupApp(){
   hide('loginScreen');show('appShell','flex');
   updateSidebarUser();buildNav();
