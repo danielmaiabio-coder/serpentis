@@ -958,7 +958,7 @@ document.addEventListener('click',function(e){
   }
 });
 
-function showLogin(){hide('appShell');hide('signupScreen');show('loginScreen','flex');}
+function showLogin(){console.warn('[showLogin] chamado de:', new Error().stack);hide('appShell');hide('signupScreen');show('loginScreen','flex');}
 
 function getPerms(){
   const isCoord = userProfile.role==='coord';
