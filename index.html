@@ -641,9 +641,18 @@ onAuthStateChanged(auth, async (user) => {
 async function loadProfile(uid){
   try{
     const snap=await getDoc(doc(db,'usuarios',uid));
-    if(snap.exists()){userProfile=snap.data();viewingOp=userProfile.role==='op'?uid:null;setupApp();}
+    if(snap.exists()){
+      userProfile=snap.data();
+      viewingOp=userProfile.role==='op'?uid:null;
+      try{
+        setupApp();
+      }catch(setupErr){
+        console.error('ERRO NO setupApp:',setupErr);
+        showToast('Erro ao inicializar: '+setupErr.message);
+      }
+    }
     else{showToast('Perfil nao encontrado.');await signOut(auth);showLogin();}
-  }catch(e){showToast('Erro ao carregar perfil.');showLogin();}
+  }catch(e){showToast('Erro ao carregar perfil.');console.error('loadProfile error:',e);showLogin();}
 }
 
 // ── 2FA ──────────────────────────────────────────────────────────────────
