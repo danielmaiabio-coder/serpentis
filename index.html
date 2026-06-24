@@ -759,7 +759,7 @@ window.doLogin=async function(){
     }
 
     // Guardar usuário pendente e fazer logout temporário
-    _pendingUser = {uid, email, nome};
+    _pendingUser = {uid, email, nome, pass};
     _otpInProgress = true; // bloqueia onAuthStateChanged durante o fluxo OTP
     await signOut(auth); // sai para não entrar direto no app
 
@@ -808,7 +808,7 @@ window.doVerifyOtp=async function(){
   try{
     // Re-autentica (signOut foi feito antes do OTP)
     const email=_pendingUser.email;
-    const pass=document.getElementById('loginPass').value;
+    const pass=_pendingUser.pass;
     await signInWithEmailAndPassword(auth,email,pass);
     // onAuthStateChanged está bloqueado, então carregamos manualmente
     currentUser=auth.currentUser;
