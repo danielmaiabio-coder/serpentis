@@ -642,7 +642,7 @@ async function loadProfile(uid){
     const snap=await getDoc(doc(db,'usuarios',uid));
     if(snap.exists()){userProfile=snap.data();viewingOp=userProfile.role==='op'?uid:null;setupApp();}
     else{showToast('Perfil nao encontrado.');await signOut(auth);showLogin();}
-  }catch(e){showToast('Erro ao carregar perfil: '+e.message);console.error('loadProfile error:',e);showLogin();}
+  }catch(e){showToast('Erro ao carregar perfil.');showLogin();}
 }
 
 // ── 2FA ──────────────────────────────────────────────────────────────────
@@ -802,16 +802,11 @@ window.doVerifyOtp=async function(){
   // Fazer login de verdade
   btn.disabled=true;btn.textContent='Verificando...';
   document.getElementById('otpScreen').style.display='none';
+  document.getElementById('loginScreen').style.display='flex';
   // Re-login com as credenciais salvas no form
   const email=document.getElementById('loginEmail').value.trim();
   const pass=document.getElementById('loginPass').value;
-  try{
-    await signInWithEmailAndPassword(auth,email,pass);
-  }catch(e){
-    document.getElementById('loginScreen').style.display='flex';
-    document.getElementById('loginErr').textContent='Erro ao autenticar. Tente novamente.';
-    document.getElementById('loginErr').style.display='block';
-  }
+  await signInWithEmailAndPassword(auth,email,pass);
   btn.disabled=false;btn.textContent='Verificar';
 };
 
@@ -978,21 +973,6 @@ function dataLocalStr(d){
   const m=String(d.getMonth()+1).padStart(2,'0');
   const day=String(d.getDate()).padStart(2,'0');
   return y+'-'+m+'-'+day;
-}
-
-function aplicarBg(bg){
-  if(!bg){document.body.style.removeProperty('--primary');document.body.style.removeProperty('--primary-mid');document.body.style.removeProperty('--primary-light');document.body.style.removeProperty('--primary-dark');document.body.style.removeProperty('--sidebar-bg');return;}
-  const temas=window._bgTemas||[];
-  const t=temas.find(x=>x.bg===bg);
-  if(t){
-    document.body.style.setProperty('--primary',t.primary||bg);
-    document.body.style.setProperty('--primary-mid',t.mid||bg);
-    document.body.style.setProperty('--primary-light',t.light||bg);
-    document.body.style.setProperty('--primary-dark',t.dark||bg);
-    document.body.style.setProperty('--sidebar-bg',t.sidebar||bg);
-  } else {
-    document.body.style.setProperty('--primary',bg);
-  }
 }
 
 function setupApp(){
@@ -1240,6 +1220,8 @@ window.navigate=async function(page){
   if(page==='links'){await renderLinks(mc);return;}
   if(page==='escala'){await renderEscala(mc);return;}
   if(page==='calc'){renderCalc(mc);return;}
+  if(page==='calcquit'){renderCalcQuit(mc);return;}
+  if(page==='calcreneg'){renderCalcReneg(mc);return;}
   if(page==='relatorio_disparos'){await renderRelatDisparos(mc);return;}
   if(page==='infos'){renderInfosUteis(mc);return;}
   if(page==='agenda'){await renderAgenda(mc);return;}
@@ -4763,6 +4745,1199 @@ function slackRenderText(text){
 }
 
 // ── SLACK SOUNDS ─────────────────────────────────────────────────────────
+async function renderEditarPerfil(mc){
+  _vaultUnlocked=false; // sempre comeca bloqueado ao entrar/recarregar a pagina
+  const uid=currentUser.uid;
+  const snap=await getDoc(doc(db,'usuarios',uid));
+  const perfil=snap.exists()?snap.data():{};
+  const bgAtual=perfil.bgColor||'';
+  const TEMAS=TEMAS_BG;
+
+  mc.innerHTML=snakeHtml()+
+    '<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;">'+
+      '<div class="page-eyebrow">* CONTA</div>'+
+      '<div class="page-title">\u270f\ufe0f Editar Perfil</div>'+
+      '<div class="page-sub">Atualize seu nome e a cor de fundo do painel</div>'+
+    '</div>'+
+    '<div class="panel" style="margin-bottom:1.25rem;">'+
+    '<div style="display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;">'+
+    '<div style="flex:1;min-width:160px;"><label class="inp-label">Meu nome</label><input type="text" class="inp" id="ep-nome" value="'+(perfil.nome||'')+'" placeholder="Seu nome completo"/></div>'+
+    '<div style="flex:1;min-width:160px;">'+
+    '<button onclick="toggleBgPickerEp()" style="display:flex;align-items:center;gap:10px;padding:10px 16px;border:1px solid var(--border-md);border-radius:var(--radius);background:var(--bg);font-family:var(--font);font-size:13px;color:var(--text);cursor:pointer;width:100%;">'+
+    '<div style="width:24px;height:24px;border-radius:6px;background:'+(bgAtual||'linear-gradient(135deg,#0d2e14,#1A5C2A)')+';flex-shrink:0;"></div>'+
+    '<span>Cor de fundo</span>'+
+    '<svg style="margin-left:auto;" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></button>'+
+    '<div id="ep-bg-picker" style="display:none;">'+
+    '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:8px;">'+
+    TEMAS.map((t,i)=>'<div onclick="selecionarBgEp('+i+')" id="ep-bg-opt-'+i+'" style="cursor:pointer;height:44px;border-radius:10px;background:'+(t.bg||'linear-gradient(135deg,#f0fdf4,#dcfce7)')+';border:3px solid '+(bgAtual===t.bg?'#fff':'transparent')+';box-shadow:'+(bgAtual===t.bg?'0 0 0 2px var(--primary)':'0 2px 6px rgba(0,0,0,0.15)')+';transition:all 0.15s;display:flex;align-items:'+(t.bg?'flex-end':'center')+';justify-content:'+(t.bg?'flex-start':'center')+';padding:4px 6px;" title="'+t.nome+'">'+
+    '<span style="font-size:9px;color:'+(t.bg?'rgba(255,255,255,0.7)':'var(--text-3)')+';font-weight:500;">'+t.nome+'</span></div>').join('')+
+    '</div></div></div>'+
+    '<button class="btn-blue" onclick="salvarEditarPerfil()" style="height:42px;white-space:nowrap;align-self:flex-end;">Salvar alteracoes</button>'+
+    '</div>'+
+    '<div class="panel" style="margin-top:1.5rem;margin-bottom:1.25rem;">'+
+      '<div class="panel-title" style="margin-bottom:12px;">\ud83d\udd12 Alterar Senha</div>'+
+      '<div style="display:flex;flex-direction:column;gap:12px;max-width:420px;">'+
+        '<div><label class="inp-label">Senha atual</label><input type="password" class="inp" id="ep-senha-atual" placeholder="Digite sua senha atual"/></div>'+
+        '<div><label class="inp-label">Nova senha</label><input type="password" class="inp" id="ep-senha-nova" placeholder="Minimo 6 caracteres"/></div>'+
+        '<div><label class="inp-label">Confirmar nova senha</label><input type="password" class="inp" id="ep-senha-confirma" placeholder="Repita a nova senha" onkeydown="if(event.key===\'Enter\')alterarSenhaEp()"/></div>'+
+        '<div id="ep-senha-err" style="display:none;font-size:12px;color:var(--red);background:var(--red-light);padding:8px 10px;border-radius:var(--radius);"></div>'+
+        '<div style="display:flex;align-items:center;gap:16px;">'+
+          '<button class="btn-blue" onclick="alterarSenhaEp()" id="ep-senha-btn">Alterar senha</button>'+
+          '<span class="forgot-link" style="color:var(--primary);cursor:pointer;font-size:12px;" onclick="esqueceuSenhaEp()">Esqueci minha senha</span>'+
+        '</div>'+
+      '</div>'+
+    '</div>'+
+    '<div class="panel" style="margin-top:1.5rem;">'+
+      '<div class="panel-title" style="margin-bottom:12px;">\ud83d\udd10 Minhas Senhas</div>'+
+      '<div id="vault-locked-view">'+
+        '<div style="font-size:13px;color:var(--text-2);margin-bottom:14px;">Suas senhas pessoais ficam guardadas em sigilo. Para acessar, confirme sua senha de login e o codigo de verificacao enviado por e-mail.</div>'+
+        '<button class="btn-blue" onclick="abrirVaultUnlock()">\ud83d\udd13 Desbloquear acesso</button>'+
+      '</div>'+
+      '<div id="vault-unlocked-view" style="display:none;"></div>'+
+    '</div>'+
+    '<div class="panel" style="margin-top:1.5rem;">'+
+      '<div class="panel-title" style="margin-bottom:12px;">📷 Reconhecimento Facial (Ponto)</div>'+
+      '<div id="face-cadastro-area">Carregando...</div>'+
+    '</div>';
+
+  window._epBgTemas=TEMAS;
+  window._epBgSelecionado=bgAtual;
+  renderFaceCadastroArea();
+}
+
+
+async function renderPerfil(mc){
+  const uid=currentUser.uid;
+  const snap=await getDoc(doc(db,'usuarios',uid));
+  const perfil=snap.exists()?snap.data():{};
+  const bgAtual=perfil.bgColor||'';
+
+  const TEMAS=TEMAS_BG;
+
+  mc.innerHTML=snakeHtml()+'<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;"><div style="display:flex;flex-direction:column;align-items:center;text-align:center;padding:0.25rem 0;"><div class="page-eyebrow">* PAGINA INICIAL</div><div class="page-title" style="display:flex;align-items:center;gap:10px;justify-content:center;">Bem vindo ao Chocalho &nbsp;—&nbsp; <img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/e_bgremoval/q_auto/f_auto/v1780780614/chocalho_1_in7jon.png" style="width:36px;height:36px;object-fit:contain;vertical-align:middle;"/></div>'+
+    '</div>'+
+    '<div id="lembrete-notif-dot" onclick="navigate(\'lembretes\')" title="Lembretes" style="position:absolute;top:14px;right:14px;width:14px;height:14px;border-radius:50%;background:transparent;cursor:pointer;transition:background 0.2s;"></div>'+
+    '</div>'+
+    '<div class="panel" style="padding:0;overflow:hidden;margin-bottom:0.5rem;">'+
+    '<div class="perfil-avatar-area">'+
+    (perfil.capa
+      ?'<img src="'+perfil.capa+'" class="perfil-capa" id="perfil-capa-preview-img"/>'
+      :'<div class="perfil-capa-placeholder"></div>'
+    )+
+    '<label onclick="document.getElementById(\'input-capa\').click()" style="cursor:pointer;position:absolute;top:0;left:0;width:100%;height:100%;"></label>'+
+    '<div class="perfil-avatar-over">'+
+    (perfil.foto
+      ?'<div class="perfil-avatar-big"><img src="'+perfil.foto+'" alt="foto"/></div>'
+      :'<div class="perfil-avatar-big" id="perfil-av-preview">'+((perfil.nome||'?')[0].toUpperCase())+'</div>'
+    )+
+    '<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;">'+
+    '<label style="cursor:pointer;"><input type="file" accept="image/*" onchange="uploadFoto(event)" style="display:none;"/><span style="padding:4px 12px;background:rgba(0,0,0,0.45);color:#fff;border-radius:20px;font-size:11px;border:1px solid rgba(255,255,255,0.3);backdrop-filter:blur(4px);">Alterar foto</span></label>'+
+    (perfil.foto?'<span onclick="removerFoto()" style="padding:4px 12px;background:rgba(180,0,0,0.5);color:#fff;border-radius:20px;font-size:11px;cursor:pointer;border:1px solid rgba(255,255,255,0.2);backdrop-filter:blur(4px);">Remover foto</span>':'')+
+    '<label onclick="document.getElementById(\'input-capa\').click()" style="cursor:pointer;"><span style="padding:4px 12px;background:rgba(0,0,0,0.45);color:#fff;border-radius:20px;font-size:11px;border:1px solid rgba(255,255,255,0.3);backdrop-filter:blur(4px);">+ Capa</span></label>'+
+    (perfil.capa?'<span onclick="removerCapa()" style="padding:4px 12px;background:rgba(180,0,0,0.5);color:#fff;border-radius:20px;font-size:11px;cursor:pointer;border:1px solid rgba(255,255,255,0.2);backdrop-filter:blur(4px);">Remover capa</span>':'')+
+    '</div></div>'+
+    '<input type="file" id="input-capa" accept="image/*" style="display:none;" onchange="uploadCapa(event)"/>'+
+    '<img id="perfil-capa-preview" src="'+(perfil.capa||'')+'" style="display:none;"/>'+
+    '</div></div>'+
+    '<div style="text-align:center;margin-bottom:1.25rem;padding:0.5rem 0;">'+
+    '<div style="font-size:18px;font-weight:600;color:var(--text);">'+(perfil.nome||'&#8212;')+'</div>'+
+    '<div style="font-size:12px;color:var(--text-3);">'+(userProfile.role==='coord'?'Coordenador':'Operador')+'</div>'+
+    '</div>'+
+    '<img id="perfil-foto-preview" src="'+(perfil.foto||'')+'" style="display:none;"/>'+
+    '</div>';
+
+  // Load Meet link and Disparos
+  const isCoord = userProfile.role==='coord';
+  const isViewer = userProfile.role==='viewer';
+
+  const cfgSnap2 = await getDoc(doc(db,'config','reuniao'));
+  const reuniao = cfgSnap2.exists()? cfgSnap2.data() : {};
+  const meetLink = reuniao.meet||'';
+
+  // Reuniao Mensal
+  const cfgMensal = await getDoc(doc(db,'config','reuniao_mensal'));
+  const mensal = cfgMensal.exists()? cfgMensal.data() : {};
+  const menLink = mensal.meet||'';
+
+  const cfgAdic = await getDoc(doc(db,'config','reuniao_adicional'));
+  const adicional = cfgAdic.exists()? cfgAdic.data() : {};
+  const adicLink = adicional.meet||'';
+
+  let meetBanner='<div class="reuniao-banner">';
+  meetBanner+='<div class="reuniao-info">';
+  meetBanner+='<div class="reuniao-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>';
+  meetBanner+='<div><div class="reuniao-label">Reuniao Semanal</div>';
+  meetBanner+='<div class="reuniao-datetime">'+(reuniao.horario?reuniao.horario+(reuniao.data?' &nbsp;&middot;&nbsp; '+reuniao.data:''):'Nenhuma reuniao agendada')+'</div>';
+  meetBanner+='</div></div>';
+  meetBanner+='<div class="reuniao-actions">';
+  if(meetLink) meetBanner+='<a class="reuniao-meet-btn" href="'+meetLink+'" target="_blank"><span class="reuniao-meet-dot"></span>Entrar no Meet</a>';
+  if(isCoord) meetBanner+='<button class="reuniao-edit-btn" onclick="editarReuniao()">Editar</button>';
+  meetBanner+='</div></div>';
+
+  let mensalBanner='<div class="reuniao-banner" style="background:linear-gradient(135deg,#7f1d1d,#b91c1c);">';
+  mensalBanner+='<div class="reuniao-info">';
+  mensalBanner+='<div class="reuniao-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>';
+  mensalBanner+='<div><div class="reuniao-label">Reuniao Mensal</div>';
+  mensalBanner+='<div class="reuniao-datetime">'+(mensal.horario?mensal.horario+(mensal.data?' &nbsp;&middot;&nbsp; '+mensal.data:''):'Nenhuma reuniao agendada')+'</div>';
+  mensalBanner+='</div></div>';
+  mensalBanner+='<div class="reuniao-actions">';
+  if(menLink) mensalBanner+='<a class="reuniao-meet-btn" href="'+menLink+'" target="_blank"><span class="reuniao-meet-dot"></span>Entrar no Meet</a>';
+  if(isCoord) mensalBanner+='<button class="reuniao-edit-btn" onclick="editarReuniaoMensal()">Editar</button>';
+  mensalBanner+='</div></div>';
+
+  let adicBanner='<div class="reuniao-banner" style="background:linear-gradient(135deg,#581c87,#7e22ce);">';
+  adicBanner+='<div class="reuniao-info">';
+  adicBanner+='<div class="reuniao-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>';
+  adicBanner+='<div><div class="reuniao-label">Reunioes Adicionais</div>';
+  adicBanner+='<div class="reuniao-datetime">'+(adicional.horario?adicional.horario+(adicional.data?' &nbsp;&middot;&nbsp; '+adicional.data:''):'Nenhuma reuniao agendada')+'</div>';
+  adicBanner+='</div></div>';
+  adicBanner+='<div class="reuniao-actions">';
+  if(adicLink) adicBanner+='<a class="reuniao-meet-btn" href="'+adicLink+'" target="_blank"><span class="reuniao-meet-dot"></span>Entrar no Meet</a>';
+  if(isCoord) adicBanner+='<button class="reuniao-edit-btn" onclick="editarReuniaoAdicional()">Editar</button>';
+  adicBanner+='</div></div>';
+
+  const dispSnap = await getDoc(doc(db,'config','disparos'));
+  const disp = dispSnap.exists()? dispSnap.data() : {};
+  // Migra dados antigos (pedro/daniel separados) para uma lista unica, se ainda nao migrado
+  let dispUnificado = disp.unificado;
+  if(!dispUnificado){
+    dispUnificado = [];
+    (disp.pedro||[]).forEach(s=>{if(s.hora||s.data)dispUnificado.push({hora:s.hora||'',data:s.data||'',plat:s.plat||'WATI Pedro'});});
+    (disp.daniel||[]).forEach(s=>{if(s.hora||s.data)dispUnificado.push({hora:s.hora||'',data:s.data||'',plat:s.plat||'WATI Daniel'});});
+    if(dispUnificado.length===0) dispUnificado=[{hora:'',data:'',plat:'WATI Pedro'}];
+  }
+
+  // Check escala
+  const escalaSnap=await getDoc(doc(db,'config','escala'));
+  let escalaBanner='';
+  if(escalaSnap.exists()&&!isViewer){
+    const escData=escalaSnap.data();
+    const nome=(userProfile.nome||'').toLowerCase();
+    let escalado=null;
+    function isThisWeekPerfil(datesStr){
+      if(!datesStr)return false;
+      const matches=[...datesStr.matchAll(/(\d{2})\/(\d{2})/g)];
+      if(!matches||matches.length<1)return false;
+      const hojeP=new Date();hojeP.setHours(0,0,0,0);
+      const ano=hojeP.getFullYear();
+      const [d1,m1]=[parseInt(matches[0][1]),parseInt(matches[0][2])-1];
+      const inicio=new Date(ano,m1,d1);inicio.setHours(0,0,0,0);
+      let fim;
+      if(matches.length>=2){
+        const [d2,m2]=[parseInt(matches[1][1]),parseInt(matches[1][2])-1];
+        fim=new Date(ano,m2,d2);
+      } else {
+        fim=new Date(inicio);fim.setDate(fim.getDate()+6);
+      }
+      fim.setHours(23,59,59,999);
+      return hojeP>=inicio&&hojeP<=fim;
+    }
+    // Check watiPedro weeks
+    if(escData.watiPedro){
+      escData.watiPedro.forEach((semana,i)=>{
+        if(semana.operador&&semana.operador.toLowerCase()===nome&&isThisWeekPerfil(semana.dates)) escalado={wati:'WATI Pedro',semana:i+1,dates:semana.dates};
+      });
+    }
+    // Check watiDaniel weeks
+    if(escData.watiDaniel){
+      escData.watiDaniel.forEach((semana,i)=>{
+        if(semana.operador&&semana.operador.toLowerCase()===nome&&isThisWeekPerfil(semana.dates)) escalado={wati:'WATI Daniel',semana:i+1,dates:semana.dates};
+      });
+    }
+    if(escalado){
+      escalaBanner='<div style="background:linear-gradient(135deg,#1e3a8a,#2563eb);border-radius:var(--radius-lg);padding:18px 24px;margin-bottom:1.25rem;display:flex;align-items:center;gap:16px;box-shadow:0 4px 20px rgba(37,99,235,0.3);">'+
+        '<div style="font-size:28px;">🔀</div>'+
+        '<div>'+
+        '<div style="font-size:11px;font-weight:500;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">Escala de Roteamento</div>'+
+        '<div style="font-size:16px;font-weight:600;color:#fff;">Você está escalado esta semana!</div>'+
+        '<div style="font-size:13px;color:rgba(255,255,255,0.75);margin-top:2px;">'+escalado.wati+' &nbsp;·&nbsp; Semana '+escalado.semana+(escalado.dates?' &nbsp;·&nbsp; '+escalado.dates:'')+'</div>'+
+        '</div>'+
+        '<button onclick="navigate(\'escala\')" style="margin-left:auto;padding:8px 16px;background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.2);border-radius:20px;font-family:var(--font);font-size:12px;cursor:pointer;">Ver escala</button>'+
+        '</div>';
+    }
+  }
+
+  mc.innerHTML += 
+    escalaBanner+
+    (!isViewer ?
+      // Mensal full width
+      mensalBanner+
+      // Semanal + Adicional side by side
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:1.25rem;">'+
+        meetBanner+
+        adicBanner+
+      '</div>'
+    : '')+
+    // Botão de instalar PWA (aparece só quando disponível)
+    '<div id="pwa-install-btn" style="display:none;align-items:center;gap:12px;padding:14px 18px;background:linear-gradient(135deg,var(--primary),var(--primary-mid));border-radius:12px;margin-bottom:1.25rem;cursor:pointer;box-shadow:0 4px 14px rgba(26,92,42,0.3);" onclick="pwaInstalar()">'+
+      '<span style="font-size:24px;">📲</span>'+
+      '<div>'+
+        '<div style="font-size:14px;font-weight:600;color:#fff;">Instalar o Chocalho</div>'+
+        '<div style="font-size:12px;color:rgba(255,255,255,0.75);">Acesse como app, sem precisar abrir o navegador</div>'+
+      '</div>'+
+      '<span style="margin-left:auto;font-size:12px;font-weight:600;color:#fff;background:rgba(255,255,255,0.2);padding:6px 12px;border-radius:8px;">Instalar</span>'+
+    '</div>'+
+    // Bloco Links de Rotina
+    '<div class="panel" style="margin-bottom:1.25rem;">'+
+      '<div class="panel-title" style="margin-bottom:12px;">🔗 Links de Rotina</div>'+
+      '<div style="display:flex;gap:12px;flex-wrap:wrap;">'+
+        // Mini bloco WATI
+        '<div style="flex:1;min-width:200px;background:var(--bg);border:1px solid var(--border-md);border-radius:10px;padding:12px;">'+
+          '<div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-3);margin-bottom:10px;display:flex;align-items:center;gap:5px;"><img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780848930/wati_hbqyix.png" style="width:13px;height:13px;object-fit:contain;"/>WATI</div>'+
+          '<div style="display:flex;gap:8px;flex-wrap:wrap;">'+
+            '<a href="'+DISP_WATI_LINKS['WATI Pedro']+'" target="_blank" style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:var(--primary);color:#fff;border-radius:var(--radius);font-family:var(--font);font-size:12px;font-weight:500;text-decoration:none;">WATI Pedro</a>'+
+            '<a href="'+DISP_WATI_LINKS['WATI Daniel']+'" target="_blank" style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:var(--primary);color:#fff;border-radius:var(--radius);font-family:var(--font);font-size:12px;font-weight:500;text-decoration:none;">WATI Daniel</a>'+
+          '</div>'+
+        '</div>'+
+        // Mini bloco Hotmart
+        '<div style="flex:2;min-width:280px;background:var(--bg);border:1px solid var(--border-md);border-radius:10px;padding:12px;">'+
+          '<div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-3);margin-bottom:10px;">\ud83d\uded2 Hotmart</div>'+
+          '<div style="display:flex;gap:8px;flex-wrap:wrap;">'+
+            '<a href="https://app.hotmart.com/subscriptions" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:var(--primary);color:#fff;border-radius:var(--radius);font-family:var(--font);font-size:12px;font-weight:500;text-decoration:none;">Gerenciar Assinaturas</a>'+
+            '<a href="https://app.hotmart.com/sales" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:var(--primary);color:#fff;border-radius:var(--radius);font-family:var(--font);font-size:12px;font-weight:500;text-decoration:none;">Transacoes</a>'+
+            '<a href="https://app.hotmart.com/sales?tab=smartRecoveries&type=sales" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:var(--primary);color:#fff;border-radius:var(--radius);font-family:var(--font);font-size:12px;font-weight:500;text-decoration:none;">Recuperacao de Vendas</a>'+
+          '</div>'+
+        '</div>'+
+      '</div>'+
+    '</div>'+
+    (!isViewer ?
+    '<div style="margin-bottom:1.25rem;">'+
+      renderDisparosCard(dispUnificado,isCoord)+
+    '</div>' : '');
+
+  // Mural preview - own wall
+  const muralSnap=await getDocs(query(collection(db,'mural',currentUser.uid,'recados'),orderBy('ts','desc'),limit(5)));
+  const muralPosts=[];muralSnap.forEach(d=>muralPosts.push({id:d.id,...d.data()}));
+
+  mc.innerHTML+='<div class="panel">'+
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">'+
+    '<div class="panel-title" style="margin:0;">✍️ Meu Mural</div>'+
+    '<button onclick="navigate(\'perfis\')" class="btn-ghost" style="font-size:12px;">Ver tudo</button>'+
+    '</div>'+
+    (muralPosts.length?muralPosts.map(p=>{
+      const pini=(p.autorNome||'?')[0].toUpperCase();
+      const pav=p.autorFoto?'<img src="'+p.autorFoto+'" alt=""/>':pini;
+      return'<div class="mural-post">'+
+        '<div class="mural-post-header">'+
+        '<div class="mural-post-av" style="background:'+(p.autorCor||'#1A5C2A')+';color:#fff;">'+pav+'</div>'+
+        '<div><div style="font-size:13px;font-weight:500;">'+p.autorNome+'</div>'+
+        '<div class="mural-post-date">'+p.data+'</div></div>'+
+        '</div>'+
+        '<div class="mural-post-body">'+p.texto+'</div>'+
+      '</div>';
+    }).join(''):'<div class="empty" style="padding:1rem;">Nenhum recado ainda. Veja os perfis da equipe!</div>')+
+    '</div>';
+
+  window._bgTemas = TEMAS;
+  window._bgSelecionado = bgAtual;
+  await updateLembreteNotifDot();
+}
+
+
+function renderInfosUteis(mc){
+  let activeTab = 'contatos';
+
+  function tabBtn(id, label, icon){
+    const active = activeTab===id;
+    return '<button onclick="iuSetTab(\''+id+'\')" style="padding:8px 18px;border:none;border-bottom:'+(active?'3px solid var(--primary)':'3px solid transparent')+';background:none;font-family:var(--font);font-size:13px;font-weight:'+(active?'600':'400')+';color:'+(active?'var(--primary)':'var(--text-3)')+';cursor:pointer;margin-bottom:-2px;">'+icon+' '+label+'</button>';
+  }
+
+  function linkRow(label, url){
+    if(!url||url.trim()==='') return '';
+    const href = url.startsWith('http')?url:'https://'+url;
+    return '<tr style="border-bottom:0.5px solid var(--border);">'+
+      '<td style="padding:8px 12px;font-size:13px;color:var(--text);font-weight:500;">'+label+'</td>'+
+      '<td style="padding:8px 12px;"><a href="'+href+'" target="_blank" style="color:var(--primary);font-size:12px;text-decoration:none;word-break:break-all;">'+url+'</a></td>'+
+      '<td style="padding:8px 8px;text-align:center;"><a href="'+href+'" target="_blank" style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:var(--primary);color:#fff;border-radius:20px;font-size:11px;text-decoration:none;font-weight:500;">Abrir →</a></td>'+
+    '</tr>';
+  }
+
+  function sectionHeader(title){
+    return '<tr><td colspan="3" style="padding:10px 12px 4px;font-size:11px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:0.07em;background:var(--surface);border-bottom:0.5px solid var(--border);">'+title+'</td></tr>';
+  }
+
+  function table(rows){
+    return '<div style="border-radius:10px;border:1px solid var(--border);overflow:hidden;margin-bottom:1rem;">'+
+      '<table style="width:100%;border-collapse:collapse;">'+
+        '<thead><tr style="background:var(--primary);color:#fff;">'+
+          '<th style="padding:8px 12px;text-align:left;font-size:12px;width:35%;">Nome</th>'+
+          '<th style="padding:8px 12px;text-align:left;font-size:12px;">Link</th>'+
+          '<th style="padding:8px 8px;text-align:center;font-size:12px;width:80px;">Ação</th>'+
+        '</tr></thead>'+
+        '<tbody>'+rows+'</tbody>'+
+      '</table></div>';
+  }
+
+  function waRow(label, url){
+    if(!url||url.trim()==='') return '';
+    const href = url.startsWith('http')?url:'https://'+url;
+    const tel = url.replace('https://wa.me/','').replace('http://wa.me/','');
+    return '<tr style="border-bottom:0.5px solid var(--border);">'+
+      '<td style="padding:8px 12px;font-size:13px;color:var(--text);font-weight:500;">'+label+'</td>'+
+      '<td style="padding:8px 12px;font-size:12px;color:var(--text-3);">'+tel+'</td>'+
+      '<td style="padding:8px 12px;font-size:11px;color:var(--text-3);font-family:var(--font-mono);"><a href="'+href+'" target="_blank" style="color:var(--primary);text-decoration:none;word-break:break-all;">'+href.replace(/^https?:\/\//,'')+'</a></td>'+
+      '<td style="padding:8px 8px;text-align:center;"><a href="'+href+'" target="_blank" style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:#25D366;color:#fff;border-radius:20px;font-size:11px;text-decoration:none;font-weight:500;">WhatsApp →</a></td>'+
+    '</tr>';
+  }
+
+  function renderEmentas(){
+    return '<div style="display:flex;flex-direction:column;gap:0.5rem;">'+
+      '<p style="font-size:13px;color:var(--text-2);margin-bottom:0.5rem;">Links das ementas dos cursos completos da Hashtag Treinamentos.</p>'+
+
+      '<div style="font-size:12px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:0.07em;margin:0.5rem 0 0.25rem;">🔗 Lovable (Links diretos)</div>'+
+      table(
+        [['Análise de Dados','https://ementas.hashtagtreinamentos.com/analise-de-dados-impressionador'],
+         ['Ciência de Dados','https://ementas.hashtagtreinamentos.com/ciencia-de-dados-impressionador'],
+         ['Excel','https://ementas.hashtagtreinamentos.com/excel-impressionador'],
+         ['Power BI','https://ementas.hashtagtreinamentos.com/power-bi-impressionador'],
+         ['Full Stack','https://ementas.hashtagtreinamentos.com/full-stack-impressionador'],
+         ['HTML & CSS','https://ementas.hashtagtreinamentos.com/html-css-impressionador'],
+         ['JavaScript','https://ementas.hashtagtreinamentos.com/javascript-impressionador'],
+         ['Python','https://ementas.hashtagtreinamentos.com/python-impressionador'],
+         ['SQL','https://ementas.hashtagtreinamentos.com/sql-impressionador'],
+         ['VBA','https://ementas.hashtagtreinamentos.com/vba-impressionador'],
+         ['Agentes de IA e N8N','https://ementas.hashtagtreinamentos.com/agentes-ia-n8n-impressionador'],
+         ['APIs de IA','https://ementas.hashtagtreinamentos.com/apis-de-inteligencia-artificial'],
+         ['Bubble','https://ementas.hashtagtreinamentos.com/bubble-impressionador'],
+         ['FlutterFlow','https://ementas.hashtagtreinamentos.com/flutterflow-impressionador'],
+         ['Inteligência Artificial','https://ementas.hashtagtreinamentos.com/inteligencia-artificial-impressionador'],
+         ['Lovable','https://ementas.hashtagtreinamentos.com/lovable-impressionador'],
+         ['Make','https://ementas.hashtagtreinamentos.com/make-impressionador'],
+         ['Trilha No Code e IA','https://ementas.hashtagtreinamentos.com/nocode-e-ia-impressionador'],
+         ['Supabase','https://ementas.hashtagtreinamentos.com/supabase-impressionador'],
+         ['Power Apps','https://ementas.hashtagtreinamentos.com/power-apps'],
+         ['Power Automate','https://ementas.hashtagtreinamentos.com/power-automate-impressionador'],
+         ['PowerPoint','https://ementas.hashtagtreinamentos.com/powerpoint-impressionador'],
+         ['AWS','https://ementas.hashtagtreinamentos.com/aws-impressionador'],
+         ['Inglês','https://ementas.hashtagtreinamentos.com/ingles-impressionador'],
+         ['Figma','https://ementas.hashtagtreinamentos.com/figma'],
+         ['SoftSkills','https://ementas.hashtagtreinamentos.com/softskills'],
+         ['Claude','https://ementas.hashtagtreinamentos.com/claude-impressionador'],
+        ].map(r=>linkRow(r[0],r[1])).join('')
+      )+
+
+      '<div style="font-size:12px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:0.07em;margin:0.5rem 0 0.25rem;">🔗 TinyURL</div>'+
+      table(
+        [['Excel','https://tinyurl.com/ementa-excel'],['VBA','https://tinyurl.com/ementa-vba'],['Power BI','https://tinyurl.com/ementa-powerbi'],['Python','https://tinyurl.com/ementa-python'],['PowerPoint','https://tinyurl.com/ementa-powerpoint'],['SQL','https://tinyurl.com/ementa-sql'],['Ciência de Dados','https://tinyurl.com/ementa-cienciadedados'],['JavaScript','https://tinyurl.com/ementa-javascript'],['Análise de Dados','https://tinyurl.com/ementa-analisededados'],['Power Apps','https://tinyurl.com/ementa-powerapps'],['HTML/CSS','https://tinyurl.com/ementa-htmlcss'],['Inteligência Artificial','https://tinyurl.com/ementa-ia'],['Full Stack','https://tinyurl.com/ementa-fullstack'],['Front End','https://tinyurl.com/ementa-frontend'],['Power Automate','https://tinyurl.com/ementa-powerautomate'],['Inglês','https://tinyurl.com/ementa-ingles'],['AWS','https://tinyurl.com/ementa-aws-impressionador'],['Me poupe + Hashtag','https://tinyurl.com/ementa-do-zero-a-liberdade'],['N8N','http://tinyurl.com/ementa-n8n'],['No Code IA','https://tinyurl.com/ementa-trilha-nocode-ia'],['Make','https://tinyurl.com/ementa-make'],['FlutterFlow','https://tinyurl.com/ementa-flutterflow'],['Figma','https://tinyurl.com/ementa-figma'],['Lovable','https://tinyurl.com/ementa-lovable'],['Bubble','https://tinyurl.com/ementa-bubble'],['Supabase','https://tinyurl.com/ementa-supabase'],
+        ].map(r=>linkRow(r[0],r[1])).join('')
+      )+
+
+      '<div style="font-size:12px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:0.07em;margin:0.5rem 0 0.25rem;">🔗 Bit.ly</div>'+
+      table(
+        [['Excel','http://bit.ly/ementa-excel'],['VBA','http://bit.ly/ementa-vba'],['Power BI','http://bit.ly/ementapbi'],['Python','https://bit.ly/ementapython'],['PowerPoint','http://bit.ly/ementa-ppt'],['SQL','http://bit.ly/ementa-sql'],['Ciência de Dados','https://bit.ly/ementa-cienciadedados'],['JavaScript','http://bit.ly/ementa-javascript'],['Análise de Dados','http://bit.ly/ementa-analise-dados'],['Power Apps','http://bit.ly/ementa-powerapps'],['HTML/CSS','http://bit.ly/ementa-html-css'],['Inteligência Artificial','https://bit.ly/ementa-ia'],['Full Stack','https://bit.ly/ementa-full-stack'],['Front End','https://bit.ly/ementa-front-end'],['Inglês','https://bit.ly/ementa-ingles'],['Power Automate','https://bit.ly/ementa-powerautomate'],
+        ].map(r=>linkRow(r[0],r[1])).join('')
+      )+
+
+      '<div style="font-size:12px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:0.07em;margin:0.5rem 0 0.25rem;">🔗 Google Drive (PDFs)</div>'+
+      table(
+        [['Excel','https://drive.google.com/file/d/1liMrej1_qlNgcFzb4-oi4xayt-wzXga8/view'],['VBA','https://drive.google.com/file/d/1yZQSKE36L-zz4O2RExU-zFmRpHLS3_if/view'],['Power BI','https://drive.google.com/file/d/17wRNr6D9L3oq6CskorGQE7ObRuosueap/view'],['Python','https://drive.google.com/file/d/1fjMLxiglDaTCJ4gSavbLTdMfANg3NePA/view'],['PowerPoint','https://drive.google.com/file/d/1uWhO97E6uaeZbnvNNVSERW7DePrt7DvH/view'],['SQL','https://drive.google.com/file/d/1z4atDe26U_lC25g5mXkKgJTXqeXo8MOO/view'],['Ciência de Dados','https://drive.google.com/file/d/1HPGHhxw0yJ9lLMSfwiqbA8Nbrp-ofe5K/view'],['JavaScript','https://drive.google.com/file/d/1YQLCEX6fhY1D2g--09uYeP-N8VBoXIQZ/view'],['Análise de Dados','https://drive.google.com/file/d/1nd7QSSOxGOur3rT7fztttKoU-lG_kUP8/view'],['Power Apps','https://drive.google.com/file/d/1ZHed1-k--Id7cTSPhUceUJWCkDxxd0Gc/view'],['HTML/CSS','https://drive.google.com/file/d/1hm6rbIsesjG3UtbBMGy1ED6xJxeDSq85/view'],['Inteligência Artificial','https://drive.google.com/file/d/1nfnf3MFLQsPqmRK4mgskZvJOSokXCzHm/view'],['Full Stack','https://drive.google.com/file/d/1yLstx1h-uY2bJU1FF10Mwd21Nzr8FDBv/view'],['Front End','https://drive.google.com/file/d/1eNf_vqxHzptvzMs4UZX4ILQSlTtt8z1C/view'],['Power Automate','https://drive.google.com/file/d/1e8_OX2Z10DonQIQTX3JhpybZLbz_K--D/view'],['Inglês','https://drive.google.com/file/d/19tZsNibwzsbmJp1Foe-1ZfosiD91L48v/view'],['Figma','https://drive.google.com/file/d/1WBqDS9jCN7A3vIddiNFzgIWv1rXUQ10Y/view'],['Me poupe + Hashtag','https://drive.google.com/file/d/1f50BHG3qV7Yypjzcs6NBOyZlRrQZ5n3q/view'],
+        ].map(r=>linkRow(r[0],r[1])).join('')
+      )+
+    '</div>';
+  }
+
+  function renderContatos(){
+    return '<div>'+
+      '<p style="font-size:13px;color:var(--text-2);margin-bottom:1rem;">Contatos internos e números da equipe Hashtag.</p>'+
+      '<div style="font-size:12px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:0.25rem;">🔍 Verificador de Números</div>'+
+      table(linkRow('Hash Verificador de Números','https://dlp.hashtagtreinamentos.com/verificador-numeros'))+
+      '<div style="font-size:12px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:0.07em;margin:0.75rem 0 0.25rem;">📱 WhatsApp — Setores</div>'+
+      '<div style="border-radius:10px;border:1px solid var(--border);overflow:hidden;margin-bottom:1rem;">'+
+        '<table style="width:100%;border-collapse:collapse;">'+
+          '<thead><tr style="background:var(--primary);color:#fff;"><th style="padding:8px 12px;text-align:left;font-size:12px;">Setor</th><th style="padding:8px 12px;text-align:left;font-size:12px;">Número</th><th style="padding:8px 12px;text-align:left;font-size:12px;">Link wa.me</th><th style="padding:8px 8px;text-align:center;font-size:12px;width:100px;">Ação</th></tr></thead>'+
+          '<tbody>'+
+          [['Suporte','https://wa.me/556193314870'],['Renovação (persona Marcus)','https://wa.me/5521971419046'],['Cobrança Ativa + Renegociação (persona Daniel)','https://wa.me/5521967760689'],['CS (persona Renan)','https://wa.me/5521972394185'],['InCompany','https://wa.me/5521995115669'],['Venda Passiva + Recuperação de Venda','https://wa.me/5521996582442'],['Cobrança Passiva (persona Pedro)','https://wa.me/5521997321507'],['Banco de Vagas/Inglês','https://wa.me/5521988665281'],['CS InCompany','https://wa.me/5521991085400'],['WhatsApp de Dúvidas (leads)','https://wa.me/+5521967218715'],['Capacitaciones','https://wa.me/+5521987571404'],['Pós (inside sales)','https://wa.me/552123913845'],['Pós (cobrança)','https://wa.me/5521923675995'],['Pós (CS)','https://wa.me/552123913961'],
+          ].map(r=>waRow(r[0],r[1])).join('')+
+          '</tbody></table></div>'+
+      '<div style="font-size:12px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:0.07em;margin:0.75rem 0 0.25rem;">👥 Comercial Ativo</div>'+
+      '<div style="border-radius:10px;border:1px solid var(--border);overflow:hidden;margin-bottom:1rem;">'+
+        '<table style="width:100%;border-collapse:collapse;">'+
+          '<thead><tr style="background:var(--primary);color:#fff;"><th style="padding:8px 12px;text-align:left;font-size:12px;">Consultor</th><th style="padding:8px 12px;text-align:left;font-size:12px;">Número</th></tr></thead>'+
+          '<tbody>'+
+          [['Micheli Lourenço','61995822607'],['Amanda Curi','21980891321'],['Amanda Curi','21972620685'],['Amanda Curi','21 971731321'],['Tiago Franco','11948848164'],['Gilliano Mello','21975637643'],['Eliel Teixeira','21979451900'],['Lucas Galvão','31998913108'],['Camila Suenaga','11985562799'],['Marcus Cavalcanti','21995084103'],['Micheli Lourenço','21974873453'],
+          ].map(r=>'<tr style="border-bottom:0.5px solid var(--border);"><td style="padding:8px 12px;font-size:13px;font-weight:500;">'+r[0]+'</td><td style="padding:8px 12px;font-size:13px;color:var(--text-3);">'+r[1]+'</td></tr>').join('')+
+          '</tbody></table></div>'+
+    '</div>';
+  }
+
+  function renderGrupos(){
+    return '<div>'+
+      '<p style="font-size:13px;color:var(--text-2);margin-bottom:1rem;">Links de convite para grupos de WhatsApp e comunidades no Facebook dos alunos.</p>'+
+      [
+        ['EXCEL',['Excel Online','https://eventoshashtag.herokuapp.com/excel-online'],['Grupo Facebook','https://www.facebook.com/groups/1945224525867908/']],
+        ['POWER BI',['PBI Online','https://eventoshashtag.herokuapp.com/pbi-online'],['Grupo Facebook','https://www.facebook.com/groups/580066976765611']],
+        ['PYTHON',['Python Online','https://eventoshashtag.herokuapp.com/python-online'],['Grupo Facebook','https://www.facebook.com/groups/344824740817273']],
+        ['SQL',['SQL Online','https://eventoshashtag.herokuapp.com/sql-online'],['Grupo Facebook','https://www.facebook.com/groups/1161456458113361/']],
+        ['VBA',['VBA Online','https://eventoshashtag.herokuapp.com/vba-online'],['Grupo Facebook','https://www.facebook.com/groups/2948866975414505']],
+        ['POWERPOINT',['PPT Online','https://eventoshashtag.herokuapp.com/ppt-online'],['Grupo Facebook','https://www.facebook.com/groups/651724696687876/']],
+        ['CIÊNCIA DE DADOS',['Ciência de Dados Online','https://eventoshashtag.herokuapp.com/ciencia-de-dados-online'],['Grupo Facebook','https://www.facebook.com/groups/516376017010446/']],
+        ['COMUNIDADE IMPRESSIONADORA',['Comunidade','http://eventoshashtag.herokuapp.com/comunidade-hashtag']],
+        ['JAVASCRIPT / HTML / FULL STACK',['Grupo Facebook','https://www.facebook.com/groups/615963560411896/']],
+        ['ASSINATURA VITALÍCIA',['Alunos Vi Online','http://eventoshashtag.herokuapp.com/alunos-vitalicio']],
+        ['INGLÊS IMPRESSIONADOR',['WhatsApp','https://eventoshashtag.herokuapp.com/ingles-online'],['Grupo Facebook','https://www.facebook.com/groups/inglesimpressionador']],
+      ].map(group=>{
+        const title = group[0];
+        const links = group.slice(1);
+        return '<div style="font-size:12px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:0.07em;margin:0.75rem 0 0.25rem;">'+title+'</div>'+
+          table(links.map(l=>linkRow(l[0],l[1])).join(''));
+      }).join('')+
+    '</div>';
+  }
+
+  function build(){
+    mc.innerHTML = snakeHtml()+
+      '<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;">'+
+        '<div class="page-eyebrow">💡 GERAL</div>'+
+        '<div class="page-title">Informacoes Uteis</div>'+
+        '<div class="page-sub">Ementas, contatos e grupos da equipe Hashtag</div>'+
+      '</div>'+
+      '<div style="display:flex;gap:0;margin-bottom:1.5rem;border-bottom:2px solid var(--border);">'+
+        tabBtn('contatos','Contatos','📱')+
+        tabBtn('ementas','Ementas','📄')+
+        tabBtn('grupos','Grupos WhatsApp/Facebook','👥')+
+      '</div>'+
+      (activeTab==='contatos'?renderContatos():activeTab==='ementas'?renderEmentas():renderGrupos());
+  }
+
+  window.iuSetTab = function(tab){ activeTab=tab; build(); };
+  build();
+}
+
+
+async function renderRelatDisparos(mc){
+  const today = new Date();
+  let activeTab = 'tabela'; // 'tabela' | 'historico'
+  // 5 datas livres — padrão: seg-sex da semana atual
+  function defaultDates(){
+    const d = new Date();
+    const day = d.getDay();
+    const diff = (day - 1 + 7) % 7;
+    const mon = new Date(d); mon.setDate(d.getDate() - diff);
+    return [0,1,2,3,4].map(i=>{ const x=new Date(mon); x.setDate(mon.getDate()+i); return fmtDateKey(x); });
+  }
+  // Persist dates across F5
+  const RD_KEY = 'rd_freeDates';
+  function loadFreeDates(){
+    try{
+      const saved = JSON.parse(localStorage.getItem(RD_KEY)||'null');
+      if(saved && saved.length===5 && saved.every(d=>typeof d==='string'&&d.length===10)) return saved;
+    }catch(e){}
+    return defaultDates();
+  }
+  function saveFreeDates(){ localStorage.setItem(RD_KEY, JSON.stringify(freeDates)); }
+  let freeDates = loadFreeDates();
+  let editMode = false;
+
+  async function loadData(weekDays){
+    const keys = weekDays.map(fmtDateKey);
+    const docs = await Promise.all(keys.map(k=>getDoc(doc(db,'relatorio_disparos',k))));
+    const data = {};
+    docs.forEach((d,i)=>{data[keys[i]]=d.exists()?d.data():{};});
+    return data;
+  }
+
+  async function render(){
+    const keys = freeDates;
+    const weekDays = keys.map(k=>new Date(k+'T12:00:00'));
+    const data = await loadData(weekDays);
+
+    const totalDia = keys.map(k=>DISP_TIPOS.reduce((s,t)=>s+(Number(data[k]?.[t])||0),0));
+    const somaGeral = totalDia.reduce((a,b)=>a+b,0);
+    const somasTipo = DISP_TIPOS.map(t=>keys.reduce((s,k)=>s+(Number(data[k]?.[t])||0),0));
+    const totalGeral = somasTipo.reduce((a,b)=>a+b,0);
+    const semIni = weekDays[0].toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
+    const semFim = weekDays[4].toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'});
+
+    // Montar HTML
+    let html = snakeHtml()+
+      '<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;">'+
+        '<div class="page-eyebrow">📊 COORD</div>'+
+        '<div class="page-title">Relatorio de Disparos</div>'+
+        '<div class="page-sub">Registro semanal por tipo de mensagem</div>'+
+      '</div>'+
+      // Abas
+      '<div style="display:flex;gap:0;margin-bottom:1.25rem;border-bottom:2px solid var(--border);">'+
+        '<button onclick="rdSetTab(\'tabela\')" style="padding:8px 20px;border:none;border-bottom:'+(activeTab==='tabela'?'3px solid var(--primary)':'3px solid transparent')+';background:none;font-family:var(--font);font-size:13px;font-weight:'+(activeTab==='tabela'?'600':'400')+';color:'+(activeTab==='tabela'?'var(--primary)':'var(--text-3)')+';cursor:pointer;margin-bottom:-2px;">📊 Tabela</button>'+
+        '<button onclick="rdSetTab(\'historico\')" style="padding:8px 20px;border:none;border-bottom:'+(activeTab==='historico'?'3px solid var(--primary)':'3px solid transparent')+';background:none;font-family:var(--font);font-size:13px;font-weight:'+(activeTab==='historico'?'600':'400')+';color:'+(activeTab==='historico'?'var(--primary)':'var(--text-3)')+';cursor:pointer;margin-bottom:-2px;">🕒 Historico</button>'+
+      '</div>'+
+      (activeTab==='historico'?rdHistoricoHtml():
+      // Aba Tabela — controles
+      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:1rem;flex-wrap:wrap;">'+
+        '<span style="font-size:12px;font-weight:600;color:var(--text-3);white-space:nowrap;">Datas:</span>'+
+        freeDates.map((k,i)=>'<input type="date" value="'+k+'" onchange="rdChangeDate('+i+',this.value)" style="padding:5px 8px;border:1px solid var(--border-md);border-radius:var(--radius);font-family:var(--font);font-size:12px;background:var(--bg);cursor:pointer;"/>').join('')+
+        '<button onclick="rdResetDatas()" style="padding:5px 10px;border:1px solid var(--border-md);border-radius:var(--radius);background:var(--surface);cursor:pointer;font-family:var(--font);font-size:11px;color:var(--text-3);">Semana atual</button>'+
+        '<div style="margin-left:auto;display:flex;gap:8px;">'+
+          (editMode?
+            '<button onclick="rdSalvar()" style="padding:7px 16px;background:var(--primary);color:#fff;border:none;border-radius:var(--radius);cursor:pointer;font-family:var(--font);font-size:13px;font-weight:500;">Salvar</button>'+
+            '<button onclick="rdCancelar()" style="padding:7px 14px;border:1px solid var(--border-md);border-radius:var(--radius);background:var(--surface);cursor:pointer;font-family:var(--font);font-size:13px;">Cancelar</button>'
+            :
+            '<button onclick="rdEditar()" style="padding:7px 14px;border:1px solid var(--primary);color:var(--primary);border-radius:var(--radius);background:var(--surface);cursor:pointer;font-family:var(--font);font-size:13px;font-weight:500;">✏️ Editar</button>'
+          )+
+          '<button onclick="rdExportar()" style="padding:7px 14px;border:1px solid #1D6F42;color:#1D6F42;border-radius:var(--radius);background:var(--surface);cursor:pointer;font-family:var(--font);font-size:13px;font-weight:500;">⬇️ Excel</button>'+
+        '</div>'+
+      '</div>'+
+      // Tabela
+      '<div style="overflow-x:auto;border-radius:10px;border:1px solid var(--border);">'+
+      '<table style="width:100%;border-collapse:collapse;font-size:12px;min-width:900px;">'+
+        '<thead>'+
+          '<tr style="background:#4472C4;color:#fff;">'+
+            '<th style="padding:8px 12px;text-align:left;font-weight:600;min-width:160px;">Tipo de Mensagem</th>'+
+            weekDays.map((d,i)=>'<th style="padding:8px 10px;text-align:center;font-weight:600;min-width:110px;">'+fmtDateLabel(d)+'<br><span style="font-weight:400;font-size:10px;">'+d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})+'</span></th>').join('')+
+            '<th style="padding:8px 10px;text-align:center;background:#1F4E79;min-width:80px;">Soma</th>'+
+            '<th style="padding:8px 10px;text-align:center;background:#1F4E79;min-width:80px;">Media</th>'+
+            '<th style="padding:8px 10px;text-align:center;background:#1F4E79;min-width:100px;">Concentracao</th>'+
+          '</tr>'+
+        '</thead>'+
+        '<tbody>'+
+        DISP_TIPOS.map((tipo,ti)=>{
+          const cor = DISP_CORES[tipo];
+          const soma = somasTipo[ti];
+          const media = keys.filter(k=>Number(data[k]?.[tipo]||0)>0).length;
+          const mediav = media>0?(soma/media).toFixed(1):0;
+          const conc = totalGeral>0?((soma/totalGeral)*100).toFixed(2)+'%':'0,00%';
+          return '<tr style="border-bottom:1px solid var(--border);">'+
+            '<td style="padding:7px 12px;font-weight:500;'+(cor?'background:'+cor+';':'')+'">'+tipo+'</td>'+
+            keys.map((k,di)=>{
+              const v = Number(data[k]?.[tipo]||0);
+              if(editMode){
+                return '<td style="padding:4px 6px;text-align:center;"><input type="number" min="0" id="rd-'+ti+'-'+di+'" value="'+v+'" style="width:90px;padding:5px;border:1px solid var(--border-md);border-radius:4px;text-align:center;font-family:var(--font);font-size:12px;background:var(--bg);"/></td>';
+              }
+              return '<td style="padding:7px 10px;text-align:center;'+(v>0?'font-weight:500;':'color:var(--text-3);')+'">'+( v||0)+'</td>';
+            }).join('')+
+            '<td style="padding:7px 10px;text-align:center;font-weight:600;background:#BDD7EE;">'+soma+'</td>'+
+            '<td style="padding:7px 10px;text-align:center;background:#DDEBF7;">'+mediav+'</td>'+
+            '<td style="padding:7px 10px;text-align:center;background:#DDEBF7;">'+conc+'</td>'+
+          '</tr>';
+        }).join('')+
+        // Total por dia
+        '<tr style="background:#9DC3E6;font-weight:700;border-top:2px solid #4472C4;">'+
+          '<td style="padding:8px 12px;">Total por dia:</td>'+
+          totalDia.map(v=>'<td style="padding:8px 10px;text-align:center;">'+v+'</td>').join('')+
+          '<td colspan="3" style="padding:8px 10px;"></td>'+
+        '</tr>'+
+        '<tr style="background:#9DC3E6;font-weight:700;">'+
+          '<td style="padding:8px 12px;">Soma geral:</td>'+
+          '<td style="padding:8px 10px;text-align:center;font-size:13px;">'+somaGeral+'</td>'+
+          '<td colspan="'+(weekDays.length-1+3)+'" style="padding:8px 10px;"></td>'+
+        '</tr>'+
+        '</tbody>'+
+      '</table></div>'+
+      '');  // fecha aba tabela
+
+    mc.innerHTML = html;
+
+    // Guardar estado para funções externas
+    window._rdState = {weekDays, keys, data, editMode};
+  }
+
+  window.rdSetTab = function(tab){ activeTab=tab; editMode=false; render(); };
+
+  function rdHistoricoHtml(){
+    return '<div id="rd-hist-wrap"><div style="display:flex;align-items:center;gap:12px;margin-bottom:1rem;flex-wrap:wrap;">'+
+      '<span style="font-size:13px;font-weight:600;color:var(--text);">Exportar periodo:</span>'+
+      '<div style="display:flex;align-items:center;gap:6px;font-size:12px;">'+
+        '<span style="color:var(--text-3);">De</span>'+
+        '<input type="date" id="rd-hist-de" style="padding:5px 8px;border:1px solid var(--border-md);border-radius:var(--radius);font-family:var(--font);font-size:12px;background:var(--bg);"/>'+
+        '<span style="color:var(--text-3);">ate</span>'+
+        '<input type="date" id="rd-hist-ate" style="padding:5px 8px;border:1px solid var(--border-md);border-radius:var(--border-md);font-family:var(--font);font-size:12px;background:var(--bg);"/>'+
+      '</div>'+
+      '<button onclick="rdExportarPeriodo()" style="padding:7px 14px;border:1px solid #1D6F42;color:#1D6F42;border-radius:var(--radius);background:var(--surface);cursor:pointer;font-family:var(--font);font-size:13px;font-weight:500;">⬇️ Exportar Excel</button>'+
+      '<button onclick="rdExportarSemanaAtual()" style="padding:7px 14px;border:1px solid var(--primary);color:var(--primary);border-radius:var(--radius);background:var(--surface);cursor:pointer;font-family:var(--font);font-size:13px;font-weight:500;">⬇️ Semana atual</button>'+
+    '</div>'+
+    '<div id="rd-hist-preview" style="margin-top:0.5rem;font-size:12px;color:var(--text-3);">Selecione um periodo e clique em Exportar.</div>'+
+    '</div>';
+  }
+
+  window.rdExportarSemanaAtual = async function(){
+    const {weekDays, keys, data} = window._rdState;
+    await _rdGerarExcel(keys, weekDays, data, 'semana_atual');
+  };
+
+  window.rdExportarPeriodo = async function(){
+    const de = document.getElementById('rd-hist-de')?.value;
+    const ate = document.getElementById('rd-hist-ate')?.value;
+    if(!de || !ate){ showToast('Selecione o periodo completo.'); return; }
+    if(de > ate){ showToast('Data inicial deve ser antes da final.'); return; }
+
+    // Gerar todos os dias do período
+    const preview = document.getElementById('rd-hist-preview');
+    if(preview) preview.textContent = 'Carregando dados...';
+
+    const days = [];
+    const cur = new Date(de+'T12:00:00');
+    const end = new Date(ate+'T12:00:00');
+    while(cur <= end){ days.push(new Date(cur)); cur.setDate(cur.getDate()+1); }
+
+    const keys = days.map(fmtDateKey);
+    const docs = await Promise.all(keys.map(k=>getDoc(doc(db,'relatorio_disparos',k))));
+    const data = {};
+    docs.forEach((d,i)=>{ data[keys[i]]=d.exists()?d.data():{}; });
+
+    if(preview) preview.textContent = days.length+' dias carregados.';
+    await _rdGerarExcel(keys, days, data, 'periodo_'+de+'_'+ate);
+  };
+
+  async function _rdGerarExcel(keys, days, data, filename){
+    // Gerar CSV estruturado igual à tabela do sistema
+    const header = ['Tipo de Mensagem', ...days.map(d=>d.toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit'})), 'Soma', 'Media', 'Concentracao'];
+    const rows = [header];
+    const somasTipo = DISP_TIPOS.map(t=>keys.reduce((s,k)=>s+(Number(data[k]?.[t])||0),0));
+    const totalGeral = somasTipo.reduce((a,b)=>a+b,0);
+
+    DISP_TIPOS.forEach((tipo,ti)=>{
+      const vals = keys.map(k=>Number(data[k]?.[tipo]||0));
+      const soma = somasTipo[ti];
+      const diasComDados = vals.filter(v=>v>0).length;
+      const media = diasComDados>0?(soma/diasComDados).toFixed(1):0;
+      const conc = totalGeral>0?((soma/totalGeral)*100).toFixed(2)+'%':'0,00%';
+      rows.push([tipo,...vals,soma,media,conc]);
+    });
+
+    const totalDia = keys.map(k=>DISP_TIPOS.reduce((s,t)=>s+(Number(data[k]?.[t])||0),0));
+    rows.push(['Total por dia:',...totalDia,'','','']);
+    rows.push(['Soma geral:',totalDia.reduce((a,b)=>a+b,0),...Array(keys.length-1+3).fill('')]);
+
+    const csvContent = rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');
+    const blob = new Blob(['\uFEFF'+csvContent],{type:'text/csv;charset=utf-8;'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href=url; a.download='disparos_'+filename+'.csv';
+    a.click(); URL.revokeObjectURL(url);
+    showToast('Exportado! Abra no Excel.');
+  }
+
+  window.rdChangeDate = function(i, val){
+    if(!val) return;
+    freeDates[i] = val;
+    saveFreeDates();
+    editMode=false;
+    render();
+  };
+  window.rdResetDatas = function(){
+    freeDates = defaultDates();
+    saveFreeDates();
+    editMode=false;
+    render();
+  };
+  window.rdEditar = function(){ editMode=true; render(); };
+  window.rdCancelar = function(){ editMode=false; render(); };
+
+  window.rdSalvar = async function(){
+    const {weekDays,keys,data} = window._rdState;
+    try{
+      await Promise.all(keys.map((k,di)=>{
+        const obj={};
+        DISP_TIPOS.forEach((t,ti)=>{
+          const el=document.getElementById('rd-'+ti+'-'+di);
+          obj[t]=el?Number(el.value)||0:0;
+        });
+        obj.dataKey=k;
+        return setDoc(doc(db,'relatorio_disparos',k),obj);
+      }));
+      showToast('Relatorio salvo!');
+      editMode=false;
+      render();
+    }catch(e){showToast('Erro ao salvar.');}
+  };
+
+  window.rdExportar = async function(){
+    const {weekDays,keys,data} = window._rdState;
+    const semIni = weekDays[0].toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
+    const semFim = weekDays[4].toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'});
+
+    // Montar CSV
+    const header = ['Tipo de Mensagem',...weekDays.map(d=>fmtDateLabel(d)+' '+d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})),'Soma','Media','Concentracao'];
+    const rows = [header];
+    const somasTipo = DISP_TIPOS.map(t=>keys.reduce((s,k)=>s+(Number(data[k]?.[t])||0),0));
+    const totalGeral = somasTipo.reduce((a,b)=>a+b,0);
+
+    DISP_TIPOS.forEach((tipo,ti)=>{
+      const vals = keys.map(k=>Number(data[k]?.[tipo]||0));
+      const soma = somasTipo[ti];
+      const diasComDados = vals.filter(v=>v>0).length;
+      const media = diasComDados>0?(soma/diasComDados).toFixed(1):0;
+      const conc = totalGeral>0?((soma/totalGeral)*100).toFixed(2)+'%':'0,00%';
+      rows.push([tipo,...vals,soma,media,conc]);
+    });
+
+    const totalDia = keys.map(k=>DISP_TIPOS.reduce((s,t)=>s+(Number(data[k]?.[t])||0),0));
+    rows.push(['Total por dia:',...totalDia,'','','']);
+    rows.push(['Soma geral:',totalDia.reduce((a,b)=>a+b,0),...Array(keys.length-1+3).fill('')]);
+
+    const csvContent = 'Semana '+semIni+' - '+semFim+'\n'+
+      rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');
+
+    const blob = new Blob(['\uFEFF'+csvContent],{type:'text/csv;charset=utf-8;'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href=url; a.download='disparos_'+semIni.replace('/','_')+'_'+semFim.replace(/[\/]/g,'_')+'.csv';
+    a.click(); URL.revokeObjectURL(url);
+    showToast('Exportado como CSV (abra no Excel)!');
+  };
+
+  render();
+}
+
+
+async function renderAgenda(mc){
+  const {isCoord} = getPerms();
+  mc.style.padding = '0';
+  mc.style.overflow = 'hidden';
+
+  const GCAL_CLIENT_ID = '784122936551-7r640rsebf7fnvkhb0ciqkmrim5ksu6u.apps.googleusercontent.com';
+  const GCAL_SCOPE = 'https://www.googleapis.com/auth/calendar.readonly';
+  let gcalToken = sessionStorage.getItem('gcal_token') || null;
+  let gcalEvents = JSON.parse(sessionStorage.getItem('gcal_events') || '[]');
+
+  // Transparência salva por usuário
+  let agendaOpacity = parseFloat(localStorage.getItem('agenda_opacity') || '0.72');
+
+  async function loadAgenda(){
+    const [semanSnap, mensalSnap, adicSnap, pessoalSnap] = await Promise.all([
+      getDoc(doc(db,'config','reuniao')),
+      getDoc(doc(db,'config','reuniao_mensal')),
+      getDoc(doc(db,'config','reuniao_adicional')),
+      getDocs(query(collection(db,'agenda_pessoal'), where('uid','==',currentUser.uid), orderBy('ts','asc')))
+    ]);
+    return {
+      semanal:  semanSnap.exists()  ? semanSnap.data()  : {},
+      mensal:   mensalSnap.exists() ? mensalSnap.data() : {},
+      adicional: adicSnap.exists()  ? adicSnap.data()   : {},
+      pessoal: pessoalSnap.docs.map(d=>({id:d.id,...d.data()}))
+    };
+  }
+
+  // Parse dd/mm/aaaa or dd/mm → {day, month (0-based), year}
+  function parseDate(str){
+    if(!str) return null;
+    const p = str.split('/');
+    if(p.length < 2) return null;
+    const d = parseInt(p[0]), m = parseInt(p[1])-1;
+    const y = p.length >= 3 ? parseInt(p[2]) : new Date().getFullYear();
+    if(isNaN(d)||isNaN(m)) return null;
+    return {day:d, month:m, year:y};
+  }
+
+  async function renderPage(viewYear, viewMonth){
+    const now = new Date();
+    if(viewYear === undefined) viewYear = now.getFullYear();
+    if(viewMonth === undefined) viewMonth = now.getMonth();
+
+    const {semanal, mensal, adicional, pessoal} = await loadAgenda();
+
+    // Build event map: key = "day-month-year" → array of events
+    const evMap = {};
+    const addEv = (dateStr, ev) => {
+      const pd = parseDate(dateStr);
+      if(!pd) return;
+      const key = pd.day+'-'+pd.month+'-'+pd.year;
+      if(!evMap[key]) evMap[key] = [];
+      evMap[key].push(ev);
+    };
+
+    // Semanal — recorre toda semana no mês exibido (usa dia da semana do data)
+    if(semanal.data){
+      const pd = parseDate(semanal.data);
+      if(pd){
+        // find day-of-week of that date, mark every same weekday in viewMonth
+        const baseDate = new Date(pd.year, pd.month, pd.day);
+        const dow = baseDate.getDay();
+        const daysInMonth = new Date(viewYear, viewMonth+1, 0).getDate();
+        for(let d=1;d<=daysInMonth;d++){
+          const dt = new Date(viewYear, viewMonth, d);
+          if(dt.getDay()===dow){
+            addEv(d+'/'+(viewMonth+1)+'/'+viewYear, {tipo:'semanal',label:'Reunião Semanal',horario:semanal.horario||'',meet:semanal.meet||''});
+          }
+        }
+      }
+    }
+
+    // Mensal — marca o dia específico
+    if(mensal.data) addEv(mensal.data, {tipo:'mensal',label:'Reunião Mensal',horario:mensal.horario||'',meet:mensal.meet||''});
+
+    // Adicional — marca o dia específico
+    if(adicional.data) addEv(adicional.data, {tipo:'adicional',label:'Reuniões Adicionais',horario:adicional.horario||'',meet:adicional.meet||''});
+
+    // Pessoal
+    pessoal.forEach(r => addEv(r.data, {tipo:'pessoal',label:r.titulo,horario:r.horario||'',meet:r.meet||'',id:r.id}));
+
+    // Google Calendar
+    gcalEvents.forEach(e=>{
+      if(!e.start) return;
+      const dateStr = (e.start.dateTime||e.start.date||'').slice(0,10);
+      if(!dateStr) return;
+      const [gy,gm,gd] = dateStr.split('-').map(Number);
+      const gkey = gd+'-'+(gm-1)+'-'+gy;
+      if(!evMap[gkey]) evMap[gkey]=[];
+      evMap[gkey].push({tipo:'gcal',label:e.summary||'(sem título)',horario:e.start.dateTime?e.start.dateTime.slice(11,16):'',meet:e.hangoutLink||e.htmlLink||''});
+    });
+
+    // Calendar grid
+    const daysInMonth = new Date(viewYear, viewMonth+1, 0).getDate();
+    const firstDow = new Date(viewYear, viewMonth, 1).getDay(); // 0=Sun
+    const monthNames = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+    const dayNames = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+
+    let calCells = '';
+    // Header days
+    dayNames.forEach(d => {
+      calCells += '<div style="text-align:center;font-size:10px;font-weight:600;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.08em;padding:6px 0;">'+d+'</div>';
+    });
+    // Empty cells before first day
+    for(let i=0;i<firstDow;i++) calCells += '<div></div>';
+    // Day cells
+    for(let d=1;d<=daysInMonth;d++){
+      const isToday = (d===now.getDate() && viewMonth===now.getMonth() && viewYear===now.getFullYear());
+      const key = d+'-'+viewMonth+'-'+viewYear;
+      const evs = evMap[key]||[];
+      const dotColors = {semanal:'#22c55e', mensal:'#ef4444', adicional:'#9333ea', pessoal:'#3b82f6', gcal:'#eab308'};
+      const dotShadows = {semanal:'0 0 5px #22c55e', mensal:'0 0 5px #ef4444', adicional:'0 0 5px #9333ea', pessoal:'0 0 5px #3b82f6', gcal:'0 0 5px #eab308'};
+      const dots = evs.map(e=>'<span style="width:6px;height:6px;border-radius:50%;background:'+(dotColors[e.tipo]||'#fff')+';box-shadow:'+(dotShadows[e.tipo]||'none')+';display:inline-block;margin:0 1px;"></span>').join('');
+      const todayBg = isToday?'rgba(76,175,106,0.35)':'transparent';
+      calCells += '<div onclick="agendaSelectDay('+d+','+viewMonth+','+viewYear+')" oncontextmenu="agendaContextMenu(event,'+d+','+viewMonth+','+viewYear+')" data-today="'+(isToday?'1':'0')+'" style="cursor:pointer;border-radius:8px;padding:4px 2px;text-align:center;background:'+todayBg+';border:'+(isToday?'1px solid rgba(76,175,106,0.6)':'1px solid transparent')+';transition:background 0.12s;" onmouseover="this.style.background=\'rgba(255,255,255,0.08)\'" onmouseout="this.style.background=(this.dataset.today===\'1\'?\'rgba(76,175,106,0.35)\':\'transparent\')">'+
+        '<div style="font-size:13px;font-weight:'+(isToday?'600':'400')+';color:'+(isToday?'#fff':'rgba(255,255,255,0.85)')+';">'+d+'</div>'+
+        (dots?'<div style="display:flex;justify-content:center;gap:1px;margin-top:2px;">'+dots+'</div>':'<div style="height:7px;"></div>')+
+      '</div>';
+    }
+
+    // Banners
+    const makeBanner = (tipo, data, cor, onEdit) => {
+      const temLink = !!data.meet;
+      const temInfo = !!(data.horario || data.data);
+      return '<div style="flex:1;background:'+cor+';border-radius:var(--radius-lg);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;gap:10px;overflow:hidden;position:relative;min-width:0;">'+
+        '<div style="position:absolute;top:-20px;right:-20px;width:90px;height:90px;background:rgba(255,255,255,0.05);border-radius:50%;"></div>'+
+        '<div style="display:flex;align-items:center;gap:12px;position:relative;z-index:1;min-width:0;">'+
+          '<div style="width:34px;height:34px;border-radius:8px;background:rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;flex-shrink:0;">'+
+            '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.85)" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>'+
+          '</div>'+
+          '<div style="min-width:0;">'+
+            '<div style="font-size:9px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:rgba(255,255,255,0.5);margin-bottom:2px;">'+tipo+'</div>'+
+            '<div style="font-size:14px;font-weight:500;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+(temInfo?(data.horario||'')+(data.data?' · '+data.data:''):'Não agendada')+'</div>'+
+          '</div>'+
+        '</div>'+
+        '<div style="display:flex;align-items:center;gap:6px;flex-shrink:0;position:relative;z-index:1;">'+
+          (temLink?'<a href="'+data.meet+'" target="_blank" style="padding:6px 14px;background:rgba(34,197,94,0.18);color:#4ade80;border:1px solid rgba(34,197,94,0.5);border-radius:20px;text-decoration:none;font-size:11px;font-weight:600;display:inline-flex;align-items:center;gap:5px;text-shadow:0 0 8px rgba(74,222,128,0.5);letter-spacing:0.01em;"><span style="width:6px;height:6px;border-radius:50%;background:#22c55e;box-shadow:0 0 6px #22c55e;"></span>Meet</a>':'')+
+          (isCoord?'<button onclick="'+onEdit+'()" style="padding:5px 10px;border:1px solid rgba(255,255,255,0.15);border-radius:20px;background:transparent;color:rgba(255,255,255,0.55);font-family:var(--font);font-size:11px;cursor:pointer;">Editar</button>':'')+
+        '</div>'+
+      '</div>';
+    };
+
+    const glassStyle = 'background:rgba(10,30,15,'+agendaOpacity+');backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border:1px solid rgba(255,255,255,0.1);border-radius:16px;';
+
+    mc.innerHTML =
+      // Full-screen background
+      '<div style="position:relative;width:100%;height:calc(100vh - 56px);background:url(https://res.cloudinary.com/dbd9hpwyb/image/upload/v1781053769/foto_rio_keunob.jpg) center/cover no-repeat;overflow-y:auto;">'+
+      snakeHtml()+
+
+      // Content wrapper with padding
+      '<div style="position:relative;z-index:1;padding:1.5rem;min-height:100%;display:flex;flex-direction:column;gap:14px;">'+
+
+        // ── Banners: mensal full width, semanal + adicional side by side ──
+        '<div style="display:flex;flex-direction:column;gap:8px;">'+
+          // Mensal — full width
+          makeBanner('Reunião Mensal', mensal, 'linear-gradient(135deg,rgba(127,29,29,0.92),rgba(185,28,28,0.92))', 'editarReuniaoMensal')+
+          // Semanal + Adicional — half width each
+          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">'+
+            makeBanner('Reunião Semanal', semanal, 'linear-gradient(135deg,rgba(13,46,20,0.92),rgba(26,92,42,0.92))', 'editarReuniao')+
+            makeBanner('Reuniões Adicionais', adicional, 'linear-gradient(135deg,rgba(88,28,135,0.92),rgba(126,34,206,0.92))', 'editarReuniaoAdicional')+
+          '</div>'+
+        '</div>'+
+
+        // ── Calendar + Day detail ──
+        '<div style="display:grid;grid-template-columns:1fr 320px;gap:14px;flex:1;">'+
+
+          // Calendar glass card
+          '<div style="'+glassStyle+'padding:1.25rem;">'+
+            // Header
+            '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">'+
+              '<button onclick="agendaNavMonth(-1)" style="width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;">'+
+                '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>'+
+              '</button>'+
+              '<div style="font-size:15px;font-weight:500;color:#fff;">'+monthNames[viewMonth]+' '+viewYear+'</div>'+
+              '<button onclick="agendaNavMonth(1)" style="width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;">'+
+                '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>'+
+              '</button>'+
+            '</div>'+
+            // Grid
+            '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;">'+calCells+'</div>'+
+            // Legend
+            '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.08);">'+
+              '<div style="display:flex;align-items:center;gap:5px;font-size:11px;color:rgba(255,255,255,0.6);"><span style="width:8px;height:8px;border-radius:50%;background:#22c55e;box-shadow:0 0 6px #22c55e;display:inline-block;"></span>Semanal</div>'+
+              '<div style="display:flex;align-items:center;gap:5px;font-size:11px;color:rgba(255,255,255,0.6);"><span style="width:8px;height:8px;border-radius:50%;background:#ef4444;box-shadow:0 0 6px #ef4444;display:inline-block;"></span>Mensal</div>'+
+              '<div style="display:flex;align-items:center;gap:5px;font-size:11px;color:rgba(255,255,255,0.6);"><span style="width:8px;height:8px;border-radius:50%;background:#9333ea;box-shadow:0 0 6px #9333ea;display:inline-block;"></span>Adicionais</div>'+
+              '<div style="display:flex;align-items:center;gap:5px;font-size:11px;color:rgba(255,255,255,0.6);"><span style="width:8px;height:8px;border-radius:50%;background:#3b82f6;box-shadow:0 0 6px #3b82f6;display:inline-block;"></span>Pessoal</div>'+
+              '<div style="display:flex;align-items:center;gap:5px;font-size:11px;color:rgba(255,255,255,0.6);"><span style="width:8px;height:8px;border-radius:50%;background:#eab308;box-shadow:0 0 6px #eab308;display:inline-block;"></span>Google</div>'+
+            '</div>'+
+          '</div>'+
+
+          // Right panel: day detail + opacity + add
+          '<div style="display:flex;flex-direction:column;gap:10px;">'+
+
+            // Day events panel
+            '<div style="'+glassStyle+'padding:1.25rem;flex:1;">'+
+              '<div id="agenda-day-title" style="font-size:13px;font-weight:600;color:rgba(255,255,255,0.5);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.08em;">Selecione um dia</div>'+
+              '<div id="agenda-day-events" style="display:flex;flex-direction:column;gap:8px;"><div style="font-size:12px;color:rgba(255,255,255,0.3);">Clique em um dia do calendário para ver os eventos.</div></div>'+
+            '</div>'+
+
+            // Google Calendar connect button
+            '<div style="'+glassStyle+'padding:12px 16px;">'+
+              (gcalToken
+                ? '<div style="display:flex;align-items:center;gap:8px;"><span style="width:8px;height:8px;border-radius:50%;background:#eab308;box-shadow:0 0 6px #eab308;flex-shrink:0;"></span><span style="font-size:12px;color:rgba(255,255,255,0.7);">Google Agenda conectada</span><button onclick="gcalDesconectar()" style="margin-left:auto;padding:3px 8px;border:1px solid rgba(255,255,255,0.15);border-radius:6px;background:transparent;color:rgba(255,255,255,0.35);font-size:10px;cursor:pointer;font-family:var(--font);">Desconectar</button></div>'
+                : '<button onclick="gcalConectar()" style="width:100%;padding:9px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);border-radius:10px;color:rgba(255,255,255,0.7);font-family:var(--font);font-size:12px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;"><svg width=\'14\' height=\'14\' viewBox=\'0 0 24 24\'><path fill=\'#4285F4\' d=\'M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z\'/><path fill=\'#34A853\' d=\'M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z\'/><path fill=\'#FBBC05\' d=\'M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z\'/><path fill=\'#EA4335\' d=\'M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z\'/></svg>Conectar Google Agenda</button>'
+              )+
+            '</div>'+
+
+            // Add meeting button
+            '<button onclick="abrirModalReuniaoP()" style="width:100%;padding:11px;background:rgba(26,92,42,0.7);border:1px solid rgba(76,175,106,0.3);border-radius:12px;color:#fff;font-family:var(--font);font-size:13px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;transition:background 0.15s;" onmouseover="this.style.background=\'rgba(26,92,42,0.9)\'" onmouseout="this.style.background=\'rgba(26,92,42,0.7)\'">'+
+              '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>'+
+              'Nova reunião'+
+            '</button>'+
+
+            // Opacity slider
+            '<div style="'+glassStyle+'padding:12px 16px;">'+
+              '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">'+
+                '<div style="font-size:11px;color:rgba(255,255,255,0.45);font-weight:500;letter-spacing:0.06em;text-transform:uppercase;">Transparência</div>'+
+                '<div id="agenda-opacity-val" style="font-size:11px;color:rgba(255,255,255,0.5);">'+Math.round((1-agendaOpacity)*100)+'%</div>'+
+              '</div>'+
+              '<input type="range" id="agenda-opacity-slider" min="0.2" max="0.95" step="0.01" value="'+agendaOpacity+'" '+
+                'style="width:100%;accent-color:#4CAF6A;cursor:pointer;" '+
+                'oninput="agendaSetOpacity(this.value)"/>'+
+            '</div>'+
+
+          '</div>'+
+        '</div>'+
+
+      '</div>'+
+
+      // Modal nova reunião
+      '<div id="agenda-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:2000;align-items:center;justify-content:center;">'+
+        '<div style="background:#0d2e14;border:1px solid rgba(255,255,255,0.12);border-radius:var(--radius-lg);padding:1.75rem;width:100%;max-width:380px;box-shadow:0 20px 60px rgba(0,0,0,0.5);">'+
+          '<div style="font-size:16px;font-weight:500;color:#fff;margin-bottom:1.25rem;">Nova Reunião</div>'+
+          '<div class="field"><label style="color:rgba(255,255,255,0.5);">Título</label><input id="agp-titulo" type="text" placeholder="Ex: Alinhamento semanal" style="background:rgba(255,255,255,0.07);border-color:rgba(255,255,255,0.12);color:#fff;"/></div>'+
+          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">'+
+            '<div class="field"><label style="color:rgba(255,255,255,0.5);">Data</label><input id="agp-data" type="text" placeholder="dd/mm/aaaa" style="background:rgba(255,255,255,0.07);border-color:rgba(255,255,255,0.12);color:#fff;"/></div>'+
+            '<div class="field"><label style="color:rgba(255,255,255,0.5);">Horário</label><input id="agp-hora" type="text" placeholder="HH:MM" style="background:rgba(255,255,255,0.07);border-color:rgba(255,255,255,0.12);color:#fff;"/></div>'+
+          '</div>'+
+          '<div class="field"><label style="color:rgba(255,255,255,0.5);">Link do Meet (opcional)</label><input id="agp-meet" type="text" placeholder="https://meet.google.com/..." style="background:rgba(255,255,255,0.07);border-color:rgba(255,255,255,0.12);color:#fff;"/></div>'+
+          '<div style="display:flex;gap:10px;margin-top:4px;">'+
+            '<button onclick="fecharModalReuniaoP()" style="flex:1;padding:9px;border:1px solid rgba(255,255,255,0.15);border-radius:var(--radius);background:transparent;color:rgba(255,255,255,0.5);font-family:var(--font);font-size:13px;cursor:pointer;">Cancelar</button>'+
+            '<button onclick="salvarReuniaoP()" style="flex:2;padding:10px;background:var(--primary);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:14px;font-weight:500;cursor:pointer;">Salvar</button>'+
+          '</div>'+
+        '</div>'+
+      '</div>'+
+      '</div>';
+
+    // Store state for nav
+    mc._agendaYear = viewYear;
+    mc._agendaMonth = viewMonth;
+    mc._agendaEvMap = evMap;
+    mc._agendaSemanal = semanal;
+    mc._agendaMensal = mensal;
+    mc._agendaPessoal = pessoal;
+  }
+
+  await renderPage();
+
+  window.agendaNavMonth = function(dir){
+    let y = mc._agendaYear, m = mc._agendaMonth + dir;
+    if(m > 11){ m=0; y++; }
+    if(m < 0){ m=11; y--; }
+    renderPage(y, m);
+  };
+
+  window.agendaSelectDay = function(d, m, y){
+    const key = d+'-'+m+'-'+y;
+    const evs = mc._agendaEvMap[key]||[];
+    const monthNames = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+    const title = document.getElementById('agenda-day-title');
+    const list  = document.getElementById('agenda-day-events');
+    if(!title||!list) return;
+    title.textContent = d+' de '+monthNames[m]+' de '+y;
+    if(evs.length===0){
+      list.innerHTML='<div style="font-size:12px;color:rgba(255,255,255,0.3);padding:8px 0;">Nenhum evento neste dia.</div>';
+      return;
+    }
+    const colors = {semanal:'#22c55e', mensal:'#ef4444', adicional:'#9333ea', pessoal:'#3b82f6', gcal:'#eab308'};
+    const meetBtn = (url) => url
+      ? '<a href="'+url+'" target="_blank" style="display:inline-flex;align-items:center;gap:4px;margin-top:6px;padding:4px 10px;background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.5);border-radius:20px;color:#4ade80;text-decoration:none;font-size:11px;font-weight:600;text-shadow:0 0 8px rgba(74,222,128,0.6);letter-spacing:0.01em;"><span style="width:5px;height:5px;border-radius:50%;background:#22c55e;box-shadow:0 0 5px #22c55e;display:inline-block;"></span>Entrar no Meet</a>'
+      : '';
+    list.innerHTML = evs.map(e=>{
+      // Botão de ação: pessoal → remover; semanal/mensal → editar (só coord); gcal → nenhum
+      let actionBtn = '';
+      if(e.tipo==='pessoal' && e.id){
+        actionBtn = '<button onclick="excluirReuniaoP(this.dataset.id)" data-id="'+e.id+'" style="margin-top:8px;padding:4px 10px;border:1px solid rgba(239,68,68,0.3);border-radius:6px;background:rgba(239,68,68,0.08);color:rgba(239,68,68,0.7);font-size:10px;cursor:pointer;font-family:var(--font);display:inline-flex;align-items:center;gap:4px;">'+
+          '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>Remover</button>';
+      } else if((e.tipo==='semanal'||e.tipo==='mensal'||e.tipo==='adicional') && isCoord){
+        actionBtn = '<button onclick="'+(e.tipo==='semanal'?'editarReuniao':e.tipo==='adicional'?'editarReuniaoAdicional':'editarReuniaoMensal')+'()" style="margin-top:8px;padding:4px 10px;border:1px solid rgba(255,255,255,0.15);border-radius:6px;background:transparent;color:rgba(255,255,255,0.45);font-size:10px;cursor:pointer;font-family:var(--font);display:inline-flex;align-items:center;gap:4px;">'+
+          '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Editar</button>';
+      }
+      return '<div style="background:rgba(255,255,255,0.06);border-radius:10px;padding:10px 12px;border-left:3px solid '+(colors[e.tipo]||'#fff')+';">'+
+        '<div style="font-size:13px;font-weight:500;color:#fff;margin-bottom:3px;">'+e.label+'</div>'+
+        (e.horario?'<div style="font-size:11px;color:rgba(255,255,255,0.45);">'+e.horario+'</div>':'')+
+        meetBtn(e.meet)+
+        actionBtn+
+      '</div>';
+    }).join('');
+  };
+
+  window.agendaContextMenu = function(e, d, m, y){
+    e.preventDefault();
+    e.stopPropagation();
+    // Remove any existing context menu
+    const old = document.getElementById('agenda-ctx-menu');
+    if(old) old.remove();
+
+    const key = d+'-'+m+'-'+y;
+    const evs = (mc._agendaEvMap && mc._agendaEvMap[key]) || [];
+    // removable: pessoal/gcal by anyone; semanal/mensal/adicional by coord only (edit, not delete)
+    const removable = evs.filter(ev =>
+      (ev.tipo==='pessoal' && ev.id) ||
+      ev.tipo==='gcal' ||
+      ((ev.tipo==='semanal'||ev.tipo==='mensal'||ev.tipo==='adicional') && isCoord)
+    );
+    if(removable.length === 0) return;
+
+    const menu = document.createElement('div');
+    menu.id = 'agenda-ctx-menu';
+    menu.style.cssText = 'position:fixed;z-index:9999;background:#0d2e14;border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:6px;box-shadow:0 8px 32px rgba(0,0,0,0.6);min-width:180px;font-family:var(--font);';
+    menu.style.left = Math.min(e.clientX, window.innerWidth-200)+'px';
+    menu.style.top  = Math.min(e.clientY, window.innerHeight-120)+'px';
+
+    // Header
+    const monthNames = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+    const hdr = document.createElement('div');
+    hdr.style.cssText = 'font-size:10px;font-weight:600;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:0.1em;padding:4px 8px 6px;border-bottom:1px solid rgba(255,255,255,0.08);margin-bottom:4px;';
+    hdr.textContent = d+' de '+monthNames[m];
+    menu.appendChild(hdr);
+
+    removable.forEach(ev=>{
+      const item = document.createElement('div');
+      item.style.cssText = 'display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:7px;cursor:pointer;color:rgba(255,255,255,0.75);font-size:12px;transition:background 0.1s;';
+      item.onmouseover = ()=>{ item.style.background='rgba(239,68,68,0.15)'; item.style.color='#f87171'; };
+      item.onmouseout  = ()=>{ item.style.background=''; item.style.color='rgba(255,255,255,0.75)'; };
+
+      const dotColor = {semanal:'#22c55e',mensal:'#ef4444',pessoal:'#3b82f6',gcal:'#eab308'}[ev.tipo]||'#fff';
+      const isEditable = ev.tipo==='semanal'||ev.tipo==='mensal'||ev.tipo==='adicional';
+      const isGcal = ev.tipo==='gcal';
+      item.innerHTML =
+        '<span style="width:6px;height:6px;border-radius:50%;background:'+dotColor+';flex-shrink:0;display:inline-block;"></span>'+
+        '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+(isEditable?'Editar: ':isGcal?'ℹ️ ':'')+ev.label+'</span>'+
+        (isEditable
+          ? '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="flex-shrink:0;opacity:0.5;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>'
+          : '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="flex-shrink:0;opacity:0.5;"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>'
+        );
+
+      item.onclick = async ()=>{
+        menu.remove();
+        if(ev.tipo==='pessoal' && ev.id){
+          if(!confirm('Remover "'+ev.label+'"?')) return;
+          try{
+            await deleteDoc(doc(db,'agenda_pessoal',ev.id));
+            await renderPage(mc._agendaYear, mc._agendaMonth);
+          }catch(err){showToast('Erro ao remover.');}
+        } else if(ev.tipo==='gcal'){
+          showToast('Acesse o Google Agenda para remover eventos do Google.');
+        } else if(ev.tipo==='semanal'){
+          editarReuniao();
+        } else if(ev.tipo==='mensal'){
+          editarReuniaoMensal();
+        } else if(ev.tipo==='adicional'){
+          editarReuniaoAdicional();
+        }
+      };
+      menu.appendChild(item);
+    });
+
+    document.body.appendChild(menu);
+
+    // Close on any click outside
+    const closeMenu = (ev)=>{
+      if(!menu.contains(ev.target)){ menu.remove(); document.removeEventListener('click', closeMenu); }
+    };
+    setTimeout(()=>document.addEventListener('click', closeMenu), 0);
+  };
+
+  window.agendaSetOpacity = function(val){
+    agendaOpacity = parseFloat(val);
+    localStorage.setItem('agenda_opacity', agendaOpacity);
+    const lbl = document.getElementById('agenda-opacity-val');
+    if(lbl) lbl.textContent = Math.round((1-agendaOpacity)*100)+'%';
+    // Update all glass panels live
+    const glass = 'rgba(10,30,15,'+agendaOpacity+')';
+    document.querySelectorAll('[data-glass]').forEach(el => el.style.background = glass);
+    renderPage(mc._agendaYear, mc._agendaMonth);
+  };
+
+  window.abrirModalReuniaoP=function(){
+    const m=document.getElementById('agenda-modal');
+    if(m){m.style.display='flex';document.getElementById('agp-titulo').focus();}
+  };
+  window.fecharModalReuniaoP=function(){
+    const m=document.getElementById('agenda-modal');
+    if(m) m.style.display='none';
+  };
+  window.salvarReuniaoP=async function(){
+    const titulo=document.getElementById('agp-titulo').value.trim();
+    const data=document.getElementById('agp-data').value.trim();
+    const horario=document.getElementById('agp-hora').value.trim();
+    const meet=document.getElementById('agp-meet').value.trim();
+    if(!titulo){showToast('Digite um título.');return;}
+    try{
+      await addDoc(collection(db,'agenda_pessoal'),{uid:currentUser.uid,titulo,data,horario,meet,ts:Date.now()});
+      showToast('Reunião salva!');
+      window.fecharModalReuniaoP();
+      await renderPage(mc._agendaYear, mc._agendaMonth);
+    }catch(e){showToast('Erro ao salvar.');}
+  };
+  window.excluirReuniaoP=async function(id){
+    if(!confirm('Remover esta reunião?'))return;
+    try{
+      await deleteDoc(doc(db,'agenda_pessoal',id));
+      await renderPage(mc._agendaYear, mc._agendaMonth);
+    }catch(e){showToast('Erro ao remover.');}
+  };
+
+  window.gcalConectar = function(){
+    if(!window.google||!window.google.accounts){showToast('API do Google ainda carregando, tente em instantes.');return;}
+    const client = google.accounts.oauth2.initTokenClient({
+      client_id: GCAL_CLIENT_ID, scope: GCAL_SCOPE,
+      callback: async (resp)=>{
+        if(resp.error){showToast('Erro ao conectar Google: '+resp.error);return;}
+        gcalToken = resp.access_token;
+        sessionStorage.setItem('gcal_token', gcalToken);
+        showToast('Google Agenda conectada!');
+        await gcalFetchEvents();
+        await renderPage(mc._agendaYear, mc._agendaMonth);
+      }
+    });
+    client.requestAccessToken();
+  };
+
+  window.gcalDesconectar = function(){
+    gcalToken=null; gcalEvents=[];
+    sessionStorage.removeItem('gcal_token'); sessionStorage.removeItem('gcal_events');
+    renderPage(mc._agendaYear, mc._agendaMonth);
+    showToast('Google Agenda desconectada.');
+  };
+
+  async function gcalFetchEvents(){
+    if(!gcalToken) return;
+    const now=new Date();
+    const start=new Date(now.getFullYear(),now.getMonth()-1,1).toISOString();
+    const end=new Date(now.getFullYear(),now.getMonth()+3,0).toISOString();
+    try{
+      const res=await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin='+encodeURIComponent(start)+'&timeMax='+encodeURIComponent(end)+'&singleEvents=true&orderBy=startTime&maxResults=250',{headers:{Authorization:'Bearer '+gcalToken}});
+      if(!res.ok){if(res.status===401){gcalToken=null;sessionStorage.removeItem('gcal_token');}return;}
+      const data=await res.json();
+      gcalEvents=data.items||[];
+      sessionStorage.setItem('gcal_events',JSON.stringify(gcalEvents));
+    }catch(e){console.log('gcal error',e);}
+  }
+
+  if(gcalToken){gcalFetchEvents().then(()=>renderPage(mc._agendaYear,mc._agendaMonth));}
+}
+
+
 async function renderLembretes(mc){
   mc.innerHTML=snakeHtml()+
     '<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">'+
@@ -5534,1194 +6709,6 @@ window.pipCobrancaSalvar=async function(){
 };
 
 
-
-async function renderEditarPerfil(mc){
-  _vaultUnlocked=false; // sempre comeca bloqueado ao entrar/recarregar a pagina
-  const uid=currentUser.uid;
-  const snap=await getDoc(doc(db,'usuarios',uid));
-  const perfil=snap.exists()?snap.data():{};
-  const bgAtual=perfil.bgColor||'';
-  const TEMAS=TEMAS_BG;
-
-  mc.innerHTML=snakeHtml()+
-    '<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;">'+
-      '<div class="page-eyebrow">* CONTA</div>'+
-      '<div class="page-title">\u270f\ufe0f Editar Perfil</div>'+
-      '<div class="page-sub">Atualize seu nome e a cor de fundo do painel</div>'+
-    '</div>'+
-    '<div class="panel" style="margin-bottom:1.25rem;">'+
-    '<div style="display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;">'+
-    '<div style="flex:1;min-width:160px;"><label class="inp-label">Meu nome</label><input type="text" class="inp" id="ep-nome" value="'+(perfil.nome||'')+'" placeholder="Seu nome completo"/></div>'+
-    '<div style="flex:1;min-width:160px;">'+
-    '<button onclick="toggleBgPickerEp()" style="display:flex;align-items:center;gap:10px;padding:10px 16px;border:1px solid var(--border-md);border-radius:var(--radius);background:var(--bg);font-family:var(--font);font-size:13px;color:var(--text);cursor:pointer;width:100%;">'+
-    '<div style="width:24px;height:24px;border-radius:6px;background:'+(bgAtual||'linear-gradient(135deg,#0d2e14,#1A5C2A)')+';flex-shrink:0;"></div>'+
-    '<span>Cor de fundo</span>'+
-    '<svg style="margin-left:auto;" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></button>'+
-    '<div id="ep-bg-picker" style="display:none;">'+
-    '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:8px;">'+
-    TEMAS.map((t,i)=>'<div onclick="selecionarBgEp('+i+')" id="ep-bg-opt-'+i+'" style="cursor:pointer;height:44px;border-radius:10px;background:'+(t.bg||'linear-gradient(135deg,#f0fdf4,#dcfce7)')+';border:3px solid '+(bgAtual===t.bg?'#fff':'transparent')+';box-shadow:'+(bgAtual===t.bg?'0 0 0 2px var(--primary)':'0 2px 6px rgba(0,0,0,0.15)')+';transition:all 0.15s;display:flex;align-items:'+(t.bg?'flex-end':'center')+';justify-content:'+(t.bg?'flex-start':'center')+';padding:4px 6px;" title="'+t.nome+'">'+
-    '<span style="font-size:9px;color:'+(t.bg?'rgba(255,255,255,0.7)':'var(--text-3)')+';font-weight:500;">'+t.nome+'</span></div>').join('')+
-    '</div></div></div>'+
-    '<button class="btn-blue" onclick="salvarEditarPerfil()" style="height:42px;white-space:nowrap;align-self:flex-end;">Salvar alteracoes</button>'+
-    '</div>'+
-    '<div class="panel" style="margin-top:1.5rem;margin-bottom:1.25rem;">'+
-      '<div class="panel-title" style="margin-bottom:12px;">\ud83d\udd12 Alterar Senha</div>'+
-      '<div style="display:flex;flex-direction:column;gap:12px;max-width:420px;">'+
-        '<div><label class="inp-label">Senha atual</label><input type="password" class="inp" id="ep-senha-atual" placeholder="Digite sua senha atual"/></div>'+
-        '<div><label class="inp-label">Nova senha</label><input type="password" class="inp" id="ep-senha-nova" placeholder="Minimo 6 caracteres"/></div>'+
-        '<div><label class="inp-label">Confirmar nova senha</label><input type="password" class="inp" id="ep-senha-confirma" placeholder="Repita a nova senha" onkeydown="if(event.key===\'Enter\')alterarSenhaEp()"/></div>'+
-        '<div id="ep-senha-err" style="display:none;font-size:12px;color:var(--red);background:var(--red-light);padding:8px 10px;border-radius:var(--radius);"></div>'+
-        '<div style="display:flex;align-items:center;gap:16px;">'+
-          '<button class="btn-blue" onclick="alterarSenhaEp()" id="ep-senha-btn">Alterar senha</button>'+
-          '<span class="forgot-link" style="color:var(--primary);cursor:pointer;font-size:12px;" onclick="esqueceuSenhaEp()">Esqueci minha senha</span>'+
-        '</div>'+
-      '</div>'+
-    '</div>'+
-    '<div class="panel" style="margin-top:1.5rem;">'+
-      '<div class="panel-title" style="margin-bottom:12px;">\ud83d\udd10 Minhas Senhas</div>'+
-      '<div id="vault-locked-view">'+
-        '<div style="font-size:13px;color:var(--text-2);margin-bottom:14px;">Suas senhas pessoais ficam guardadas em sigilo. Para acessar, confirme sua senha de login e o codigo de verificacao enviado por e-mail.</div>'+
-        '<button class="btn-blue" onclick="abrirVaultUnlock()">\ud83d\udd13 Desbloquear acesso</button>'+
-      '</div>'+
-      '<div id="vault-unlocked-view" style="display:none;"></div>'+
-    '</div>'+
-    '<div class="panel" style="margin-top:1.5rem;">'+
-      '<div class="panel-title" style="margin-bottom:12px;">📷 Reconhecimento Facial (Ponto)</div>'+
-      '<div id="face-cadastro-area">Carregando...</div>'+
-    '</div>';
-
-  window._epBgTemas=TEMAS;
-  window._epBgSelecionado=bgAtual;
-  renderFaceCadastroArea();
-}
-
-async function renderPerfil(mc){
-  const uid=currentUser.uid;
-  const snap=await getDoc(doc(db,'usuarios',uid));
-  const perfil=snap.exists()?snap.data():{};
-  const bgAtual=perfil.bgColor||'';
-
-  const TEMAS=TEMAS_BG;
-
-  mc.innerHTML=snakeHtml()+'<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;"><div style="display:flex;flex-direction:column;align-items:center;text-align:center;padding:0.25rem 0;"><div class="page-eyebrow">* PAGINA INICIAL</div><div class="page-title" style="display:flex;align-items:center;gap:10px;justify-content:center;">Bem vindo ao Chocalho &nbsp;—&nbsp; <img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/e_bgremoval/q_auto/f_auto/v1780780614/chocalho_1_in7jon.png" style="width:36px;height:36px;object-fit:contain;vertical-align:middle;"/></div>'+
-    '</div>'+
-    '<div id="lembrete-notif-dot" onclick="navigate(\'lembretes\')" title="Lembretes" style="position:absolute;top:14px;right:14px;width:14px;height:14px;border-radius:50%;background:transparent;cursor:pointer;transition:background 0.2s;"></div>'+
-    '</div>'+
-    '<div class="panel" style="padding:0;overflow:hidden;margin-bottom:0.5rem;">'+
-    '<div class="perfil-avatar-area">'+
-    (perfil.capa
-      ?'<img src="'+perfil.capa+'" class="perfil-capa" id="perfil-capa-preview-img"/>'
-      :'<div class="perfil-capa-placeholder"></div>'
-    )+
-    '<label onclick="document.getElementById(\'input-capa\').click()" style="cursor:pointer;position:absolute;top:0;left:0;width:100%;height:100%;"></label>'+
-    '<div class="perfil-avatar-over">'+
-    (perfil.foto
-      ?'<div class="perfil-avatar-big"><img src="'+perfil.foto+'" alt="foto"/></div>'
-      :'<div class="perfil-avatar-big" id="perfil-av-preview">'+((perfil.nome||'?')[0].toUpperCase())+'</div>'
-    )+
-    '<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;">'+
-    '<label style="cursor:pointer;"><input type="file" accept="image/*" onchange="uploadFoto(event)" style="display:none;"/><span style="padding:4px 12px;background:rgba(0,0,0,0.45);color:#fff;border-radius:20px;font-size:11px;border:1px solid rgba(255,255,255,0.3);backdrop-filter:blur(4px);">Alterar foto</span></label>'+
-    (perfil.foto?'<span onclick="removerFoto()" style="padding:4px 12px;background:rgba(180,0,0,0.5);color:#fff;border-radius:20px;font-size:11px;cursor:pointer;border:1px solid rgba(255,255,255,0.2);backdrop-filter:blur(4px);">Remover foto</span>':'')+
-    '<label onclick="document.getElementById(\'input-capa\').click()" style="cursor:pointer;"><span style="padding:4px 12px;background:rgba(0,0,0,0.45);color:#fff;border-radius:20px;font-size:11px;border:1px solid rgba(255,255,255,0.3);backdrop-filter:blur(4px);">+ Capa</span></label>'+
-    (perfil.capa?'<span onclick="removerCapa()" style="padding:4px 12px;background:rgba(180,0,0,0.5);color:#fff;border-radius:20px;font-size:11px;cursor:pointer;border:1px solid rgba(255,255,255,0.2);backdrop-filter:blur(4px);">Remover capa</span>':'')+
-    '</div></div>'+
-    '<input type="file" id="input-capa" accept="image/*" style="display:none;" onchange="uploadCapa(event)"/>'+
-    '<img id="perfil-capa-preview" src="'+(perfil.capa||'')+'" style="display:none;"/>'+
-    '</div></div>'+
-    '<div style="text-align:center;margin-bottom:1.25rem;padding:0.5rem 0;">'+
-    '<div style="font-size:18px;font-weight:600;color:var(--text);">'+(perfil.nome||'&#8212;')+'</div>'+
-    '<div style="font-size:12px;color:var(--text-3);">'+(userProfile.role==='coord'?'Coordenador':'Operador')+'</div>'+
-    '</div>'+
-    '<img id="perfil-foto-preview" src="'+(perfil.foto||'')+'" style="display:none;"/>'+
-    '</div>';
-
-  // Load Meet link and Disparos
-  const isCoord = userProfile.role==='coord';
-  const isViewer = userProfile.role==='viewer';
-
-  const cfgSnap2 = await getDoc(doc(db,'config','reuniao'));
-  const reuniao = cfgSnap2.exists()? cfgSnap2.data() : {};
-  const meetLink = reuniao.meet||'';
-
-  // Reuniao Mensal
-  const cfgMensal = await getDoc(doc(db,'config','reuniao_mensal'));
-  const mensal = cfgMensal.exists()? cfgMensal.data() : {};
-  const menLink = mensal.meet||'';
-
-  const cfgAdic = await getDoc(doc(db,'config','reuniao_adicional'));
-  const adicional = cfgAdic.exists()? cfgAdic.data() : {};
-  const adicLink = adicional.meet||'';
-
-  let meetBanner='<div class="reuniao-banner">';
-  meetBanner+='<div class="reuniao-info">';
-  meetBanner+='<div class="reuniao-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>';
-  meetBanner+='<div><div class="reuniao-label">Reuniao Semanal</div>';
-  meetBanner+='<div class="reuniao-datetime">'+(reuniao.horario?reuniao.horario+(reuniao.data?' &nbsp;&middot;&nbsp; '+reuniao.data:''):'Nenhuma reuniao agendada')+'</div>';
-  meetBanner+='</div></div>';
-  meetBanner+='<div class="reuniao-actions">';
-  if(meetLink) meetBanner+='<a class="reuniao-meet-btn" href="'+meetLink+'" target="_blank"><span class="reuniao-meet-dot"></span>Entrar no Meet</a>';
-  if(isCoord) meetBanner+='<button class="reuniao-edit-btn" onclick="editarReuniao()">Editar</button>';
-  meetBanner+='</div></div>';
-
-  let mensalBanner='<div class="reuniao-banner" style="background:linear-gradient(135deg,#7f1d1d,#b91c1c);">';
-  mensalBanner+='<div class="reuniao-info">';
-  mensalBanner+='<div class="reuniao-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>';
-  mensalBanner+='<div><div class="reuniao-label">Reuniao Mensal</div>';
-  mensalBanner+='<div class="reuniao-datetime">'+(mensal.horario?mensal.horario+(mensal.data?' &nbsp;&middot;&nbsp; '+mensal.data:''):'Nenhuma reuniao agendada')+'</div>';
-  mensalBanner+='</div></div>';
-  mensalBanner+='<div class="reuniao-actions">';
-  if(menLink) mensalBanner+='<a class="reuniao-meet-btn" href="'+menLink+'" target="_blank"><span class="reuniao-meet-dot"></span>Entrar no Meet</a>';
-  if(isCoord) mensalBanner+='<button class="reuniao-edit-btn" onclick="editarReuniaoMensal()">Editar</button>';
-  mensalBanner+='</div></div>';
-
-  let adicBanner='<div class="reuniao-banner" style="background:linear-gradient(135deg,#581c87,#7e22ce);">';
-  adicBanner+='<div class="reuniao-info">';
-  adicBanner+='<div class="reuniao-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>';
-  adicBanner+='<div><div class="reuniao-label">Reunioes Adicionais</div>';
-  adicBanner+='<div class="reuniao-datetime">'+(adicional.horario?adicional.horario+(adicional.data?' &nbsp;&middot;&nbsp; '+adicional.data:''):'Nenhuma reuniao agendada')+'</div>';
-  adicBanner+='</div></div>';
-  adicBanner+='<div class="reuniao-actions">';
-  if(adicLink) adicBanner+='<a class="reuniao-meet-btn" href="'+adicLink+'" target="_blank"><span class="reuniao-meet-dot"></span>Entrar no Meet</a>';
-  if(isCoord) adicBanner+='<button class="reuniao-edit-btn" onclick="editarReuniaoAdicional()">Editar</button>';
-  adicBanner+='</div></div>';
-
-  const dispSnap = await getDoc(doc(db,'config','disparos'));
-  const disp = dispSnap.exists()? dispSnap.data() : {};
-  // Migra dados antigos (pedro/daniel separados) para uma lista unica, se ainda nao migrado
-  let dispUnificado = disp.unificado;
-  if(!dispUnificado){
-    dispUnificado = [];
-    (disp.pedro||[]).forEach(s=>{if(s.hora||s.data)dispUnificado.push({hora:s.hora||'',data:s.data||'',plat:s.plat||'WATI Pedro'});});
-    (disp.daniel||[]).forEach(s=>{if(s.hora||s.data)dispUnificado.push({hora:s.hora||'',data:s.data||'',plat:s.plat||'WATI Daniel'});});
-    if(dispUnificado.length===0) dispUnificado=[{hora:'',data:'',plat:'WATI Pedro'}];
-  }
-
-  // Check escala
-  const escalaSnap=await getDoc(doc(db,'config','escala'));
-  let escalaBanner='';
-  if(escalaSnap.exists()&&!isViewer){
-    const escData=escalaSnap.data();
-    const nome=(userProfile.nome||'').toLowerCase();
-    let escalado=null;
-    function isThisWeekPerfil(datesStr){
-      if(!datesStr)return false;
-      const matches=[...datesStr.matchAll(/(\d{2})\/(\d{2})/g)];
-      if(!matches||matches.length<1)return false;
-      const hojeP=new Date();hojeP.setHours(0,0,0,0);
-      const ano=hojeP.getFullYear();
-      const [d1,m1]=[parseInt(matches[0][1]),parseInt(matches[0][2])-1];
-      const inicio=new Date(ano,m1,d1);inicio.setHours(0,0,0,0);
-      let fim;
-      if(matches.length>=2){
-        const [d2,m2]=[parseInt(matches[1][1]),parseInt(matches[1][2])-1];
-        fim=new Date(ano,m2,d2);
-      } else {
-        fim=new Date(inicio);fim.setDate(fim.getDate()+6);
-      }
-      fim.setHours(23,59,59,999);
-      return hojeP>=inicio&&hojeP<=fim;
-    }
-    // Check watiPedro weeks
-    if(escData.watiPedro){
-      escData.watiPedro.forEach((semana,i)=>{
-        if(semana.operador&&semana.operador.toLowerCase()===nome&&isThisWeekPerfil(semana.dates)) escalado={wati:'WATI Pedro',semana:i+1,dates:semana.dates};
-      });
-    }
-    // Check watiDaniel weeks
-    if(escData.watiDaniel){
-      escData.watiDaniel.forEach((semana,i)=>{
-        if(semana.operador&&semana.operador.toLowerCase()===nome&&isThisWeekPerfil(semana.dates)) escalado={wati:'WATI Daniel',semana:i+1,dates:semana.dates};
-      });
-    }
-    if(escalado){
-      escalaBanner='<div style="background:linear-gradient(135deg,#1e3a8a,#2563eb);border-radius:var(--radius-lg);padding:18px 24px;margin-bottom:1.25rem;display:flex;align-items:center;gap:16px;box-shadow:0 4px 20px rgba(37,99,235,0.3);">'+
-        '<div style="font-size:28px;">🔀</div>'+
-        '<div>'+
-        '<div style="font-size:11px;font-weight:500;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">Escala de Roteamento</div>'+
-        '<div style="font-size:16px;font-weight:600;color:#fff;">Você está escalado esta semana!</div>'+
-        '<div style="font-size:13px;color:rgba(255,255,255,0.75);margin-top:2px;">'+escalado.wati+' &nbsp;·&nbsp; Semana '+escalado.semana+(escalado.dates?' &nbsp;·&nbsp; '+escalado.dates:'')+'</div>'+
-        '</div>'+
-        '<button onclick="navigate(\'escala\')" style="margin-left:auto;padding:8px 16px;background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.2);border-radius:20px;font-family:var(--font);font-size:12px;cursor:pointer;">Ver escala</button>'+
-        '</div>';
-    }
-  }
-
-  mc.innerHTML += 
-    escalaBanner+
-    (!isViewer ?
-      // Mensal full width
-      mensalBanner+
-      // Semanal + Adicional side by side
-      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:1.25rem;">'+
-        meetBanner+
-        adicBanner+
-      '</div>'
-    : '')+
-    // Botão de instalar PWA (aparece só quando disponível)
-    '<div id="pwa-install-btn" style="display:none;align-items:center;gap:12px;padding:14px 18px;background:linear-gradient(135deg,var(--primary),var(--primary-mid));border-radius:12px;margin-bottom:1.25rem;cursor:pointer;box-shadow:0 4px 14px rgba(26,92,42,0.3);" onclick="pwaInstalar()">'+
-      '<span style="font-size:24px;">📲</span>'+
-      '<div>'+
-        '<div style="font-size:14px;font-weight:600;color:#fff;">Instalar o Chocalho</div>'+
-        '<div style="font-size:12px;color:rgba(255,255,255,0.75);">Acesse como app, sem precisar abrir o navegador</div>'+
-      '</div>'+
-      '<span style="margin-left:auto;font-size:12px;font-weight:600;color:#fff;background:rgba(255,255,255,0.2);padding:6px 12px;border-radius:8px;">Instalar</span>'+
-    '</div>'+
-    // Bloco Links de Rotina
-    '<div class="panel" style="margin-bottom:1.25rem;">'+
-      '<div class="panel-title" style="margin-bottom:12px;">🔗 Links de Rotina</div>'+
-      '<div style="display:flex;gap:12px;flex-wrap:wrap;">'+
-        // Mini bloco WATI
-        '<div style="flex:1;min-width:200px;background:var(--bg);border:1px solid var(--border-md);border-radius:10px;padding:12px;">'+
-          '<div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-3);margin-bottom:10px;display:flex;align-items:center;gap:5px;"><img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780848930/wati_hbqyix.png" style="width:13px;height:13px;object-fit:contain;"/>WATI</div>'+
-          '<div style="display:flex;gap:8px;flex-wrap:wrap;">'+
-            '<a href="'+DISP_WATI_LINKS['WATI Pedro']+'" target="_blank" style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:var(--primary);color:#fff;border-radius:var(--radius);font-family:var(--font);font-size:12px;font-weight:500;text-decoration:none;">WATI Pedro</a>'+
-            '<a href="'+DISP_WATI_LINKS['WATI Daniel']+'" target="_blank" style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:var(--primary);color:#fff;border-radius:var(--radius);font-family:var(--font);font-size:12px;font-weight:500;text-decoration:none;">WATI Daniel</a>'+
-          '</div>'+
-        '</div>'+
-        // Mini bloco Hotmart
-        '<div style="flex:2;min-width:280px;background:var(--bg);border:1px solid var(--border-md);border-radius:10px;padding:12px;">'+
-          '<div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-3);margin-bottom:10px;">\ud83d\uded2 Hotmart</div>'+
-          '<div style="display:flex;gap:8px;flex-wrap:wrap;">'+
-            '<a href="https://app.hotmart.com/subscriptions" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:var(--primary);color:#fff;border-radius:var(--radius);font-family:var(--font);font-size:12px;font-weight:500;text-decoration:none;">Gerenciar Assinaturas</a>'+
-            '<a href="https://app.hotmart.com/sales" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:var(--primary);color:#fff;border-radius:var(--radius);font-family:var(--font);font-size:12px;font-weight:500;text-decoration:none;">Transacoes</a>'+
-            '<a href="https://app.hotmart.com/sales?tab=smartRecoveries&type=sales" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:var(--primary);color:#fff;border-radius:var(--radius);font-family:var(--font);font-size:12px;font-weight:500;text-decoration:none;">Recuperacao de Vendas</a>'+
-          '</div>'+
-        '</div>'+
-      '</div>'+
-    '</div>'+
-    (!isViewer ?
-    '<div style="margin-bottom:1.25rem;">'+
-      renderDisparosCard(dispUnificado,isCoord)+
-    '</div>' : '');
-
-  // Mural preview - own wall
-  const muralSnap=await getDocs(query(collection(db,'mural',currentUser.uid,'recados'),orderBy('ts','desc'),limit(5)));
-  const muralPosts=[];muralSnap.forEach(d=>muralPosts.push({id:d.id,...d.data()}));
-
-  mc.innerHTML+='<div class="panel">'+
-    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">'+
-    '<div class="panel-title" style="margin:0;">✍️ Meu Mural</div>'+
-    '<button onclick="navigate(\'perfis\')" class="btn-ghost" style="font-size:12px;">Ver tudo</button>'+
-    '</div>'+
-    (muralPosts.length?muralPosts.map(p=>{
-      const pini=(p.autorNome||'?')[0].toUpperCase();
-      const pav=p.autorFoto?'<img src="'+p.autorFoto+'" alt=""/>':pini;
-      return'<div class="mural-post">'+
-        '<div class="mural-post-header">'+
-        '<div class="mural-post-av" style="background:'+(p.autorCor||'#1A5C2A')+';color:#fff;">'+pav+'</div>'+
-        '<div><div style="font-size:13px;font-weight:500;">'+p.autorNome+'</div>'+
-        '<div class="mural-post-date">'+p.data+'</div></div>'+
-        '</div>'+
-        '<div class="mural-post-body">'+p.texto+'</div>'+
-      '</div>';
-    }).join(''):'<div class="empty" style="padding:1rem;">Nenhum recado ainda. Veja os perfis da equipe!</div>')+
-    '</div>';
-
-  window._bgTemas = TEMAS;
-  window._bgSelecionado = bgAtual;
-  await updateLembreteNotifDot();
-}
-
-function renderInfosUteis(mc){
-  let activeTab = 'contatos';
-
-  function tabBtn(id, label, icon){
-    const active = activeTab===id;
-    return '<button onclick="iuSetTab(\''+id+'\')" style="padding:8px 18px;border:none;border-bottom:'+(active?'3px solid var(--primary)':'3px solid transparent')+';background:none;font-family:var(--font);font-size:13px;font-weight:'+(active?'600':'400')+';color:'+(active?'var(--primary)':'var(--text-3)')+';cursor:pointer;margin-bottom:-2px;">'+icon+' '+label+'</button>';
-  }
-
-  function linkRow(label, url){
-    if(!url||url.trim()==='') return '';
-    const href = url.startsWith('http')?url:'https://'+url;
-    return '<tr style="border-bottom:0.5px solid var(--border);">'+
-      '<td style="padding:8px 12px;font-size:13px;color:var(--text);font-weight:500;">'+label+'</td>'+
-      '<td style="padding:8px 12px;"><a href="'+href+'" target="_blank" style="color:var(--primary);font-size:12px;text-decoration:none;word-break:break-all;">'+url+'</a></td>'+
-      '<td style="padding:8px 8px;text-align:center;"><a href="'+href+'" target="_blank" style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:var(--primary);color:#fff;border-radius:20px;font-size:11px;text-decoration:none;font-weight:500;">Abrir →</a></td>'+
-    '</tr>';
-  }
-
-  function sectionHeader(title){
-    return '<tr><td colspan="3" style="padding:10px 12px 4px;font-size:11px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:0.07em;background:var(--surface);border-bottom:0.5px solid var(--border);">'+title+'</td></tr>';
-  }
-
-  function table(rows){
-    return '<div style="border-radius:10px;border:1px solid var(--border);overflow:hidden;margin-bottom:1rem;">'+
-      '<table style="width:100%;border-collapse:collapse;">'+
-        '<thead><tr style="background:var(--primary);color:#fff;">'+
-          '<th style="padding:8px 12px;text-align:left;font-size:12px;width:35%;">Nome</th>'+
-          '<th style="padding:8px 12px;text-align:left;font-size:12px;">Link</th>'+
-          '<th style="padding:8px 8px;text-align:center;font-size:12px;width:80px;">Ação</th>'+
-        '</tr></thead>'+
-        '<tbody>'+rows+'</tbody>'+
-      '</table></div>';
-  }
-
-  function waRow(label, url){
-    if(!url||url.trim()==='') return '';
-    const href = url.startsWith('http')?url:'https://'+url;
-    const tel = url.replace('https://wa.me/','').replace('http://wa.me/','');
-    return '<tr style="border-bottom:0.5px solid var(--border);">'+
-      '<td style="padding:8px 12px;font-size:13px;color:var(--text);font-weight:500;">'+label+'</td>'+
-      '<td style="padding:8px 12px;font-size:12px;color:var(--text-3);">'+tel+'</td>'+
-      '<td style="padding:8px 12px;font-size:11px;color:var(--text-3);font-family:var(--font-mono);"><a href="'+href+'" target="_blank" style="color:var(--primary);text-decoration:none;word-break:break-all;">'+href.replace(/^https?:\/\//,'')+'</a></td>'+
-      '<td style="padding:8px 8px;text-align:center;"><a href="'+href+'" target="_blank" style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:#25D366;color:#fff;border-radius:20px;font-size:11px;text-decoration:none;font-weight:500;">WhatsApp →</a></td>'+
-    '</tr>';
-  }
-
-  function renderEmentas(){
-    return '<div style="display:flex;flex-direction:column;gap:0.5rem;">'+
-      '<p style="font-size:13px;color:var(--text-2);margin-bottom:0.5rem;">Links das ementas dos cursos completos da Hashtag Treinamentos.</p>'+
-
-      '<div style="font-size:12px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:0.07em;margin:0.5rem 0 0.25rem;">🔗 Lovable (Links diretos)</div>'+
-      table(
-        [['Análise de Dados','https://ementas.hashtagtreinamentos.com/analise-de-dados-impressionador'],
-         ['Ciência de Dados','https://ementas.hashtagtreinamentos.com/ciencia-de-dados-impressionador'],
-         ['Excel','https://ementas.hashtagtreinamentos.com/excel-impressionador'],
-         ['Power BI','https://ementas.hashtagtreinamentos.com/power-bi-impressionador'],
-         ['Full Stack','https://ementas.hashtagtreinamentos.com/full-stack-impressionador'],
-         ['HTML & CSS','https://ementas.hashtagtreinamentos.com/html-css-impressionador'],
-         ['JavaScript','https://ementas.hashtagtreinamentos.com/javascript-impressionador'],
-         ['Python','https://ementas.hashtagtreinamentos.com/python-impressionador'],
-         ['SQL','https://ementas.hashtagtreinamentos.com/sql-impressionador'],
-         ['VBA','https://ementas.hashtagtreinamentos.com/vba-impressionador'],
-         ['Agentes de IA e N8N','https://ementas.hashtagtreinamentos.com/agentes-ia-n8n-impressionador'],
-         ['APIs de IA','https://ementas.hashtagtreinamentos.com/apis-de-inteligencia-artificial'],
-         ['Bubble','https://ementas.hashtagtreinamentos.com/bubble-impressionador'],
-         ['FlutterFlow','https://ementas.hashtagtreinamentos.com/flutterflow-impressionador'],
-         ['Inteligência Artificial','https://ementas.hashtagtreinamentos.com/inteligencia-artificial-impressionador'],
-         ['Lovable','https://ementas.hashtagtreinamentos.com/lovable-impressionador'],
-         ['Make','https://ementas.hashtagtreinamentos.com/make-impressionador'],
-         ['Trilha No Code e IA','https://ementas.hashtagtreinamentos.com/nocode-e-ia-impressionador'],
-         ['Supabase','https://ementas.hashtagtreinamentos.com/supabase-impressionador'],
-         ['Power Apps','https://ementas.hashtagtreinamentos.com/power-apps'],
-         ['Power Automate','https://ementas.hashtagtreinamentos.com/power-automate-impressionador'],
-         ['PowerPoint','https://ementas.hashtagtreinamentos.com/powerpoint-impressionador'],
-         ['AWS','https://ementas.hashtagtreinamentos.com/aws-impressionador'],
-         ['Inglês','https://ementas.hashtagtreinamentos.com/ingles-impressionador'],
-         ['Figma','https://ementas.hashtagtreinamentos.com/figma'],
-         ['SoftSkills','https://ementas.hashtagtreinamentos.com/softskills'],
-         ['Claude','https://ementas.hashtagtreinamentos.com/claude-impressionador'],
-        ].map(r=>linkRow(r[0],r[1])).join('')
-      )+
-
-      '<div style="font-size:12px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:0.07em;margin:0.5rem 0 0.25rem;">🔗 TinyURL</div>'+
-      table(
-        [['Excel','https://tinyurl.com/ementa-excel'],['VBA','https://tinyurl.com/ementa-vba'],['Power BI','https://tinyurl.com/ementa-powerbi'],['Python','https://tinyurl.com/ementa-python'],['PowerPoint','https://tinyurl.com/ementa-powerpoint'],['SQL','https://tinyurl.com/ementa-sql'],['Ciência de Dados','https://tinyurl.com/ementa-cienciadedados'],['JavaScript','https://tinyurl.com/ementa-javascript'],['Análise de Dados','https://tinyurl.com/ementa-analisededados'],['Power Apps','https://tinyurl.com/ementa-powerapps'],['HTML/CSS','https://tinyurl.com/ementa-htmlcss'],['Inteligência Artificial','https://tinyurl.com/ementa-ia'],['Full Stack','https://tinyurl.com/ementa-fullstack'],['Front End','https://tinyurl.com/ementa-frontend'],['Power Automate','https://tinyurl.com/ementa-powerautomate'],['Inglês','https://tinyurl.com/ementa-ingles'],['AWS','https://tinyurl.com/ementa-aws-impressionador'],['Me poupe + Hashtag','https://tinyurl.com/ementa-do-zero-a-liberdade'],['N8N','http://tinyurl.com/ementa-n8n'],['No Code IA','https://tinyurl.com/ementa-trilha-nocode-ia'],['Make','https://tinyurl.com/ementa-make'],['FlutterFlow','https://tinyurl.com/ementa-flutterflow'],['Figma','https://tinyurl.com/ementa-figma'],['Lovable','https://tinyurl.com/ementa-lovable'],['Bubble','https://tinyurl.com/ementa-bubble'],['Supabase','https://tinyurl.com/ementa-supabase'],
-        ].map(r=>linkRow(r[0],r[1])).join('')
-      )+
-
-      '<div style="font-size:12px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:0.07em;margin:0.5rem 0 0.25rem;">🔗 Bit.ly</div>'+
-      table(
-        [['Excel','http://bit.ly/ementa-excel'],['VBA','http://bit.ly/ementa-vba'],['Power BI','http://bit.ly/ementapbi'],['Python','https://bit.ly/ementapython'],['PowerPoint','http://bit.ly/ementa-ppt'],['SQL','http://bit.ly/ementa-sql'],['Ciência de Dados','https://bit.ly/ementa-cienciadedados'],['JavaScript','http://bit.ly/ementa-javascript'],['Análise de Dados','http://bit.ly/ementa-analise-dados'],['Power Apps','http://bit.ly/ementa-powerapps'],['HTML/CSS','http://bit.ly/ementa-html-css'],['Inteligência Artificial','https://bit.ly/ementa-ia'],['Full Stack','https://bit.ly/ementa-full-stack'],['Front End','https://bit.ly/ementa-front-end'],['Inglês','https://bit.ly/ementa-ingles'],['Power Automate','https://bit.ly/ementa-powerautomate'],
-        ].map(r=>linkRow(r[0],r[1])).join('')
-      )+
-
-      '<div style="font-size:12px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:0.07em;margin:0.5rem 0 0.25rem;">🔗 Google Drive (PDFs)</div>'+
-      table(
-        [['Excel','https://drive.google.com/file/d/1liMrej1_qlNgcFzb4-oi4xayt-wzXga8/view'],['VBA','https://drive.google.com/file/d/1yZQSKE36L-zz4O2RExU-zFmRpHLS3_if/view'],['Power BI','https://drive.google.com/file/d/17wRNr6D9L3oq6CskorGQE7ObRuosueap/view'],['Python','https://drive.google.com/file/d/1fjMLxiglDaTCJ4gSavbLTdMfANg3NePA/view'],['PowerPoint','https://drive.google.com/file/d/1uWhO97E6uaeZbnvNNVSERW7DePrt7DvH/view'],['SQL','https://drive.google.com/file/d/1z4atDe26U_lC25g5mXkKgJTXqeXo8MOO/view'],['Ciência de Dados','https://drive.google.com/file/d/1HPGHhxw0yJ9lLMSfwiqbA8Nbrp-ofe5K/view'],['JavaScript','https://drive.google.com/file/d/1YQLCEX6fhY1D2g--09uYeP-N8VBoXIQZ/view'],['Análise de Dados','https://drive.google.com/file/d/1nd7QSSOxGOur3rT7fztttKoU-lG_kUP8/view'],['Power Apps','https://drive.google.com/file/d/1ZHed1-k--Id7cTSPhUceUJWCkDxxd0Gc/view'],['HTML/CSS','https://drive.google.com/file/d/1hm6rbIsesjG3UtbBMGy1ED6xJxeDSq85/view'],['Inteligência Artificial','https://drive.google.com/file/d/1nfnf3MFLQsPqmRK4mgskZvJOSokXCzHm/view'],['Full Stack','https://drive.google.com/file/d/1yLstx1h-uY2bJU1FF10Mwd21Nzr8FDBv/view'],['Front End','https://drive.google.com/file/d/1eNf_vqxHzptvzMs4UZX4ILQSlTtt8z1C/view'],['Power Automate','https://drive.google.com/file/d/1e8_OX2Z10DonQIQTX3JhpybZLbz_K--D/view'],['Inglês','https://drive.google.com/file/d/19tZsNibwzsbmJp1Foe-1ZfosiD91L48v/view'],['Figma','https://drive.google.com/file/d/1WBqDS9jCN7A3vIddiNFzgIWv1rXUQ10Y/view'],['Me poupe + Hashtag','https://drive.google.com/file/d/1f50BHG3qV7Yypjzcs6NBOyZlRrQZ5n3q/view'],
-        ].map(r=>linkRow(r[0],r[1])).join('')
-      )+
-    '</div>';
-  }
-
-  function renderContatos(){
-    return '<div>'+
-      '<p style="font-size:13px;color:var(--text-2);margin-bottom:1rem;">Contatos internos e números da equipe Hashtag.</p>'+
-      '<div style="font-size:12px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:0.25rem;">🔍 Verificador de Números</div>'+
-      table(linkRow('Hash Verificador de Números','https://dlp.hashtagtreinamentos.com/verificador-numeros'))+
-      '<div style="font-size:12px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:0.07em;margin:0.75rem 0 0.25rem;">📱 WhatsApp — Setores</div>'+
-      '<div style="border-radius:10px;border:1px solid var(--border);overflow:hidden;margin-bottom:1rem;">'+
-        '<table style="width:100%;border-collapse:collapse;">'+
-          '<thead><tr style="background:var(--primary);color:#fff;"><th style="padding:8px 12px;text-align:left;font-size:12px;">Setor</th><th style="padding:8px 12px;text-align:left;font-size:12px;">Número</th><th style="padding:8px 12px;text-align:left;font-size:12px;">Link wa.me</th><th style="padding:8px 8px;text-align:center;font-size:12px;width:100px;">Ação</th></tr></thead>'+
-          '<tbody>'+
-          [['Suporte','https://wa.me/556193314870'],['Renovação (persona Marcus)','https://wa.me/5521971419046'],['Cobrança Ativa + Renegociação (persona Daniel)','https://wa.me/5521967760689'],['CS (persona Renan)','https://wa.me/5521972394185'],['InCompany','https://wa.me/5521995115669'],['Venda Passiva + Recuperação de Venda','https://wa.me/5521996582442'],['Cobrança Passiva (persona Pedro)','https://wa.me/5521997321507'],['Banco de Vagas/Inglês','https://wa.me/5521988665281'],['CS InCompany','https://wa.me/5521991085400'],['WhatsApp de Dúvidas (leads)','https://wa.me/+5521967218715'],['Capacitaciones','https://wa.me/+5521987571404'],['Pós (inside sales)','https://wa.me/552123913845'],['Pós (cobrança)','https://wa.me/5521923675995'],['Pós (CS)','https://wa.me/552123913961'],
-          ].map(r=>waRow(r[0],r[1])).join('')+
-          '</tbody></table></div>'+
-      '<div style="font-size:12px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:0.07em;margin:0.75rem 0 0.25rem;">👥 Comercial Ativo</div>'+
-      '<div style="border-radius:10px;border:1px solid var(--border);overflow:hidden;margin-bottom:1rem;">'+
-        '<table style="width:100%;border-collapse:collapse;">'+
-          '<thead><tr style="background:var(--primary);color:#fff;"><th style="padding:8px 12px;text-align:left;font-size:12px;">Consultor</th><th style="padding:8px 12px;text-align:left;font-size:12px;">Número</th></tr></thead>'+
-          '<tbody>'+
-          [['Micheli Lourenço','61995822607'],['Amanda Curi','21980891321'],['Amanda Curi','21972620685'],['Amanda Curi','21 971731321'],['Tiago Franco','11948848164'],['Gilliano Mello','21975637643'],['Eliel Teixeira','21979451900'],['Lucas Galvão','31998913108'],['Camila Suenaga','11985562799'],['Marcus Cavalcanti','21995084103'],['Micheli Lourenço','21974873453'],
-          ].map(r=>'<tr style="border-bottom:0.5px solid var(--border);"><td style="padding:8px 12px;font-size:13px;font-weight:500;">'+r[0]+'</td><td style="padding:8px 12px;font-size:13px;color:var(--text-3);">'+r[1]+'</td></tr>').join('')+
-          '</tbody></table></div>'+
-    '</div>';
-  }
-
-  function renderGrupos(){
-    return '<div>'+
-      '<p style="font-size:13px;color:var(--text-2);margin-bottom:1rem;">Links de convite para grupos de WhatsApp e comunidades no Facebook dos alunos.</p>'+
-      [
-        ['EXCEL',['Excel Online','https://eventoshashtag.herokuapp.com/excel-online'],['Grupo Facebook','https://www.facebook.com/groups/1945224525867908/']],
-        ['POWER BI',['PBI Online','https://eventoshashtag.herokuapp.com/pbi-online'],['Grupo Facebook','https://www.facebook.com/groups/580066976765611']],
-        ['PYTHON',['Python Online','https://eventoshashtag.herokuapp.com/python-online'],['Grupo Facebook','https://www.facebook.com/groups/344824740817273']],
-        ['SQL',['SQL Online','https://eventoshashtag.herokuapp.com/sql-online'],['Grupo Facebook','https://www.facebook.com/groups/1161456458113361/']],
-        ['VBA',['VBA Online','https://eventoshashtag.herokuapp.com/vba-online'],['Grupo Facebook','https://www.facebook.com/groups/2948866975414505']],
-        ['POWERPOINT',['PPT Online','https://eventoshashtag.herokuapp.com/ppt-online'],['Grupo Facebook','https://www.facebook.com/groups/651724696687876/']],
-        ['CIÊNCIA DE DADOS',['Ciência de Dados Online','https://eventoshashtag.herokuapp.com/ciencia-de-dados-online'],['Grupo Facebook','https://www.facebook.com/groups/516376017010446/']],
-        ['COMUNIDADE IMPRESSIONADORA',['Comunidade','http://eventoshashtag.herokuapp.com/comunidade-hashtag']],
-        ['JAVASCRIPT / HTML / FULL STACK',['Grupo Facebook','https://www.facebook.com/groups/615963560411896/']],
-        ['ASSINATURA VITALÍCIA',['Alunos Vi Online','http://eventoshashtag.herokuapp.com/alunos-vitalicio']],
-        ['INGLÊS IMPRESSIONADOR',['WhatsApp','https://eventoshashtag.herokuapp.com/ingles-online'],['Grupo Facebook','https://www.facebook.com/groups/inglesimpressionador']],
-      ].map(group=>{
-        const title = group[0];
-        const links = group.slice(1);
-        return '<div style="font-size:12px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:0.07em;margin:0.75rem 0 0.25rem;">'+title+'</div>'+
-          table(links.map(l=>linkRow(l[0],l[1])).join(''));
-      }).join('')+
-    '</div>';
-  }
-
-  function build(){
-    mc.innerHTML = snakeHtml()+
-      '<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;">'+
-        '<div class="page-eyebrow">💡 GERAL</div>'+
-        '<div class="page-title">Informacoes Uteis</div>'+
-        '<div class="page-sub">Ementas, contatos e grupos da equipe Hashtag</div>'+
-      '</div>'+
-      '<div style="display:flex;gap:0;margin-bottom:1.5rem;border-bottom:2px solid var(--border);">'+
-        tabBtn('contatos','Contatos','📱')+
-        tabBtn('ementas','Ementas','📄')+
-        tabBtn('grupos','Grupos WhatsApp/Facebook','👥')+
-      '</div>'+
-      (activeTab==='contatos'?renderContatos():activeTab==='ementas'?renderEmentas():renderGrupos());
-  }
-
-  window.iuSetTab = function(tab){ activeTab=tab; build(); };
-  build();
-}
-
-async function renderRelatDisparos(mc){
-  const today = new Date();
-  let activeTab = 'tabela'; // 'tabela' | 'historico'
-  // 5 datas livres — padrão: seg-sex da semana atual
-  function defaultDates(){
-    const d = new Date();
-    const day = d.getDay();
-    const diff = (day - 1 + 7) % 7;
-    const mon = new Date(d); mon.setDate(d.getDate() - diff);
-    return [0,1,2,3,4].map(i=>{ const x=new Date(mon); x.setDate(mon.getDate()+i); return fmtDateKey(x); });
-  }
-  // Persist dates across F5
-  const RD_KEY = 'rd_freeDates';
-  function loadFreeDates(){
-    try{
-      const saved = JSON.parse(localStorage.getItem(RD_KEY)||'null');
-      if(saved && saved.length===5 && saved.every(d=>typeof d==='string'&&d.length===10)) return saved;
-    }catch(e){}
-    return defaultDates();
-  }
-  function saveFreeDates(){ localStorage.setItem(RD_KEY, JSON.stringify(freeDates)); }
-  let freeDates = loadFreeDates();
-  let editMode = false;
-
-  async function loadData(weekDays){
-    const keys = weekDays.map(fmtDateKey);
-    const docs = await Promise.all(keys.map(k=>getDoc(doc(db,'relatorio_disparos',k))));
-    const data = {};
-    docs.forEach((d,i)=>{data[keys[i]]=d.exists()?d.data():{};});
-    return data;
-  }
-
-  async function render(){
-    const keys = freeDates;
-    const weekDays = keys.map(k=>new Date(k+'T12:00:00'));
-    const data = await loadData(weekDays);
-
-    const totalDia = keys.map(k=>DISP_TIPOS.reduce((s,t)=>s+(Number(data[k]?.[t])||0),0));
-    const somaGeral = totalDia.reduce((a,b)=>a+b,0);
-    const somasTipo = DISP_TIPOS.map(t=>keys.reduce((s,k)=>s+(Number(data[k]?.[t])||0),0));
-    const totalGeral = somasTipo.reduce((a,b)=>a+b,0);
-    const semIni = weekDays[0].toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
-    const semFim = weekDays[4].toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'});
-
-    // Montar HTML
-    let html = snakeHtml()+
-      '<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;">'+
-        '<div class="page-eyebrow">📊 COORD</div>'+
-        '<div class="page-title">Relatorio de Disparos</div>'+
-        '<div class="page-sub">Registro semanal por tipo de mensagem</div>'+
-      '</div>'+
-      // Abas
-      '<div style="display:flex;gap:0;margin-bottom:1.25rem;border-bottom:2px solid var(--border);">'+
-        '<button onclick="rdSetTab(\'tabela\')" style="padding:8px 20px;border:none;border-bottom:'+(activeTab==='tabela'?'3px solid var(--primary)':'3px solid transparent')+';background:none;font-family:var(--font);font-size:13px;font-weight:'+(activeTab==='tabela'?'600':'400')+';color:'+(activeTab==='tabela'?'var(--primary)':'var(--text-3)')+';cursor:pointer;margin-bottom:-2px;">📊 Tabela</button>'+
-        '<button onclick="rdSetTab(\'historico\')" style="padding:8px 20px;border:none;border-bottom:'+(activeTab==='historico'?'3px solid var(--primary)':'3px solid transparent')+';background:none;font-family:var(--font);font-size:13px;font-weight:'+(activeTab==='historico'?'600':'400')+';color:'+(activeTab==='historico'?'var(--primary)':'var(--text-3)')+';cursor:pointer;margin-bottom:-2px;">🕒 Historico</button>'+
-      '</div>'+
-      (activeTab==='historico'?rdHistoricoHtml():
-      // Aba Tabela — controles
-      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:1rem;flex-wrap:wrap;">'+
-        '<span style="font-size:12px;font-weight:600;color:var(--text-3);white-space:nowrap;">Datas:</span>'+
-        freeDates.map((k,i)=>'<input type="date" value="'+k+'" onchange="rdChangeDate('+i+',this.value)" style="padding:5px 8px;border:1px solid var(--border-md);border-radius:var(--radius);font-family:var(--font);font-size:12px;background:var(--bg);cursor:pointer;"/>').join('')+
-        '<button onclick="rdResetDatas()" style="padding:5px 10px;border:1px solid var(--border-md);border-radius:var(--radius);background:var(--surface);cursor:pointer;font-family:var(--font);font-size:11px;color:var(--text-3);">Semana atual</button>'+
-        '<div style="margin-left:auto;display:flex;gap:8px;">'+
-          (editMode?
-            '<button onclick="rdSalvar()" style="padding:7px 16px;background:var(--primary);color:#fff;border:none;border-radius:var(--radius);cursor:pointer;font-family:var(--font);font-size:13px;font-weight:500;">Salvar</button>'+
-            '<button onclick="rdCancelar()" style="padding:7px 14px;border:1px solid var(--border-md);border-radius:var(--radius);background:var(--surface);cursor:pointer;font-family:var(--font);font-size:13px;">Cancelar</button>'
-            :
-            '<button onclick="rdEditar()" style="padding:7px 14px;border:1px solid var(--primary);color:var(--primary);border-radius:var(--radius);background:var(--surface);cursor:pointer;font-family:var(--font);font-size:13px;font-weight:500;">✏️ Editar</button>'
-          )+
-          '<button onclick="rdExportar()" style="padding:7px 14px;border:1px solid #1D6F42;color:#1D6F42;border-radius:var(--radius);background:var(--surface);cursor:pointer;font-family:var(--font);font-size:13px;font-weight:500;">⬇️ Excel</button>'+
-        '</div>'+
-      '</div>'+
-      // Tabela
-      '<div style="overflow-x:auto;border-radius:10px;border:1px solid var(--border);">'+
-      '<table style="width:100%;border-collapse:collapse;font-size:12px;min-width:900px;">'+
-        '<thead>'+
-          '<tr style="background:#4472C4;color:#fff;">'+
-            '<th style="padding:8px 12px;text-align:left;font-weight:600;min-width:160px;">Tipo de Mensagem</th>'+
-            weekDays.map((d,i)=>'<th style="padding:8px 10px;text-align:center;font-weight:600;min-width:110px;">'+fmtDateLabel(d)+'<br><span style="font-weight:400;font-size:10px;">'+d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})+'</span></th>').join('')+
-            '<th style="padding:8px 10px;text-align:center;background:#1F4E79;min-width:80px;">Soma</th>'+
-            '<th style="padding:8px 10px;text-align:center;background:#1F4E79;min-width:80px;">Media</th>'+
-            '<th style="padding:8px 10px;text-align:center;background:#1F4E79;min-width:100px;">Concentracao</th>'+
-          '</tr>'+
-        '</thead>'+
-        '<tbody>'+
-        DISP_TIPOS.map((tipo,ti)=>{
-          const cor = DISP_CORES[tipo];
-          const soma = somasTipo[ti];
-          const media = keys.filter(k=>Number(data[k]?.[tipo]||0)>0).length;
-          const mediav = media>0?(soma/media).toFixed(1):0;
-          const conc = totalGeral>0?((soma/totalGeral)*100).toFixed(2)+'%':'0,00%';
-          return '<tr style="border-bottom:1px solid var(--border);">'+
-            '<td style="padding:7px 12px;font-weight:500;'+(cor?'background:'+cor+';':'')+'">'+tipo+'</td>'+
-            keys.map((k,di)=>{
-              const v = Number(data[k]?.[tipo]||0);
-              if(editMode){
-                return '<td style="padding:4px 6px;text-align:center;"><input type="number" min="0" id="rd-'+ti+'-'+di+'" value="'+v+'" style="width:90px;padding:5px;border:1px solid var(--border-md);border-radius:4px;text-align:center;font-family:var(--font);font-size:12px;background:var(--bg);"/></td>';
-              }
-              return '<td style="padding:7px 10px;text-align:center;'+(v>0?'font-weight:500;':'color:var(--text-3);')+'">'+( v||0)+'</td>';
-            }).join('')+
-            '<td style="padding:7px 10px;text-align:center;font-weight:600;background:#BDD7EE;">'+soma+'</td>'+
-            '<td style="padding:7px 10px;text-align:center;background:#DDEBF7;">'+mediav+'</td>'+
-            '<td style="padding:7px 10px;text-align:center;background:#DDEBF7;">'+conc+'</td>'+
-          '</tr>';
-        }).join('')+
-        // Total por dia
-        '<tr style="background:#9DC3E6;font-weight:700;border-top:2px solid #4472C4;">'+
-          '<td style="padding:8px 12px;">Total por dia:</td>'+
-          totalDia.map(v=>'<td style="padding:8px 10px;text-align:center;">'+v+'</td>').join('')+
-          '<td colspan="3" style="padding:8px 10px;"></td>'+
-        '</tr>'+
-        '<tr style="background:#9DC3E6;font-weight:700;">'+
-          '<td style="padding:8px 12px;">Soma geral:</td>'+
-          '<td style="padding:8px 10px;text-align:center;font-size:13px;">'+somaGeral+'</td>'+
-          '<td colspan="'+(weekDays.length-1+3)+'" style="padding:8px 10px;"></td>'+
-        '</tr>'+
-        '</tbody>'+
-      '</table></div>'+
-      '');  // fecha aba tabela
-
-    mc.innerHTML = html;
-
-    // Guardar estado para funções externas
-    window._rdState = {weekDays, keys, data, editMode};
-  }
-
-  window.rdSetTab = function(tab){ activeTab=tab; editMode=false; render(); };
-
-  function rdHistoricoHtml(){
-    return '<div id="rd-hist-wrap"><div style="display:flex;align-items:center;gap:12px;margin-bottom:1rem;flex-wrap:wrap;">'+
-      '<span style="font-size:13px;font-weight:600;color:var(--text);">Exportar periodo:</span>'+
-      '<div style="display:flex;align-items:center;gap:6px;font-size:12px;">'+
-        '<span style="color:var(--text-3);">De</span>'+
-        '<input type="date" id="rd-hist-de" style="padding:5px 8px;border:1px solid var(--border-md);border-radius:var(--radius);font-family:var(--font);font-size:12px;background:var(--bg);"/>'+
-        '<span style="color:var(--text-3);">ate</span>'+
-        '<input type="date" id="rd-hist-ate" style="padding:5px 8px;border:1px solid var(--border-md);border-radius:var(--border-md);font-family:var(--font);font-size:12px;background:var(--bg);"/>'+
-      '</div>'+
-      '<button onclick="rdExportarPeriodo()" style="padding:7px 14px;border:1px solid #1D6F42;color:#1D6F42;border-radius:var(--radius);background:var(--surface);cursor:pointer;font-family:var(--font);font-size:13px;font-weight:500;">⬇️ Exportar Excel</button>'+
-      '<button onclick="rdExportarSemanaAtual()" style="padding:7px 14px;border:1px solid var(--primary);color:var(--primary);border-radius:var(--radius);background:var(--surface);cursor:pointer;font-family:var(--font);font-size:13px;font-weight:500;">⬇️ Semana atual</button>'+
-    '</div>'+
-    '<div id="rd-hist-preview" style="margin-top:0.5rem;font-size:12px;color:var(--text-3);">Selecione um periodo e clique em Exportar.</div>'+
-    '</div>';
-  }
-
-  window.rdExportarSemanaAtual = async function(){
-    const {weekDays, keys, data} = window._rdState;
-    await _rdGerarExcel(keys, weekDays, data, 'semana_atual');
-  };
-
-  window.rdExportarPeriodo = async function(){
-    const de = document.getElementById('rd-hist-de')?.value;
-    const ate = document.getElementById('rd-hist-ate')?.value;
-    if(!de || !ate){ showToast('Selecione o periodo completo.'); return; }
-    if(de > ate){ showToast('Data inicial deve ser antes da final.'); return; }
-
-    // Gerar todos os dias do período
-    const preview = document.getElementById('rd-hist-preview');
-    if(preview) preview.textContent = 'Carregando dados...';
-
-    const days = [];
-    const cur = new Date(de+'T12:00:00');
-    const end = new Date(ate+'T12:00:00');
-    while(cur <= end){ days.push(new Date(cur)); cur.setDate(cur.getDate()+1); }
-
-    const keys = days.map(fmtDateKey);
-    const docs = await Promise.all(keys.map(k=>getDoc(doc(db,'relatorio_disparos',k))));
-    const data = {};
-    docs.forEach((d,i)=>{ data[keys[i]]=d.exists()?d.data():{}; });
-
-    if(preview) preview.textContent = days.length+' dias carregados.';
-    await _rdGerarExcel(keys, days, data, 'periodo_'+de+'_'+ate);
-  };
-
-  async function _rdGerarExcel(keys, days, data, filename){
-    // Gerar CSV estruturado igual à tabela do sistema
-    const header = ['Tipo de Mensagem', ...days.map(d=>d.toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit'})), 'Soma', 'Media', 'Concentracao'];
-    const rows = [header];
-    const somasTipo = DISP_TIPOS.map(t=>keys.reduce((s,k)=>s+(Number(data[k]?.[t])||0),0));
-    const totalGeral = somasTipo.reduce((a,b)=>a+b,0);
-
-    DISP_TIPOS.forEach((tipo,ti)=>{
-      const vals = keys.map(k=>Number(data[k]?.[tipo]||0));
-      const soma = somasTipo[ti];
-      const diasComDados = vals.filter(v=>v>0).length;
-      const media = diasComDados>0?(soma/diasComDados).toFixed(1):0;
-      const conc = totalGeral>0?((soma/totalGeral)*100).toFixed(2)+'%':'0,00%';
-      rows.push([tipo,...vals,soma,media,conc]);
-    });
-
-    const totalDia = keys.map(k=>DISP_TIPOS.reduce((s,t)=>s+(Number(data[k]?.[t])||0),0));
-    rows.push(['Total por dia:',...totalDia,'','','']);
-    rows.push(['Soma geral:',totalDia.reduce((a,b)=>a+b,0),...Array(keys.length-1+3).fill('')]);
-
-    const csvContent = rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');
-    const blob = new Blob(['\uFEFF'+csvContent],{type:'text/csv;charset=utf-8;'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href=url; a.download='disparos_'+filename+'.csv';
-    a.click(); URL.revokeObjectURL(url);
-    showToast('Exportado! Abra no Excel.');
-  }
-
-  window.rdChangeDate = function(i, val){
-    if(!val) return;
-    freeDates[i] = val;
-    saveFreeDates();
-    editMode=false;
-    render();
-  };
-  window.rdResetDatas = function(){
-    freeDates = defaultDates();
-    saveFreeDates();
-    editMode=false;
-    render();
-  };
-  window.rdEditar = function(){ editMode=true; render(); };
-  window.rdCancelar = function(){ editMode=false; render(); };
-
-  window.rdSalvar = async function(){
-    const {weekDays,keys,data} = window._rdState;
-    try{
-      await Promise.all(keys.map((k,di)=>{
-        const obj={};
-        DISP_TIPOS.forEach((t,ti)=>{
-          const el=document.getElementById('rd-'+ti+'-'+di);
-          obj[t]=el?Number(el.value)||0:0;
-        });
-        obj.dataKey=k;
-        return setDoc(doc(db,'relatorio_disparos',k),obj);
-      }));
-      showToast('Relatorio salvo!');
-      editMode=false;
-      render();
-    }catch(e){showToast('Erro ao salvar.');}
-  };
-
-  window.rdExportar = async function(){
-    const {weekDays,keys,data} = window._rdState;
-    const semIni = weekDays[0].toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
-    const semFim = weekDays[4].toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'});
-
-    // Montar CSV
-    const header = ['Tipo de Mensagem',...weekDays.map(d=>fmtDateLabel(d)+' '+d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})),'Soma','Media','Concentracao'];
-    const rows = [header];
-    const somasTipo = DISP_TIPOS.map(t=>keys.reduce((s,k)=>s+(Number(data[k]?.[t])||0),0));
-    const totalGeral = somasTipo.reduce((a,b)=>a+b,0);
-
-    DISP_TIPOS.forEach((tipo,ti)=>{
-      const vals = keys.map(k=>Number(data[k]?.[tipo]||0));
-      const soma = somasTipo[ti];
-      const diasComDados = vals.filter(v=>v>0).length;
-      const media = diasComDados>0?(soma/diasComDados).toFixed(1):0;
-      const conc = totalGeral>0?((soma/totalGeral)*100).toFixed(2)+'%':'0,00%';
-      rows.push([tipo,...vals,soma,media,conc]);
-    });
-
-    const totalDia = keys.map(k=>DISP_TIPOS.reduce((s,t)=>s+(Number(data[k]?.[t])||0),0));
-    rows.push(['Total por dia:',...totalDia,'','','']);
-    rows.push(['Soma geral:',totalDia.reduce((a,b)=>a+b,0),...Array(keys.length-1+3).fill('')]);
-
-    const csvContent = 'Semana '+semIni+' - '+semFim+'\n'+
-      rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');
-
-    const blob = new Blob(['\uFEFF'+csvContent],{type:'text/csv;charset=utf-8;'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href=url; a.download='disparos_'+semIni.replace('/','_')+'_'+semFim.replace(/[\/]/g,'_')+'.csv';
-    a.click(); URL.revokeObjectURL(url);
-    showToast('Exportado como CSV (abra no Excel)!');
-  };
-
-  render();
-}
-
-async function renderAgenda(mc){
-  const {isCoord} = getPerms();
-  mc.style.padding = '0';
-  mc.style.overflow = 'hidden';
-
-  const GCAL_CLIENT_ID = '784122936551-7r640rsebf7fnvkhb0ciqkmrim5ksu6u.apps.googleusercontent.com';
-  const GCAL_SCOPE = 'https://www.googleapis.com/auth/calendar.readonly';
-  let gcalToken = sessionStorage.getItem('gcal_token') || null;
-  let gcalEvents = JSON.parse(sessionStorage.getItem('gcal_events') || '[]');
-
-  // Transparência salva por usuário
-  let agendaOpacity = parseFloat(localStorage.getItem('agenda_opacity') || '0.72');
-
-  async function loadAgenda(){
-    const [semanSnap, mensalSnap, adicSnap, pessoalSnap] = await Promise.all([
-      getDoc(doc(db,'config','reuniao')),
-      getDoc(doc(db,'config','reuniao_mensal')),
-      getDoc(doc(db,'config','reuniao_adicional')),
-      getDocs(query(collection(db,'agenda_pessoal'), where('uid','==',currentUser.uid), orderBy('ts','asc')))
-    ]);
-    return {
-      semanal:  semanSnap.exists()  ? semanSnap.data()  : {},
-      mensal:   mensalSnap.exists() ? mensalSnap.data() : {},
-      adicional: adicSnap.exists()  ? adicSnap.data()   : {},
-      pessoal: pessoalSnap.docs.map(d=>({id:d.id,...d.data()}))
-    };
-  }
-
-  // Parse dd/mm/aaaa or dd/mm → {day, month (0-based), year}
-  function parseDate(str){
-    if(!str) return null;
-    const p = str.split('/');
-    if(p.length < 2) return null;
-    const d = parseInt(p[0]), m = parseInt(p[1])-1;
-    const y = p.length >= 3 ? parseInt(p[2]) : new Date().getFullYear();
-    if(isNaN(d)||isNaN(m)) return null;
-    return {day:d, month:m, year:y};
-  }
-
-  async function renderPage(viewYear, viewMonth){
-    const now = new Date();
-    if(viewYear === undefined) viewYear = now.getFullYear();
-    if(viewMonth === undefined) viewMonth = now.getMonth();
-
-    const {semanal, mensal, adicional, pessoal} = await loadAgenda();
-
-    // Build event map: key = "day-month-year" → array of events
-    const evMap = {};
-    const addEv = (dateStr, ev) => {
-      const pd = parseDate(dateStr);
-      if(!pd) return;
-      const key = pd.day+'-'+pd.month+'-'+pd.year;
-      if(!evMap[key]) evMap[key] = [];
-      evMap[key].push(ev);
-    };
-
-    // Semanal — recorre toda semana no mês exibido (usa dia da semana do data)
-    if(semanal.data){
-      const pd = parseDate(semanal.data);
-      if(pd){
-        // find day-of-week of that date, mark every same weekday in viewMonth
-        const baseDate = new Date(pd.year, pd.month, pd.day);
-        const dow = baseDate.getDay();
-        const daysInMonth = new Date(viewYear, viewMonth+1, 0).getDate();
-        for(let d=1;d<=daysInMonth;d++){
-          const dt = new Date(viewYear, viewMonth, d);
-          if(dt.getDay()===dow){
-            addEv(d+'/'+(viewMonth+1)+'/'+viewYear, {tipo:'semanal',label:'Reunião Semanal',horario:semanal.horario||'',meet:semanal.meet||''});
-          }
-        }
-      }
-    }
-
-    // Mensal — marca o dia específico
-    if(mensal.data) addEv(mensal.data, {tipo:'mensal',label:'Reunião Mensal',horario:mensal.horario||'',meet:mensal.meet||''});
-
-    // Adicional — marca o dia específico
-    if(adicional.data) addEv(adicional.data, {tipo:'adicional',label:'Reuniões Adicionais',horario:adicional.horario||'',meet:adicional.meet||''});
-
-    // Pessoal
-    pessoal.forEach(r => addEv(r.data, {tipo:'pessoal',label:r.titulo,horario:r.horario||'',meet:r.meet||'',id:r.id}));
-
-    // Google Calendar
-    gcalEvents.forEach(e=>{
-      if(!e.start) return;
-      const dateStr = (e.start.dateTime||e.start.date||'').slice(0,10);
-      if(!dateStr) return;
-      const [gy,gm,gd] = dateStr.split('-').map(Number);
-      const gkey = gd+'-'+(gm-1)+'-'+gy;
-      if(!evMap[gkey]) evMap[gkey]=[];
-      evMap[gkey].push({tipo:'gcal',label:e.summary||'(sem título)',horario:e.start.dateTime?e.start.dateTime.slice(11,16):'',meet:e.hangoutLink||e.htmlLink||''});
-    });
-
-    // Calendar grid
-    const daysInMonth = new Date(viewYear, viewMonth+1, 0).getDate();
-    const firstDow = new Date(viewYear, viewMonth, 1).getDay(); // 0=Sun
-    const monthNames = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-    const dayNames = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
-
-    let calCells = '';
-    // Header days
-    dayNames.forEach(d => {
-      calCells += '<div style="text-align:center;font-size:10px;font-weight:600;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.08em;padding:6px 0;">'+d+'</div>';
-    });
-    // Empty cells before first day
-    for(let i=0;i<firstDow;i++) calCells += '<div></div>';
-    // Day cells
-    for(let d=1;d<=daysInMonth;d++){
-      const isToday = (d===now.getDate() && viewMonth===now.getMonth() && viewYear===now.getFullYear());
-      const key = d+'-'+viewMonth+'-'+viewYear;
-      const evs = evMap[key]||[];
-      const dotColors = {semanal:'#22c55e', mensal:'#ef4444', adicional:'#9333ea', pessoal:'#3b82f6', gcal:'#eab308'};
-      const dotShadows = {semanal:'0 0 5px #22c55e', mensal:'0 0 5px #ef4444', adicional:'0 0 5px #9333ea', pessoal:'0 0 5px #3b82f6', gcal:'0 0 5px #eab308'};
-      const dots = evs.map(e=>'<span style="width:6px;height:6px;border-radius:50%;background:'+(dotColors[e.tipo]||'#fff')+';box-shadow:'+(dotShadows[e.tipo]||'none')+';display:inline-block;margin:0 1px;"></span>').join('');
-      const todayBg = isToday?'rgba(76,175,106,0.35)':'transparent';
-      calCells += '<div onclick="agendaSelectDay('+d+','+viewMonth+','+viewYear+')" oncontextmenu="agendaContextMenu(event,'+d+','+viewMonth+','+viewYear+')" data-today="'+(isToday?'1':'0')+'" style="cursor:pointer;border-radius:8px;padding:4px 2px;text-align:center;background:'+todayBg+';border:'+(isToday?'1px solid rgba(76,175,106,0.6)':'1px solid transparent')+';transition:background 0.12s;" onmouseover="this.style.background=\'rgba(255,255,255,0.08)\'" onmouseout="this.style.background=(this.dataset.today===\'1\'?\'rgba(76,175,106,0.35)\':\'transparent\')">'+
-        '<div style="font-size:13px;font-weight:'+(isToday?'600':'400')+';color:'+(isToday?'#fff':'rgba(255,255,255,0.85)')+';">'+d+'</div>'+
-        (dots?'<div style="display:flex;justify-content:center;gap:1px;margin-top:2px;">'+dots+'</div>':'<div style="height:7px;"></div>')+
-      '</div>';
-    }
-
-    // Banners
-    const makeBanner = (tipo, data, cor, onEdit) => {
-      const temLink = !!data.meet;
-      const temInfo = !!(data.horario || data.data);
-      return '<div style="flex:1;background:'+cor+';border-radius:var(--radius-lg);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;gap:10px;overflow:hidden;position:relative;min-width:0;">'+
-        '<div style="position:absolute;top:-20px;right:-20px;width:90px;height:90px;background:rgba(255,255,255,0.05);border-radius:50%;"></div>'+
-        '<div style="display:flex;align-items:center;gap:12px;position:relative;z-index:1;min-width:0;">'+
-          '<div style="width:34px;height:34px;border-radius:8px;background:rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;flex-shrink:0;">'+
-            '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.85)" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>'+
-          '</div>'+
-          '<div style="min-width:0;">'+
-            '<div style="font-size:9px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:rgba(255,255,255,0.5);margin-bottom:2px;">'+tipo+'</div>'+
-            '<div style="font-size:14px;font-weight:500;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+(temInfo?(data.horario||'')+(data.data?' · '+data.data:''):'Não agendada')+'</div>'+
-          '</div>'+
-        '</div>'+
-        '<div style="display:flex;align-items:center;gap:6px;flex-shrink:0;position:relative;z-index:1;">'+
-          (temLink?'<a href="'+data.meet+'" target="_blank" style="padding:6px 14px;background:rgba(34,197,94,0.18);color:#4ade80;border:1px solid rgba(34,197,94,0.5);border-radius:20px;text-decoration:none;font-size:11px;font-weight:600;display:inline-flex;align-items:center;gap:5px;text-shadow:0 0 8px rgba(74,222,128,0.5);letter-spacing:0.01em;"><span style="width:6px;height:6px;border-radius:50%;background:#22c55e;box-shadow:0 0 6px #22c55e;"></span>Meet</a>':'')+
-          (isCoord?'<button onclick="'+onEdit+'()" style="padding:5px 10px;border:1px solid rgba(255,255,255,0.15);border-radius:20px;background:transparent;color:rgba(255,255,255,0.55);font-family:var(--font);font-size:11px;cursor:pointer;">Editar</button>':'')+
-        '</div>'+
-      '</div>';
-    };
-
-    const glassStyle = 'background:rgba(10,30,15,'+agendaOpacity+');backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border:1px solid rgba(255,255,255,0.1);border-radius:16px;';
-
-    mc.innerHTML =
-      // Full-screen background
-      '<div style="position:relative;width:100%;height:calc(100vh - 56px);background:url(https://res.cloudinary.com/dbd9hpwyb/image/upload/v1781053769/foto_rio_keunob.jpg) center/cover no-repeat;overflow-y:auto;">'+
-      snakeHtml()+
-
-      // Content wrapper with padding
-      '<div style="position:relative;z-index:1;padding:1.5rem;min-height:100%;display:flex;flex-direction:column;gap:14px;">'+
-
-        // ── Banners: mensal full width, semanal + adicional side by side ──
-        '<div style="display:flex;flex-direction:column;gap:8px;">'+
-          // Mensal — full width
-          makeBanner('Reunião Mensal', mensal, 'linear-gradient(135deg,rgba(127,29,29,0.92),rgba(185,28,28,0.92))', 'editarReuniaoMensal')+
-          // Semanal + Adicional — half width each
-          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">'+
-            makeBanner('Reunião Semanal', semanal, 'linear-gradient(135deg,rgba(13,46,20,0.92),rgba(26,92,42,0.92))', 'editarReuniao')+
-            makeBanner('Reuniões Adicionais', adicional, 'linear-gradient(135deg,rgba(88,28,135,0.92),rgba(126,34,206,0.92))', 'editarReuniaoAdicional')+
-          '</div>'+
-        '</div>'+
-
-        // ── Calendar + Day detail ──
-        '<div style="display:grid;grid-template-columns:1fr 320px;gap:14px;flex:1;">'+
-
-          // Calendar glass card
-          '<div style="'+glassStyle+'padding:1.25rem;">'+
-            // Header
-            '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">'+
-              '<button onclick="agendaNavMonth(-1)" style="width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;">'+
-                '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>'+
-              '</button>'+
-              '<div style="font-size:15px;font-weight:500;color:#fff;">'+monthNames[viewMonth]+' '+viewYear+'</div>'+
-              '<button onclick="agendaNavMonth(1)" style="width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;">'+
-                '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>'+
-              '</button>'+
-            '</div>'+
-            // Grid
-            '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;">'+calCells+'</div>'+
-            // Legend
-            '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.08);">'+
-              '<div style="display:flex;align-items:center;gap:5px;font-size:11px;color:rgba(255,255,255,0.6);"><span style="width:8px;height:8px;border-radius:50%;background:#22c55e;box-shadow:0 0 6px #22c55e;display:inline-block;"></span>Semanal</div>'+
-              '<div style="display:flex;align-items:center;gap:5px;font-size:11px;color:rgba(255,255,255,0.6);"><span style="width:8px;height:8px;border-radius:50%;background:#ef4444;box-shadow:0 0 6px #ef4444;display:inline-block;"></span>Mensal</div>'+
-              '<div style="display:flex;align-items:center;gap:5px;font-size:11px;color:rgba(255,255,255,0.6);"><span style="width:8px;height:8px;border-radius:50%;background:#9333ea;box-shadow:0 0 6px #9333ea;display:inline-block;"></span>Adicionais</div>'+
-              '<div style="display:flex;align-items:center;gap:5px;font-size:11px;color:rgba(255,255,255,0.6);"><span style="width:8px;height:8px;border-radius:50%;background:#3b82f6;box-shadow:0 0 6px #3b82f6;display:inline-block;"></span>Pessoal</div>'+
-              '<div style="display:flex;align-items:center;gap:5px;font-size:11px;color:rgba(255,255,255,0.6);"><span style="width:8px;height:8px;border-radius:50%;background:#eab308;box-shadow:0 0 6px #eab308;display:inline-block;"></span>Google</div>'+
-            '</div>'+
-          '</div>'+
-
-          // Right panel: day detail + opacity + add
-          '<div style="display:flex;flex-direction:column;gap:10px;">'+
-
-            // Day events panel
-            '<div style="'+glassStyle+'padding:1.25rem;flex:1;">'+
-              '<div id="agenda-day-title" style="font-size:13px;font-weight:600;color:rgba(255,255,255,0.5);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.08em;">Selecione um dia</div>'+
-              '<div id="agenda-day-events" style="display:flex;flex-direction:column;gap:8px;"><div style="font-size:12px;color:rgba(255,255,255,0.3);">Clique em um dia do calendário para ver os eventos.</div></div>'+
-            '</div>'+
-
-            // Google Calendar connect button
-            '<div style="'+glassStyle+'padding:12px 16px;">'+
-              (gcalToken
-                ? '<div style="display:flex;align-items:center;gap:8px;"><span style="width:8px;height:8px;border-radius:50%;background:#eab308;box-shadow:0 0 6px #eab308;flex-shrink:0;"></span><span style="font-size:12px;color:rgba(255,255,255,0.7);">Google Agenda conectada</span><button onclick="gcalDesconectar()" style="margin-left:auto;padding:3px 8px;border:1px solid rgba(255,255,255,0.15);border-radius:6px;background:transparent;color:rgba(255,255,255,0.35);font-size:10px;cursor:pointer;font-family:var(--font);">Desconectar</button></div>'
-                : '<button onclick="gcalConectar()" style="width:100%;padding:9px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);border-radius:10px;color:rgba(255,255,255,0.7);font-family:var(--font);font-size:12px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;"><svg width=\'14\' height=\'14\' viewBox=\'0 0 24 24\'><path fill=\'#4285F4\' d=\'M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z\'/><path fill=\'#34A853\' d=\'M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z\'/><path fill=\'#FBBC05\' d=\'M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z\'/><path fill=\'#EA4335\' d=\'M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z\'/></svg>Conectar Google Agenda</button>'
-              )+
-            '</div>'+
-
-            // Add meeting button
-            '<button onclick="abrirModalReuniaoP()" style="width:100%;padding:11px;background:rgba(26,92,42,0.7);border:1px solid rgba(76,175,106,0.3);border-radius:12px;color:#fff;font-family:var(--font);font-size:13px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;transition:background 0.15s;" onmouseover="this.style.background=\'rgba(26,92,42,0.9)\'" onmouseout="this.style.background=\'rgba(26,92,42,0.7)\'">'+
-              '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>'+
-              'Nova reunião'+
-            '</button>'+
-
-            // Opacity slider
-            '<div style="'+glassStyle+'padding:12px 16px;">'+
-              '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">'+
-                '<div style="font-size:11px;color:rgba(255,255,255,0.45);font-weight:500;letter-spacing:0.06em;text-transform:uppercase;">Transparência</div>'+
-                '<div id="agenda-opacity-val" style="font-size:11px;color:rgba(255,255,255,0.5);">'+Math.round((1-agendaOpacity)*100)+'%</div>'+
-              '</div>'+
-              '<input type="range" id="agenda-opacity-slider" min="0.2" max="0.95" step="0.01" value="'+agendaOpacity+'" '+
-                'style="width:100%;accent-color:#4CAF6A;cursor:pointer;" '+
-                'oninput="agendaSetOpacity(this.value)"/>'+
-            '</div>'+
-
-          '</div>'+
-        '</div>'+
-
-      '</div>'+
-
-      // Modal nova reunião
-      '<div id="agenda-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:2000;align-items:center;justify-content:center;">'+
-        '<div style="background:#0d2e14;border:1px solid rgba(255,255,255,0.12);border-radius:var(--radius-lg);padding:1.75rem;width:100%;max-width:380px;box-shadow:0 20px 60px rgba(0,0,0,0.5);">'+
-          '<div style="font-size:16px;font-weight:500;color:#fff;margin-bottom:1.25rem;">Nova Reunião</div>'+
-          '<div class="field"><label style="color:rgba(255,255,255,0.5);">Título</label><input id="agp-titulo" type="text" placeholder="Ex: Alinhamento semanal" style="background:rgba(255,255,255,0.07);border-color:rgba(255,255,255,0.12);color:#fff;"/></div>'+
-          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">'+
-            '<div class="field"><label style="color:rgba(255,255,255,0.5);">Data</label><input id="agp-data" type="text" placeholder="dd/mm/aaaa" style="background:rgba(255,255,255,0.07);border-color:rgba(255,255,255,0.12);color:#fff;"/></div>'+
-            '<div class="field"><label style="color:rgba(255,255,255,0.5);">Horário</label><input id="agp-hora" type="text" placeholder="HH:MM" style="background:rgba(255,255,255,0.07);border-color:rgba(255,255,255,0.12);color:#fff;"/></div>'+
-          '</div>'+
-          '<div class="field"><label style="color:rgba(255,255,255,0.5);">Link do Meet (opcional)</label><input id="agp-meet" type="text" placeholder="https://meet.google.com/..." style="background:rgba(255,255,255,0.07);border-color:rgba(255,255,255,0.12);color:#fff;"/></div>'+
-          '<div style="display:flex;gap:10px;margin-top:4px;">'+
-            '<button onclick="fecharModalReuniaoP()" style="flex:1;padding:9px;border:1px solid rgba(255,255,255,0.15);border-radius:var(--radius);background:transparent;color:rgba(255,255,255,0.5);font-family:var(--font);font-size:13px;cursor:pointer;">Cancelar</button>'+
-            '<button onclick="salvarReuniaoP()" style="flex:2;padding:10px;background:var(--primary);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:14px;font-weight:500;cursor:pointer;">Salvar</button>'+
-          '</div>'+
-        '</div>'+
-      '</div>'+
-      '</div>';
-
-    // Store state for nav
-    mc._agendaYear = viewYear;
-    mc._agendaMonth = viewMonth;
-    mc._agendaEvMap = evMap;
-    mc._agendaSemanal = semanal;
-    mc._agendaMensal = mensal;
-    mc._agendaPessoal = pessoal;
-  }
-
-  await renderPage();
-
-  window.agendaNavMonth = function(dir){
-    let y = mc._agendaYear, m = mc._agendaMonth + dir;
-    if(m > 11){ m=0; y++; }
-    if(m < 0){ m=11; y--; }
-    renderPage(y, m);
-  };
-
-  window.agendaSelectDay = function(d, m, y){
-    const key = d+'-'+m+'-'+y;
-    const evs = mc._agendaEvMap[key]||[];
-    const monthNames = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-    const title = document.getElementById('agenda-day-title');
-    const list  = document.getElementById('agenda-day-events');
-    if(!title||!list) return;
-    title.textContent = d+' de '+monthNames[m]+' de '+y;
-    if(evs.length===0){
-      list.innerHTML='<div style="font-size:12px;color:rgba(255,255,255,0.3);padding:8px 0;">Nenhum evento neste dia.</div>';
-      return;
-    }
-    const colors = {semanal:'#22c55e', mensal:'#ef4444', adicional:'#9333ea', pessoal:'#3b82f6', gcal:'#eab308'};
-    const meetBtn = (url) => url
-      ? '<a href="'+url+'" target="_blank" style="display:inline-flex;align-items:center;gap:4px;margin-top:6px;padding:4px 10px;background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.5);border-radius:20px;color:#4ade80;text-decoration:none;font-size:11px;font-weight:600;text-shadow:0 0 8px rgba(74,222,128,0.6);letter-spacing:0.01em;"><span style="width:5px;height:5px;border-radius:50%;background:#22c55e;box-shadow:0 0 5px #22c55e;display:inline-block;"></span>Entrar no Meet</a>'
-      : '';
-    list.innerHTML = evs.map(e=>{
-      // Botão de ação: pessoal → remover; semanal/mensal → editar (só coord); gcal → nenhum
-      let actionBtn = '';
-      if(e.tipo==='pessoal' && e.id){
-        actionBtn = '<button onclick="excluirReuniaoP(this.dataset.id)" data-id="'+e.id+'" style="margin-top:8px;padding:4px 10px;border:1px solid rgba(239,68,68,0.3);border-radius:6px;background:rgba(239,68,68,0.08);color:rgba(239,68,68,0.7);font-size:10px;cursor:pointer;font-family:var(--font);display:inline-flex;align-items:center;gap:4px;">'+
-          '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>Remover</button>';
-      } else if((e.tipo==='semanal'||e.tipo==='mensal'||e.tipo==='adicional') && isCoord){
-        actionBtn = '<button onclick="'+(e.tipo==='semanal'?'editarReuniao':e.tipo==='adicional'?'editarReuniaoAdicional':'editarReuniaoMensal')+'()" style="margin-top:8px;padding:4px 10px;border:1px solid rgba(255,255,255,0.15);border-radius:6px;background:transparent;color:rgba(255,255,255,0.45);font-size:10px;cursor:pointer;font-family:var(--font);display:inline-flex;align-items:center;gap:4px;">'+
-          '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Editar</button>';
-      }
-      return '<div style="background:rgba(255,255,255,0.06);border-radius:10px;padding:10px 12px;border-left:3px solid '+(colors[e.tipo]||'#fff')+';">'+
-        '<div style="font-size:13px;font-weight:500;color:#fff;margin-bottom:3px;">'+e.label+'</div>'+
-        (e.horario?'<div style="font-size:11px;color:rgba(255,255,255,0.45);">'+e.horario+'</div>':'')+
-        meetBtn(e.meet)+
-        actionBtn+
-      '</div>';
-    }).join('');
-  };
-
-  window.agendaContextMenu = function(e, d, m, y){
-    e.preventDefault();
-    e.stopPropagation();
-    // Remove any existing context menu
-    const old = document.getElementById('agenda-ctx-menu');
-    if(old) old.remove();
-
-    const key = d+'-'+m+'-'+y;
-    const evs = (mc._agendaEvMap && mc._agendaEvMap[key]) || [];
-    // removable: pessoal/gcal by anyone; semanal/mensal/adicional by coord only (edit, not delete)
-    const removable = evs.filter(ev =>
-      (ev.tipo==='pessoal' && ev.id) ||
-      ev.tipo==='gcal' ||
-      ((ev.tipo==='semanal'||ev.tipo==='mensal'||ev.tipo==='adicional') && isCoord)
-    );
-    if(removable.length === 0) return;
-
-    const menu = document.createElement('div');
-    menu.id = 'agenda-ctx-menu';
-    menu.style.cssText = 'position:fixed;z-index:9999;background:#0d2e14;border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:6px;box-shadow:0 8px 32px rgba(0,0,0,0.6);min-width:180px;font-family:var(--font);';
-    menu.style.left = Math.min(e.clientX, window.innerWidth-200)+'px';
-    menu.style.top  = Math.min(e.clientY, window.innerHeight-120)+'px';
-
-    // Header
-    const monthNames = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-    const hdr = document.createElement('div');
-    hdr.style.cssText = 'font-size:10px;font-weight:600;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:0.1em;padding:4px 8px 6px;border-bottom:1px solid rgba(255,255,255,0.08);margin-bottom:4px;';
-    hdr.textContent = d+' de '+monthNames[m];
-    menu.appendChild(hdr);
-
-    removable.forEach(ev=>{
-      const item = document.createElement('div');
-      item.style.cssText = 'display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:7px;cursor:pointer;color:rgba(255,255,255,0.75);font-size:12px;transition:background 0.1s;';
-      item.onmouseover = ()=>{ item.style.background='rgba(239,68,68,0.15)'; item.style.color='#f87171'; };
-      item.onmouseout  = ()=>{ item.style.background=''; item.style.color='rgba(255,255,255,0.75)'; };
-
-      const dotColor = {semanal:'#22c55e',mensal:'#ef4444',pessoal:'#3b82f6',gcal:'#eab308'}[ev.tipo]||'#fff';
-      const isEditable = ev.tipo==='semanal'||ev.tipo==='mensal'||ev.tipo==='adicional';
-      const isGcal = ev.tipo==='gcal';
-      item.innerHTML =
-        '<span style="width:6px;height:6px;border-radius:50%;background:'+dotColor+';flex-shrink:0;display:inline-block;"></span>'+
-        '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+(isEditable?'Editar: ':isGcal?'ℹ️ ':'')+ev.label+'</span>'+
-        (isEditable
-          ? '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="flex-shrink:0;opacity:0.5;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>'
-          : '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="flex-shrink:0;opacity:0.5;"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>'
-        );
-
-      item.onclick = async ()=>{
-        menu.remove();
-        if(ev.tipo==='pessoal' && ev.id){
-          if(!confirm('Remover "'+ev.label+'"?')) return;
-          try{
-            await deleteDoc(doc(db,'agenda_pessoal',ev.id));
-            await renderPage(mc._agendaYear, mc._agendaMonth);
-          }catch(err){showToast('Erro ao remover.');}
-        } else if(ev.tipo==='gcal'){
-          showToast('Acesse o Google Agenda para remover eventos do Google.');
-        } else if(ev.tipo==='semanal'){
-          editarReuniao();
-        } else if(ev.tipo==='mensal'){
-          editarReuniaoMensal();
-        } else if(ev.tipo==='adicional'){
-          editarReuniaoAdicional();
-        }
-      };
-      menu.appendChild(item);
-    });
-
-    document.body.appendChild(menu);
-
-    // Close on any click outside
-    const closeMenu = (ev)=>{
-      if(!menu.contains(ev.target)){ menu.remove(); document.removeEventListener('click', closeMenu); }
-    };
-    setTimeout(()=>document.addEventListener('click', closeMenu), 0);
-  };
-
-  window.agendaSetOpacity = function(val){
-    agendaOpacity = parseFloat(val);
-    localStorage.setItem('agenda_opacity', agendaOpacity);
-    const lbl = document.getElementById('agenda-opacity-val');
-    if(lbl) lbl.textContent = Math.round((1-agendaOpacity)*100)+'%';
-    // Update all glass panels live
-    const glass = 'rgba(10,30,15,'+agendaOpacity+')';
-    document.querySelectorAll('[data-glass]').forEach(el => el.style.background = glass);
-    renderPage(mc._agendaYear, mc._agendaMonth);
-  };
-
-  window.abrirModalReuniaoP=function(){
-    const m=document.getElementById('agenda-modal');
-    if(m){m.style.display='flex';document.getElementById('agp-titulo').focus();}
-  };
-  window.fecharModalReuniaoP=function(){
-    const m=document.getElementById('agenda-modal');
-    if(m) m.style.display='none';
-  };
-  window.salvarReuniaoP=async function(){
-    const titulo=document.getElementById('agp-titulo').value.trim();
-    const data=document.getElementById('agp-data').value.trim();
-    const horario=document.getElementById('agp-hora').value.trim();
-    const meet=document.getElementById('agp-meet').value.trim();
-    if(!titulo){showToast('Digite um título.');return;}
-    try{
-      await addDoc(collection(db,'agenda_pessoal'),{uid:currentUser.uid,titulo,data,horario,meet,ts:Date.now()});
-      showToast('Reunião salva!');
-      window.fecharModalReuniaoP();
-      await renderPage(mc._agendaYear, mc._agendaMonth);
-    }catch(e){showToast('Erro ao salvar.');}
-  };
-  window.excluirReuniaoP=async function(id){
-    if(!confirm('Remover esta reunião?'))return;
-    try{
-      await deleteDoc(doc(db,'agenda_pessoal',id));
-      await renderPage(mc._agendaYear, mc._agendaMonth);
-    }catch(e){showToast('Erro ao remover.');}
-  };
-
-  window.gcalConectar = function(){
-    if(!window.google||!window.google.accounts){showToast('API do Google ainda carregando, tente em instantes.');return;}
-    const client = google.accounts.oauth2.initTokenClient({
-      client_id: GCAL_CLIENT_ID, scope: GCAL_SCOPE,
-      callback: async (resp)=>{
-        if(resp.error){showToast('Erro ao conectar Google: '+resp.error);return;}
-        gcalToken = resp.access_token;
-        sessionStorage.setItem('gcal_token', gcalToken);
-        showToast('Google Agenda conectada!');
-        await gcalFetchEvents();
-        await renderPage(mc._agendaYear, mc._agendaMonth);
-      }
-    });
-    client.requestAccessToken();
-  };
-
-  window.gcalDesconectar = function(){
-    gcalToken=null; gcalEvents=[];
-    sessionStorage.removeItem('gcal_token'); sessionStorage.removeItem('gcal_events');
-    renderPage(mc._agendaYear, mc._agendaMonth);
-    showToast('Google Agenda desconectada.');
-  };
-
-  async function gcalFetchEvents(){
-    if(!gcalToken) return;
-    const now=new Date();
-    const start=new Date(now.getFullYear(),now.getMonth()-1,1).toISOString();
-    const end=new Date(now.getFullYear(),now.getMonth()+3,0).toISOString();
-    try{
-      const res=await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin='+encodeURIComponent(start)+'&timeMax='+encodeURIComponent(end)+'&singleEvents=true&orderBy=startTime&maxResults=250',{headers:{Authorization:'Bearer '+gcalToken}});
-      if(!res.ok){if(res.status===401){gcalToken=null;sessionStorage.removeItem('gcal_token');}return;}
-      const data=await res.json();
-      gcalEvents=data.items||[];
-      sessionStorage.setItem('gcal_events',JSON.stringify(gcalEvents));
-    }catch(e){console.log('gcal error',e);}
-  }
-
-  if(gcalToken){gcalFetchEvents().then(()=>renderPage(mc._agendaYear,mc._agendaMonth));}
-}
 
 // ── HASHTUBE ─────────────────────────────────────────────────────────────────
 const HASHTUBE_CATS=[
