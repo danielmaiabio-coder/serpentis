@@ -993,6 +993,21 @@ function dataLocalStr(d){
   return y+'-'+m+'-'+day;
 }
 
+const DISP_WATI_LINKS = {
+  'WATI Pedro': 'https://live.wati.io/5869/teamInbox',
+  'WATI Daniel': 'https://live.wati.io/354531'
+};
+const DISP_PLATAFORMAS = ['WATI Pedro','WATI Daniel','Outra'];
+const DISP_TIPOS = ['API','FW1','FW2','FW3','FW4','FW5','Estrategia Adicional','Estrategia Antigos'];
+const DISP_CORES = {'API':'#92D050','FW1':'#00B0F0','FW2':'#FF0000','FW3':'#FF6600','FW4':'#FF6600','FW5':'#FF6600','Estrategia Adicional':'','Estrategia Antigos':''};
+const CLOUDINARY_CLOUD = 'dbd9hpwyb';
+const CLOUDINARY_PRESET = 'ml_default';
+const CHOCALHO_SOM = new Audio('https://res.cloudinary.com/dbd9hpwyb/video/upload/q_auto/f_auto/v1780718539/freesound_community-snake-hissing-6092_a1uuwb.mp3');
+let slackSoundPref = localStorage.getItem('slack_sound')||'som1';
+let _vaultOtpCode='';
+let _vaultOtpExpiry=0;
+let _vaultUnlocked=false;
+
 function aplicarBg(bg){
   if(!bg) return;
   const temas=window._bgTemas||[];
