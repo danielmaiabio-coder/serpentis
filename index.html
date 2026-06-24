@@ -642,7 +642,7 @@ async function loadProfile(uid){
     const snap=await getDoc(doc(db,'usuarios',uid));
     if(snap.exists()){userProfile=snap.data();viewingOp=userProfile.role==='op'?uid:null;setupApp();}
     else{showToast('Perfil nao encontrado.');await signOut(auth);showLogin();}
-  }catch(e){showToast('Erro ao carregar perfil.');showLogin();}
+  }catch(e){showToast('Erro ao carregar perfil: '+e.message);console.error('loadProfile error:',e);showLogin();}
 }
 
 // ── 2FA ──────────────────────────────────────────────────────────────────
@@ -802,11 +802,16 @@ window.doVerifyOtp=async function(){
   // Fazer login de verdade
   btn.disabled=true;btn.textContent='Verificando...';
   document.getElementById('otpScreen').style.display='none';
-  document.getElementById('loginScreen').style.display='flex';
   // Re-login com as credenciais salvas no form
   const email=document.getElementById('loginEmail').value.trim();
   const pass=document.getElementById('loginPass').value;
-  await signInWithEmailAndPassword(auth,email,pass);
+  try{
+    await signInWithEmailAndPassword(auth,email,pass);
+  }catch(e){
+    document.getElementById('loginScreen').style.display='flex';
+    document.getElementById('loginErr').textContent='Erro ao autenticar. Tente novamente.';
+    document.getElementById('loginErr').style.display='block';
+  }
   btn.disabled=false;btn.textContent='Verificar';
 };
 
