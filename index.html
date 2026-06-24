@@ -635,7 +635,7 @@ onAuthStateChanged(auth, async (user) => {
   if(_signupInProgress) return;
   if(_otpInProgress) return; // OTP flow gerencia o loadProfile manualmente
   if(user){currentUser=user;await loadProfile(user.uid);}
-  else if(!_otpInProgress) showLogin();
+  else showLogin();
 });
 
 async function loadProfile(uid){
@@ -758,10 +758,9 @@ window.doLogin=async function(){
       return;
     }
 
-    // Guardar usuário pendente e fazer logout temporário
-    _pendingUser = {uid, email, nome, pass};
-    _otpInProgress = true; // bloqueia onAuthStateChanged durante o fluxo OTP
-    await signOut(auth); // sai para não entrar direto no app
+    // Guardar usuário pendente — NÃO faz signOut (evita conflito com onAuthStateChanged)
+    _pendingUser = {uid, email, nome, pass, user: cred.user};
+    _otpInProgress = true;
 
     // Enviar código
     btn.textContent='Enviando código...';
@@ -802,22 +801,15 @@ window.doVerifyOtp=async function(){
     _2fa_trust(_pendingUser.uid);
   }
 
-  // Usuário já está autenticado via _pendingUser — só inicializar o app
+  // Usuário já está autenticado — só carregar o perfil
   btn.disabled=true;btn.textContent='Verificando...';
   document.getElementById('otpScreen').style.display='none';
   try{
-    // Re-autentica (signOut foi feito antes do OTP)
-    const email=_pendingUser.email;
-    const pass=_pendingUser.pass;
-    console.log('[OTP] Iniciando re-login para:', email);
-    const cred = await signInWithEmailAndPassword(auth,email,pass);
-    console.log('[OTP] Re-login ok, uid:', cred.user.uid);
-    currentUser=cred.user;
-    console.log('[OTP] Chamando loadProfile...');
-    await loadProfile(currentUser.uid);
+    console.log('[OTP] Iniciando loadProfile para:', _pendingUser.uid);
+    currentUser=_pendingUser.user;
+    _otpInProgress=false;
+    await loadProfile(_pendingUser.uid);
     console.log('[OTP] loadProfile concluído');
-    // Só libera a flag após o app estar montado
-    setTimeout(()=>{ _otpInProgress=false; }, 2000);
   }catch(e){
     console.error('[OTP] Erro:', e);
     _otpInProgress=false;
