@@ -632,7 +632,8 @@ let _signupInProgress=false;
 
 onAuthStateChanged(auth, async (user) => {
   hide('loadingScreen');
-  if(_signupInProgress) return; // espera doSignup terminar de criar o documento
+  if(_signupInProgress) return;
+  if(_otpInProgress) return; // OTP flow gerencia o loadProfile manualmente
   if(user){currentUser=user;await loadProfile(user.uid);}
   else showLogin();
 });
@@ -652,6 +653,7 @@ const EMAILJS_KEY  = '0rL9rFjI7eki4QnBY';
 let _otpCode = '';
 let _otpExpiry = 0;
 let _pendingUser = null;
+let _otpInProgress = false;
 
 function _2fa_deviceKey(uid){ return '2fa_trusted_'+uid; }
 function _2fa_isTrusted(uid){
@@ -758,6 +760,7 @@ window.doLogin=async function(){
 
     // Guardar usuário pendente e fazer logout temporário
     _pendingUser = {uid, email, nome};
+    _otpInProgress = true; // bloqueia onAuthStateChanged durante o fluxo OTP
     await signOut(auth); // sai para não entrar direto no app
 
     // Enviar código
@@ -799,14 +802,23 @@ window.doVerifyOtp=async function(){
     _2fa_trust(_pendingUser.uid);
   }
 
-  // Fazer login de verdade
+  // Usuário já está autenticado via _pendingUser — só inicializar o app
   btn.disabled=true;btn.textContent='Verificando...';
   document.getElementById('otpScreen').style.display='none';
-  document.getElementById('loginScreen').style.display='flex';
-  // Re-login com as credenciais salvas no form
-  const email=document.getElementById('loginEmail').value.trim();
-  const pass=document.getElementById('loginPass').value;
-  await signInWithEmailAndPassword(auth,email,pass);
+  try{
+    // Re-autentica (signOut foi feito antes do OTP)
+    const email=_pendingUser.email;
+    const pass=document.getElementById('loginPass').value;
+    await signInWithEmailAndPassword(auth,email,pass);
+    // onAuthStateChanged está bloqueado, então carregamos manualmente
+    currentUser=auth.currentUser;
+    _otpInProgress=false;
+    await loadProfile(currentUser.uid);
+  }catch(e){
+    _otpInProgress=false;
+    document.getElementById('loginScreen').style.display='flex';
+    showToast('Erro ao entrar. Tente novamente.');
+  }
   btn.disabled=false;btn.textContent='Verificar';
 };
 
