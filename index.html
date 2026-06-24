@@ -967,7 +967,7 @@ document.addEventListener('click',function(e){
   }
 });
 
-function showLogin(){console.warn('[showLogin] chamado de:', new Error().stack);hide('appShell');hide('signupScreen');show('loginScreen','flex');}
+function showLogin(){hide('appShell');hide('signupScreen');show('loginScreen','flex');}
 
 function getPerms(){
   const isCoord = userProfile.role==='coord';
@@ -6098,6 +6098,25 @@ function renderInfosUteis(mc){
   build();
 }
 
+
+const DISP_TIPOS = ['API','FW1','FW2','FW3','FW4','FW5','Estrategia Adicional','Estrategia Antigos'];
+const DISP_CORES = {'API':'#92D050','FW1':'#00B0F0','FW2':'#FF0000','FW3':'#FF6600','FW4':'#FF6600','FW5':'#FF6600','Estrategia Adicional':'','Estrategia Antigos':''};
+
+function getWeekDays(refDate, startDay){
+  // startDay: 0=dom,1=seg,2=ter,3=qua,4=qui,5=sex,6=sab — default 1 (seg)
+  if(startDay===undefined) startDay=1;
+  const d = new Date(refDate);
+  const day = d.getDay();
+  let diff = (day - startDay + 7) % 7;
+  const start = new Date(d); start.setDate(d.getDate()-diff);
+  const days=[];
+  for(let i=0;i<5;i++){const x=new Date(start);x.setDate(start.getDate()+i);days.push(x);}
+  return days;
+}
+
+function fmtDate(d){return d.toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit'}).replace('.','')}
+function fmtDateKey(d){return d.toISOString().split('T')[0];}
+function fmtDateLabel(d){const ds=['Segunda-Feira','Terca-Feira','Quarta-Feira','Quinta-Feira','Sexta-Feira','Sabado','Domingo'];return ds[d.getDay()===0?6:d.getDay()-1];}
 
 async function renderRelatDisparos(mc){
   const today = new Date();
