@@ -6147,8 +6147,8 @@ async function renderRelatDisparos(mc){
     // Semana: Qua(3), Qui(4), Sex(5), Seg(1), Ter(2)
     let diffToQua = (day - 3 + 7) % 7; // dias desde a última quarta
     const qua = new Date(d); qua.setDate(d.getDate() - diffToQua);
-    // Gera: Qua, Qui, Sex, Seg (+4 dias), Ter (+5 dias)
-    const offsets = [0, 1, 2, 4, 5];
+    // Gera: Qua, Qui, Sex, Seg (+5 dias), Ter (+6 dias)
+    const offsets = [0, 1, 2, 5, 6];
     return offsets.map(i=>{ const x=new Date(qua); x.setDate(qua.getDate()+i); return fmtDateKey(x); });
   }
   // Persist dates across F5
