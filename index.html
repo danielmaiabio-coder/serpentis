@@ -1047,7 +1047,7 @@ function buildNav(){
     let equipeItems=ddItem('equipe','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780874328/time_uxtxl2.png" style="width:15px;height:15px;object-fit:contain;vertical-align:middle;margin-right:5px;"/>Minha Equipe')+ddItem('lancar','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780883836/results_eysruv.png" style="width:15px;height:15px;object-fit:contain;vertical-align:middle;margin-right:5px;"/>Lancar Resultados')+ddItem('escritorio','<span style="margin-right:5px;">🗂️</span>Escritorio')+ddItem('relatorio_disparos','<span style="margin-right:5px;">📊</span>Relatorio de Disparos');
     html+=group('equipe','Visao da Equipe',equipeItems);
   } else if(canVisaoEquipe){
-    let equipeItemsV=ddItem('equipe','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780874328/time_uxtxl2.png" style="width:15px;height:15px;object-fit:contain;vertical-align:middle;margin-right:5px;"/>Minha Equipe');
+    let equipeItemsV=ddItem('equipe','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780874328/time_uxtxl2.png" style="width:15px;height:15px;object-fit:contain;vertical-align:middle;margin-right:5px;"/>Minha Equipe')+(canLancar?ddItem('lancar','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780883836/results_eysruv.png" style="width:15px;height:15px;object-fit:contain;vertical-align:middle;margin-right:5px;"/>Lancar Resultados'):'');
     html+=group('equipe','Visao da Equipe',equipeItemsV);
   } else if(canLancar){
     html+=singleItem('lancar','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780883836/results_eysruv.png" style="width:15px;height:15px;object-fit:contain;vertical-align:middle;margin-right:5px;"/>Lancar Resultados');
