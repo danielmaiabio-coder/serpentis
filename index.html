@@ -1358,9 +1358,9 @@ window.importarResultadosTodos=async function(input){
     const hdr=rows[headerIdx].map(c=>(c+'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''));
     const ci=(term)=>hdr.findIndex(h=>h.includes(term));
     const iDesc=ci('descri');
-    const iValor=ci('valor');
+    const iValor=ci('valor recuperado')>=0?ci('valor recuperado'):ci('valor');
     const iAtend=Math.max(ci('atendimentos'),ci('atend'));
-    const iMedia=ci('media');
+    const iMedia=ci('media atendimentos')>=0?ci('media atendimentos'):(ci('media atend')>=0?ci('media atend'):ci('media'));
     const iCobr=ci('cobran');
     const iTicket=ci('ticket');
     const iValorDia=hdr.findIndex(h=>h.includes('valor') && h.includes('dia'));
@@ -7102,7 +7102,7 @@ window.clickLedTermometro=function(){
 };
 
 // ── Pagina dedicada de votacao (operador) ──
-async function renderTermometroPagina(mc){
+async function renderTermometroPagina(mc, _step){
   const data=hojeStr();
   const liberado=votacaoLiberada();
   let minhaResposta=null;
@@ -7110,30 +7110,66 @@ async function renderTermometroPagina(mc){
     const ref=doc(db,'temperaturas',data,'respostas',currentUser.uid);
     const snap=await getDoc(ref);
     minhaResposta=snap.exists()?snap.data().voto:null;
-  }catch(e){/* ignora */}
+  }catch(e){}
 
   let conteudo;
   if(!liberado){
     conteudo='<div style="text-align:center;padding:3rem 1rem;color:var(--text-3);">'+
-      '<div style="font-size:32px;margin-bottom:12px;">\ud83c\udf21\ufe0f</div>'+
+      '<div style="font-size:32px;margin-bottom:12px;">🌡️</div>'+
       '<div style="font-size:14px;">A votacao abre a partir das 17h30.</div>'+
       '<div style="font-size:13px;margin-top:6px;">Pergunta do dia: "Como foi a demanda?"</div>'+
     '</div>';
-  } else {
+  } else if(minhaResposta){
     const opcoesHtml=TERM_NIVEIS.map(n=>{
-      const selecionado=minhaResposta===n.id;
-      return '<button onclick="salvarTemperaturaPagina(\''+n.id+'\')" style="width:100%;display:flex;align-items:center;gap:10px;padding:14px 16px;border-radius:10px;border:2px solid '+(selecionado?n.cor:'var(--border-md)')+';background:'+(selecionado?n.cor+'18':'var(--surface)')+';cursor:pointer;font-family:var(--font);font-size:14px;color:var(--text);text-align:left;margin-bottom:10px;">'+
+      const sel=minhaResposta===n.id;
+      return '<button onclick="salvarTemperaturaPagina(''+n.id+'')" style="width:100%;display:flex;align-items:center;gap:10px;padding:14px 16px;border-radius:10px;border:2px solid '+(sel?n.cor:'var(--border-md)')+';background:'+(sel?n.cor+'18':'var(--surface)')+';cursor:pointer;font-family:var(--font);font-size:14px;color:var(--text);text-align:left;margin-bottom:10px;">'+
         '<div style="width:18px;height:18px;border-radius:50%;background:'+n.cor+';flex-shrink:0;"></div>'+
-        '<span style="flex:1;font-weight:'+(selecionado?'600':'400')+';">'+n.label+'</span>'+
-        (selecionado?'<span style="font-size:11px;color:'+n.cor+';font-weight:700;">SELECIONADO</span>':'')+
+        '<span style="flex:1;font-weight:'+(sel?'600':'400')+';">'+n.label+'</span>'+
+        (sel?'<span style="font-size:11px;color:'+n.cor+';font-weight:700;">SELECIONADO</span>':'')+
       '</button>';
     }).join('');
     conteudo='<div style="font-size:14px;color:var(--text-2);margin-bottom:18px;">Como foi a demanda?</div>'+opcoesHtml;
+  } else if(_step==='votacao'){
+    const opcoesHtml=TERM_NIVEIS.map(n=>{
+      return '<button onclick="salvarTemperaturaPagina(''+n.id+'')" style="width:100%;display:flex;align-items:center;gap:10px;padding:14px 16px;border-radius:10px;border:2px solid var(--border-md);background:var(--surface);cursor:pointer;font-family:var(--font);font-size:14px;color:var(--text);text-align:left;margin-bottom:10px;">'+
+        '<div style="width:18px;height:18px;border-radius:50%;background:'+n.cor+';flex-shrink:0;"></div>'+
+        '<span style="flex:1;">'+n.label+'</span>'+
+      '</button>';
+    }).join('');
+    conteudo='<div style="font-size:14px;color:var(--text-2);margin-bottom:18px;">Como foi a demanda?</div>'+opcoesHtml+
+      '<button onclick="renderTermometroPagina(document.getElementById('mainContent'))" style="width:100%;padding:10px;background:transparent;border:1px solid var(--border-md);border-radius:8px;font-family:var(--font);font-size:13px;color:var(--text-3);cursor:pointer;margin-top:4px;">← Voltar</button>';
+  } else if(_step==='zendesk'){
+    conteudo='<div style="font-size:14px;color:var(--text-2);margin-bottom:20px;">Você atua no Zendesk hoje. Deseja participar do termômetro?</div>'+
+      '<button onclick="renderTermometroPagina(document.getElementById('mainContent'),'votacao')" style="width:100%;display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:10px;border:2px solid var(--primary);background:var(--primary-light);cursor:pointer;font-family:var(--font);font-size:14px;color:var(--text);text-align:left;margin-bottom:10px;">'+
+        '<div style="width:18px;height:18px;border-radius:50%;background:var(--primary);flex-shrink:0;"></div>'+
+        '<span>Desejo manifestar meu voto no termômetro</span>'+
+      '</button>'+
+      '<button onclick="renderTermometroPagina(document.getElementById('mainContent'),'nao_vota')" style="width:100%;display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:10px;border:2px solid var(--border-md);background:var(--surface);cursor:pointer;font-family:var(--font);font-size:14px;color:var(--text);text-align:left;margin-bottom:10px;">'+
+        '<div style="width:18px;height:18px;border-radius:50%;background:#888;flex-shrink:0;"></div>'+
+        '<span>Não desejo</span>'+
+      '</button>'+
+      '<button onclick="renderTermometroPagina(document.getElementById('mainContent'))" style="width:100%;padding:10px;background:transparent;border:1px solid var(--border-md);border-radius:8px;font-family:var(--font);font-size:13px;color:var(--text-3);cursor:pointer;margin-top:4px;">← Voltar</button>';
+  } else if(_step==='nao_vota'){
+    conteudo='<div style="text-align:center;padding:2rem 1rem;">'+
+      '<div style="font-size:32px;margin-bottom:12px;">✅</div>'+
+      '<div style="font-size:15px;font-weight:500;color:var(--text);margin-bottom:8px;">Tudo certo!</div>'+
+      '<div style="font-size:13px;color:var(--text-3);">Seu voto não foi registrado.</div>'+
+    '</div>';
+  } else {
+    conteudo='<div style="font-size:14px;color:var(--text-2);margin-bottom:20px;">Em que plataforma você atuou hoje?</div>'+
+      '<button onclick="renderTermometroPagina(document.getElementById('mainContent'),'votacao')" style="width:100%;display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:10px;border:2px solid var(--border-md);background:var(--surface);cursor:pointer;font-family:var(--font);font-size:14px;color:var(--text);text-align:left;margin-bottom:10px;">'+
+        '<div style="width:18px;height:18px;border-radius:50%;background:#25D366;flex-shrink:0;"></div>'+
+        '<span>WATI</span>'+
+      '</button>'+
+      '<button onclick="renderTermometroPagina(document.getElementById('mainContent'),'zendesk')" style="width:100%;display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:10px;border:2px solid var(--border-md);background:var(--surface);cursor:pointer;font-family:var(--font);font-size:14px;color:var(--text);text-align:left;margin-bottom:10px;">'+
+        '<div style="width:18px;height:18px;border-radius:50%;background:#03363D;flex-shrink:0;"></div>'+
+        '<span>Zendesk</span>'+
+      '</button>';
   }
 
   mc.innerHTML=snakeHtml()+
     '<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;">'+
-      '<div class="page-eyebrow">\ud83c\udf21\ufe0f Termometro</div>'+
+      '<div class="page-eyebrow">🌡️ Termometro</div>'+
       '<div class="page-title">Termometro de Demanda</div>'+
       '<div class="page-sub">Sua resposta e individual e ajuda a equipe a entender o volume do dia</div>'+
     '</div>'+
