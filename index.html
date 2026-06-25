@@ -1551,10 +1551,14 @@ async function renderResultado(mc,op){
   mc.innerHTML=snakeHtml()+
     pageHeaderOp(op,isCoord,'Resultado Semanal','Semana atual',sem.descricao||'Semana em andamento')+
     banner+
-    '<div class="cards-row'+(atual.valorDiaFmt?' cols-4':'')+'"><div class="stat-card blue"><div class="sc-label">Valor Recuperado</div><div class="sc-value">'+atual.valor+'</div><div class="sc-sub">esta semana</div></div>'+
+    '<div class="cards-row cols-4"><div class="stat-card blue"><div class="sc-label">Valor Recuperado</div><div class="sc-value">'+atual.valor+'</div><div class="sc-sub">esta semana</div></div>'+
     '<div class="stat-card green"><div class="sc-label">Atendimentos</div><div class="sc-value">'+atual.atend+'</div><div class="sc-sub">esta semana</div></div>'+
     '<div class="stat-card amber"><div class="sc-label">Cobrancas Totais</div><div class="sc-value">'+atual.cobr+'</div><div class="sc-sub">esta semana</div></div>'+
     (atual.valorDiaFmt?'<div class="stat-card purple"><div class="sc-label">Valor por Dia</div><div class="sc-value">'+atual.valorDiaFmt+'</div><div class="sc-sub">media diaria</div></div>':'')+
+    '</div>'+
+    '<div class="cards-row cols-4">'+
+    (atual.media?'<div class="stat-card green"><div class="sc-label">Media Atend./Dia</div><div class="sc-value">'+atual.media+'</div><div class="sc-sub">media diaria</div></div>':'')+
+    (atual.ticketFmt?'<div class="stat-card amber"><div class="sc-label">Ticket Medio</div><div class="sc-value">'+atual.ticketFmt+'</div><div class="sc-sub">por atendimento</div></div>':'')+
     '</div>'+
     '<div class="panel"><div class="panel-title">Comparativo semanal</div>'+
     '<div class="compare-grid"><div class="cmp-item"><div class="cmp-label">Semana atual</div><div class="cmp-val">'+atual.valor+'</div></div>'+
