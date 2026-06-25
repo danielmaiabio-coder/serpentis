@@ -1022,7 +1022,7 @@ function updateSidebarUser(){
 }
 
 function buildNav(){
-  const {isCoord, canLancar} = getPerms();
+  const {isCoord, canLancar, canVisaoEquipe} = getPerms();
   const isViewer = userProfile.role==='viewer';
   const chev='<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>';
   function ddItem(id,label){return '<button class="nb-dd-item" id="nav-'+id+'" data-page="'+id+'" onclick="nbClose();navigate(this.dataset.page)">'+label+'<span class="nav-badge" id="badge-'+id+'" style="display:none;"></span></button>';}
