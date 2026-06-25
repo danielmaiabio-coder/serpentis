@@ -1366,7 +1366,6 @@ window.importarResultadosTodos=async function(input){
     const iCobr=ci('cobran');
     const iTicket=ci('ticket');
     const iValorDia=hdr.findIndex(h=>{const n=norm(h);return n.includes('valor')&&n.includes('dia');});
-    const iOp=ci('operador');
 
     if(iOp===-1){setS('❌ Coluna "Operador" não encontrada na planilha.','#ef4444');return;}
 
