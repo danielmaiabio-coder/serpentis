@@ -1264,6 +1264,7 @@ window.navigate=async function(page){
     await renderFeed(mc);return;
   }
   if(!viewingOp&&userProfile.role==='coord'){await renderEquipe(mc);return;}
+  if(!viewingOp&&getPerms().canHistEdit&&page==='historico'){await renderEquipe(mc);return;}
   const opSnap=await getDoc(doc(db,'usuarios',viewingOp));
   const op=opSnap.exists()?{uid:viewingOp,...opSnap.data()}:null;
   if(!op){mc.innerHTML='<div class="empty">Operador nao encontrado.</div>';return;}
