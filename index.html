@@ -980,7 +980,8 @@ function getPerms(){
   const canLancar = isCoord || hasSub('economic');
   const canRenegoc = isCoord || hasSub('renegoc');
   const canBanco = isCoord || hasSub('banco');
-  return {isCoord, canManageIA, canLancar, canRenegoc, canBanco};
+  const canHistEdit = isCoord || hasSub('historico_edit');
+  return {isCoord, canManageIA, canLancar, canRenegoc, canBanco, canHistEdit};
 }
 
 // Retorna a data atual no formato YYYY-MM-DD usando o horario LOCAL do navegador
@@ -1588,6 +1589,7 @@ window.editarReuniao=async function(){
 
 async function renderHistorico(mc,op){
   const isCoord=userProfile.role==='coord';
+  const {canHistEdit}=getPerms();
   const snap=await getDocs(collection(db,'historico',op.uid,'semanas'));
   const rows=[];
   snap.forEach(d=>rows.push({_id:d.id,...d.data()}));
@@ -1598,20 +1600,20 @@ async function renderHistorico(mc,op){
     pageHeaderOp(op,isCoord,'Historico','Historico de recuperacao','Semana a semana',
       '<div style="display:flex;align-items:center;gap:8px;">'+
       '<button onclick="histExportarExcel()" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:transparent;color:var(--primary);border:1px solid var(--primary);border-radius:var(--radius);font-family:var(--font);font-size:12px;font-weight:500;cursor:pointer;">📥 Exportar Excel</button>'+
-      (isCoord?'<button onclick="histAddSemana()" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:var(--primary);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:12px;font-weight:500;cursor:pointer;">'+
+      (canHistEdit?'<button onclick="histAddSemana()" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:var(--primary);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:12px;font-weight:500;cursor:pointer;">'+
         '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Nova semana</button>':'')+
       '</div>')+
     '<div class="panel">'+
       (rows.length===0?'<div class="empty">Nenhum registro ainda.</div>':
       '<table class="hist-table"><thead><tr><th>Semana</th><th>Valor recuperado</th>'+
-        (isCoord?'<th>Atend.</th><th>Cobr.</th><th>Média/dia</th><th>Ticket</th><th>Valor/dia</th>':'')+
+        (canHistEdit?'<th>Atend.</th><th>Cobr.</th><th>Média/dia</th><th>Ticket</th><th>Valor/dia</th>':'')+
         '<th>Variação</th>'+
-        (isCoord?'<th style="width:80px;"></th>':'')+
+        (canHistEdit?'<th style="width:80px;"></th>':'')+
       '</tr></thead><tbody>'+
       rows.map(r=>'<tr>'+
         '<td>'+r.semana+'</td>'+
         '<td style="font-weight:500">'+r.valor+'</td>'+
-        (isCoord?
+        (canHistEdit?
           '<td>'+(r.atend||'—')+'</td>'+
           '<td>'+(r.cobr||'—')+'</td>'+
           '<td>'+(r.media||'—')+'</td>'+
@@ -1619,7 +1621,7 @@ async function renderHistorico(mc,op){
           '<td>'+(r.valorDiaFmt||'—')+'</td>'
         :'')+
         '<td><span class="pill '+(r.up?'pill-up':'pill-dn')+'">'+r.delta+'</span></td>'+
-        (isCoord?
+        (canHistEdit?
           '<td style="white-space:nowrap;">'+
             '<button data-id="'+r._id+'" onclick="histEditSemana(this.dataset.id)" title="Editar" style="padding:3px 8px;border:1px solid var(--border-md);border-radius:5px;background:transparent;cursor:pointer;font-size:11px;color:var(--text-2);margin-right:4px;">✎</button>'+
             '<button data-id="'+r._id+'" onclick="histDelSemana(this.dataset.id)" title="Excluir" style="padding:3px 8px;border:1px solid rgba(239,68,68,0.3);border-radius:5px;background:transparent;cursor:pointer;font-size:11px;color:#ef4444;">✕</button>'+
@@ -1657,7 +1659,7 @@ async function renderHistorico(mc,op){
 
   window.histExportarExcel=function(){
     if(!window.XLSX){showToast('SheetJS não carregado.');return;}
-    const nomeOp=(isCoord?op.nome:'Meu Histórico');
+    const nomeOp=(canHistEdit?op.nome:'Meu Histórico');
     // Monta dados para a planilha
     const cabecalho=['Semana','Valor Recuperado','Atendimentos','Cobranças','Média Atend./dia','Ticket Médio','Valor por Dia','Variação','Tendência'];
     const dados=rows.map(r=>[
