@@ -1356,14 +1356,16 @@ window.importarResultadosTodos=async function(input){
 
     // Map column indices from header row
     const hdr=rows[headerIdx].map(c=>(c+'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''));
-    const ci=(term)=>hdr.findIndex(h=>h.includes(term));
-    const iDesc=ci('descri');
+    const norm=s=>s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+    const ci=(term)=>hdr.findIndex(h=>norm(h).includes(norm(term)));
+    const iDesc=Math.max(ci('descri'),ci('semana'));
+    const iOp=ci('operador');
     const iValor=ci('valor recuperado')>=0?ci('valor recuperado'):ci('valor');
     const iAtend=Math.max(ci('atendimentos'),ci('atend'));
     const iMedia=ci('media atendimentos')>=0?ci('media atendimentos'):(ci('media atend')>=0?ci('media atend'):ci('media'));
     const iCobr=ci('cobran');
     const iTicket=ci('ticket');
-    const iValorDia=hdr.findIndex(h=>h.includes('valor') && h.includes('dia'));
+    const iValorDia=hdr.findIndex(h=>{const n=norm(h);return n.includes('valor')&&n.includes('dia');});
     const iOp=ci('operador');
 
     if(iOp===-1){setS('❌ Coluna "Operador" não encontrada na planilha.','#ef4444');return;}
