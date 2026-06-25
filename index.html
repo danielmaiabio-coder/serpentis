@@ -6139,13 +6139,17 @@ function fmtDateLabel(d){const ds=['Segunda-Feira','Terca-Feira','Quarta-Feira',
 async function renderRelatDisparos(mc){
   const today = new Date();
   let activeTab = 'tabela'; // 'tabela' | 'historico'
-  // 5 datas livres — padrão: seg-sex da semana atual
+  // 5 datas livres — padrão: Qua-Qui-Sex-Seg-Ter da semana atual
   function defaultDates(){
     const d = new Date();
-    const day = d.getDay();
-    const diff = (day - 1 + 7) % 7;
-    const mon = new Date(d); mon.setDate(d.getDate() - diff);
-    return [0,1,2,3,4].map(i=>{ const x=new Date(mon); x.setDate(mon.getDate()+i); return fmtDateKey(x); });
+    const day = d.getDay(); // 0=dom,1=seg,2=ter,3=qua,4=qui,5=sex,6=sab
+    // Achar a quarta-feira mais recente (ou futura próxima)
+    // Semana: Qua(3), Qui(4), Sex(5), Seg(1), Ter(2)
+    let diffToQua = (day - 3 + 7) % 7; // dias desde a última quarta
+    const qua = new Date(d); qua.setDate(d.getDate() - diffToQua);
+    // Gera: Qua, Qui, Sex, Seg (+4 dias), Ter (+5 dias)
+    const offsets = [0, 1, 2, 4, 5];
+    return offsets.map(i=>{ const x=new Date(qua); x.setDate(qua.getDate()+i); return fmtDateKey(x); });
   }
   // Persist dates across F5
   const RD_KEY = 'rd_freeDates';
