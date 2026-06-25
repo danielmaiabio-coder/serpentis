@@ -1046,6 +1046,9 @@ function buildNav(){
   if(isCoord){
     let equipeItems=ddItem('equipe','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780874328/time_uxtxl2.png" style="width:15px;height:15px;object-fit:contain;vertical-align:middle;margin-right:5px;"/>Minha Equipe')+ddItem('lancar','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780883836/results_eysruv.png" style="width:15px;height:15px;object-fit:contain;vertical-align:middle;margin-right:5px;"/>Lancar Resultados')+ddItem('escritorio','<span style="margin-right:5px;">🗂️</span>Escritorio')+ddItem('relatorio_disparos','<span style="margin-right:5px;">📊</span>Relatorio de Disparos');
     html+=group('equipe','Visao da Equipe',equipeItems);
+  } else if(canVisaoEquipe){
+    let equipeItemsV=ddItem('equipe','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780874328/time_uxtxl2.png" style="width:15px;height:15px;object-fit:contain;vertical-align:middle;margin-right:5px;"/>Minha Equipe');
+    html+=group('equipe','Visao da Equipe',equipeItemsV);
   } else if(canLancar){
     html+=singleItem('lancar','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780883836/results_eysruv.png" style="width:15px;height:15px;object-fit:contain;vertical-align:middle;margin-right:5px;"/>Lancar Resultados');
   }
@@ -1265,7 +1268,14 @@ window.navigate=async function(page){
     await renderFeed(mc);return;
   }
   if(!viewingOp&&userProfile.role==='coord'){await renderEquipe(mc);return;}
-  if(!viewingOp&&getPerms().canVisaoEquipe&&['resultado','historico','dashboard'].includes(page)){await renderEquipe(mc);return;}
+  if(!viewingOp&&getPerms().canVisaoEquipe&&['resultado','historico','dashboard','equipe'].includes(page)){await renderEquipe(mc);return;}
+  // canVisaoEquipe users: redirect notas to their own data
+  if(viewingOp&&getPerms().canVisaoEquipe&&!getPerms().isCoord&&page==='notas'){
+    const selfSnap=await getDoc(doc(db,'usuarios',currentUser.uid));
+    const selfOp=selfSnap.exists()?{uid:currentUser.uid,...selfSnap.data()}:null;
+    if(selfOp) await renderNotas(mc,selfOp);
+    return;
+  }
   const opSnap=await getDoc(doc(db,'usuarios',viewingOp));
   const op=opSnap.exists()?{uid:viewingOp,...opSnap.data()}:null;
   if(!op){mc.innerHTML='<div class="empty">Operador nao encontrado.</div>';return;}
