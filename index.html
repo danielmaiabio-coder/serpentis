@@ -1341,9 +1341,9 @@ window.importarResultadosTodos=async function(input){
 
   try{
     const buf=await file.arrayBuffer();
-    const wb=window.XLSX.read(buf,{type:'array'});
+    const wb=window.XLSX.read(buf,{type:'array',cellFormula:false,cellNF:false,cellText:false});
     const ws=wb.Sheets[wb.SheetNames[0]];
-    const rows=window.XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+    const rows=window.XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:true});
 
     // Find header row
     let headerIdx=0;
@@ -1400,10 +1400,14 @@ window.importarResultadosTodos=async function(input){
       const desc=iDesc>=0?(row[iDesc]+'').trim():'';
       const valor=iValor>=0?parseFloat((row[iValor]+'').replace(/[^0-9.,]/g,'').replace(',','.'))||0:0;
       const atend=iAtend>=0?parseInt(row[iAtend])||0:0;
-      const media=iMedia>=0?parseFloat((row[iMedia]+'').replace(',','.'))||0:0;
+      // media: se for formula (comeca com =), calcula como atend/5
+      const mediaRaw=iMedia>=0?(row[iMedia]+''):'';
+      const media=mediaRaw.startsWith('=')?atend/5:(parseFloat(mediaRaw.replace(',','.'))||0);
       const cobr=iCobr>=0?parseInt(row[iCobr])||0:0;
       const ticket=iTicket>=0?parseFloat((row[iTicket]+'').replace(',','.'))||0:0;
-      const valorDia=iValorDia>=0?parseFloat((row[iValorDia]+'').replace(/[^0-9.,]/g,'').replace(',','.'))||0:0;
+      // valorDia: se for formula, calcula como valor/5
+      const valorDiaRaw=iValorDia>=0?(row[iValorDia]+''):'';
+      const valorDia=valorDiaRaw.startsWith('=')?valor/5:(parseFloat(valorDiaRaw.replace(/[^0-9.,]/g,'').replace(',','.'))||0);
 
       if(!desc&&!valor) continue;
 
