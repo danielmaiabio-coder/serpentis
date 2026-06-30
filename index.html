@@ -7719,6 +7719,7 @@ let HASHTUBE_CATS=[
 ];
 
 async function renderHashtube(mc){
+  window.renderHashtube=renderHashtube;
   const {isCoord}=getPerms();
   // Carrega categorias do Firestore (se já existirem); senão usa o padrão acima
   try{
