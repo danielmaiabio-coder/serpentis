@@ -7146,31 +7146,30 @@ async function renderTermometroPagina(mc,_step){
     conteudo='<div style="font-size:14px;color:var(--text-2);margin-bottom:18px;">Como foi a demanda?</div>'+opts+
       '<button data-step="" class="term-step-btn" style="width:100%;padding:10px;background:transparent;border:1px solid var(--border-md);border-radius:8px;font-family:var(--font);font-size:13px;color:var(--text-3);cursor:pointer;margin-top:4px;">\u2190 Voltar</button>';
   } else if(_step==='zendesk'){
-    conteudo='<div style="font-size:14px;color:var(--text-2);margin-bottom:20px;">Voc\u00EA atua no Zendesk hoje. Deseja participar do term\u00F4metro?</div>'+
+    conteudo='<div style="font-size:14px;color:var(--text-2);margin-bottom:20px;">Deseja manifestar sua sensa\u00E7\u00E3o?</div>'+
       '<button data-step="votacao" class="term-step-btn" style="width:100%;display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:10px;border:2px solid var(--primary);background:var(--primary-light);cursor:pointer;font-family:var(--font);font-size:14px;color:var(--text);text-align:left;margin-bottom:10px;">'+
         '<div style="width:18px;height:18px;border-radius:50%;background:var(--primary);flex-shrink:0;"></div>'+
-        '<span>Desejo manifestar meu voto no term\u00F4metro</span>'+
+        '<span>Sim</span>'+
       '</button>'+
       '<button data-step="nao_vota" class="term-step-btn" style="width:100%;display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:10px;border:2px solid var(--border-md);background:var(--surface);cursor:pointer;font-family:var(--font);font-size:14px;color:var(--text);text-align:left;margin-bottom:10px;">'+
         '<div style="width:18px;height:18px;border-radius:50%;background:#888;flex-shrink:0;"></div>'+
-        '<span>N\u00E3o desejo</span>'+
+        '<span>N\u00E3o</span>'+
       '</button>'+
       '<button data-step="" class="term-step-btn" style="width:100%;padding:10px;background:transparent;border:1px solid var(--border-md);border-radius:8px;font-family:var(--font);font-size:13px;color:var(--text-3);cursor:pointer;margin-top:4px;">\u2190 Voltar</button>';
   } else if(_step==='nao_vota'){
     conteudo='<div style="text-align:center;padding:2rem 1rem;">'+
       '<div style="font-size:32px;margin-bottom:12px;">\u2705</div>'+
-      '<div style="font-size:15px;font-weight:500;color:var(--text);margin-bottom:8px;">Tudo certo!</div>'+
-      '<div style="font-size:13px;color:var(--text-3);">Seu voto n\u00E3o foi registrado.</div>'+
+      '<div style="font-size:15px;font-weight:500;color:var(--text);">Tudo certo, obrigado!</div>'+
     '</div>';
   } else {
-    conteudo='<div style="font-size:14px;color:var(--text-2);margin-bottom:20px;">Em que plataforma voc\u00EA atuou hoje?</div>'+
+    conteudo='<div style="font-size:14px;color:var(--text-2);margin-bottom:20px;">O que voc\u00EA fez hoje?</div>'+
       '<button data-step="votacao" class="term-step-btn" style="width:100%;display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:10px;border:2px solid var(--border-md);background:var(--surface);cursor:pointer;font-family:var(--font);font-size:14px;color:var(--text);text-align:left;margin-bottom:10px;">'+
         '<div style="width:18px;height:18px;border-radius:50%;background:#25D366;flex-shrink:0;"></div>'+
         '<span>WATI</span>'+
       '</button>'+
       '<button data-step="zendesk" class="term-step-btn" style="width:100%;display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:10px;border:2px solid var(--border-md);background:var(--surface);cursor:pointer;font-family:var(--font);font-size:14px;color:var(--text);text-align:left;margin-bottom:10px;">'+
         '<div style="width:18px;height:18px;border-radius:50%;background:#03363D;flex-shrink:0;"></div>'+
-        '<span>Zendesk</span>'+
+        '<span>Zendesk + WATI</span>'+
       '</button>';
   }
 
@@ -7226,7 +7225,7 @@ window.abrirModalTermometro=async function(){
     if(total===0){
       conteudo='<div style="text-align:center;padding:2rem;color:var(--text-3);">Sem votos hoje.</div>';
     } else {
-      conteudo='<div style="font-size:12px;color:var(--text-2);margin-bottom:14px;">'+total+' resposta'+(total===1?'':'s')+' hoje (anonimo)</div>'+
+      conteudo='<div style="font-size:12px;color:var(--text-2);margin-bottom:14px;">Distribuicao de hoje (anonimo)</div>'+
         '<div style="display:flex;flex-direction:column;gap:8px;">'+
         TERM_NIVEIS.map(n=>{
           const qtd=contagem[n.id];
@@ -7234,7 +7233,7 @@ window.abrirModalTermometro=async function(){
           return '<div style="display:flex;align-items:center;gap:10px;">'+
             '<div style="width:120px;font-size:12px;color:var(--text);">'+n.label+'</div>'+
             '<div style="flex:1;height:10px;background:var(--surface);border-radius:6px;overflow:hidden;"><div style="width:'+pct+'%;height:100%;background:'+n.cor+';"></div></div>'+
-            '<div style="width:50px;text-align:right;font-size:12px;color:var(--text-2);">'+qtd+' ('+pct+'%)</div>'+
+            '<div style="width:50px;text-align:right;font-size:12px;color:var(--text-2);">'+pct+'%</div>'+
           '</div>';
         }).join('')+
         '</div>';
@@ -7351,6 +7350,18 @@ async function carregarTermometroHistorico(){
 
   try{
     // Gera lista de datas no intervalo
+    // Lista de operadores ativos (exclui Daniel 2 e Farao, que nao votam)
+    const EXCLUIR_TERM=['daniel 2','farao','faraó'];
+    const usuariosSnap=await getDocs(collection(db,'usuarios'));
+    let totalOperadoresAtivos=0;
+    usuariosSnap.forEach(d=>{
+      const u=d.data();
+      if(u.role==='op'){
+        const nomeNorm=(u.nome||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+        if(!EXCLUIR_TERM.includes(nomeNorm)) totalOperadoresAtivos++;
+      }
+    });
+
     const datas=[];
     let cur=new Date(de+'T00:00:00');
     const fim=new Date(ate+'T00:00:00');
@@ -7367,7 +7378,8 @@ async function carregarTermometroHistorico(){
       });
       if(valores.length===0)continue;
       const media=valores.reduce((a,b)=>a+b,0)/valores.length;
-      linhas.push({data:d,media,total:valores.length});
+      const todosVotaram=valores.length>=totalOperadoresAtivos;
+      linhas.push({data:d,media,total:valores.length,todosVotaram});
     }
 
     window._termHistLinhas=linhas;
@@ -7394,10 +7406,13 @@ async function carregarTermometroHistorico(){
 
     tableEl.innerHTML='<div style="overflow-x:auto;">'+
       '<table class="hist-table" style="min-width:400px;">'+
-        '<thead><tr><th>Data</th><th>Media</th><th>Votos</th></tr></thead>'+
+        '<thead><tr><th>Data</th><th>Media</th><th>Status</th></tr></thead>'+
         '<tbody>'+linhas.map(l=>{
           const dataFmt=new Date(l.data+'T00:00:00').toLocaleDateString('pt-BR');
-          return '<tr><td>'+dataFmt+'</td><td>'+fmtMedia(l.media)+'</td><td>'+l.total+'</td></tr>';
+          const statusHtml=l.todosVotaram
+            ?'<span style="color:#22c55e;font-weight:600;">✓ Todos votaram</span>'
+            :'<span style="color:#f59e0b;font-weight:600;">⚠ Nem todos votaram</span>';
+          return '<tr><td>'+dataFmt+'</td><td>'+fmtMedia(l.media)+'</td><td>'+statusHtml+'</td></tr>';
         }).join('')+'</tbody>'+
       '</table>'+
       '<div style="font-size:11px;color:var(--text-3);margin-top:8px;">'+linhas.length+' dia(s) com registros</div>'+
@@ -7417,10 +7432,11 @@ window.exportarTermometroExcel=function(){
     return TERM_NIVEIS.slice().reverse().reduce((prev,cur)=>Math.abs(cur.valor-m)<Math.abs(prev.valor-m)?cur:prev);
   }
 
-  const cabecalho=['Data','Media','Nivel','Qtde de Votos'];
+  const cabecalho=['Data','Media','Nivel','Status'];
   const dados=linhas.map(l=>{
     const dataFmt=new Date(l.data+'T00:00:00').toLocaleDateString('pt-BR');
-    return [dataFmt,l.media.toFixed(2),nivelDaMedia(l.media).label,l.total];
+    const status=l.todosVotaram?'Todos votaram':'Nem todos votaram';
+    return [dataFmt,l.media.toFixed(2),nivelDaMedia(l.media).label,status];
   });
   // Linha de media geral
   const mediaGeral=linhas.reduce((s,l)=>s+l.media,0)/linhas.length;
