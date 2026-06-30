@@ -7839,6 +7839,18 @@ async function renderHashtube(mc){
           </label>
         </div>
 
+        <div style="margin-bottom:20px;">
+          <label style="font-size:11px;font-weight:500;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:6px;">Capa do vídeo (opcional) <span style="font-weight:400;color:rgba(255,255,255,0.3);">— se não escolher, usa um frame do vídeo</span></label>
+          <label id="ht-thumb-label" style="display:flex;align-items:center;gap:10px;padding:12px;background:rgba(255,255,255,0.05);border:1px dashed rgba(255,255,255,0.2);border-radius:8px;cursor:pointer;color:rgba(255,255,255,0.5);font-size:13px;">
+            <span style="font-size:20px;">🖼️</span>
+            <span id="ht-thumb-name">Clique para selecionar uma imagem</span>
+            <input id="ht-thumb-file" type="file" accept="image/png,image/jpeg,image/webp" style="display:none;" onchange="window._hashtubeThumbChosen(this)">
+          </label>
+          <div id="ht-thumb-preview" style="display:none;margin-top:8px;">
+            <img id="ht-thumb-preview-img" style="width:100%;max-height:120px;object-fit:cover;border-radius:8px;">
+          </div>
+        </div>
+
         <div id="ht-progress" style="display:none;margin-bottom:16px;">
           <div style="font-size:12px;color:rgba(255,255,255,0.5);margin-bottom:6px;" id="ht-progress-label">Enviando...</div>
           <div style="height:6px;background:rgba(255,255,255,0.1);border-radius:3px;overflow:hidden;">
@@ -7917,6 +7929,9 @@ async function renderHashtube(mc){
     document.getElementById('ht-desc').value='';
     document.getElementById('ht-file').value='';
     document.getElementById('ht-file-name').textContent='Clique para selecionar o vídeo';
+    document.getElementById('ht-thumb-file').value='';
+    document.getElementById('ht-thumb-name').textContent='Clique para selecionar uma imagem';
+    document.getElementById('ht-thumb-preview').style.display='none';
     document.getElementById('ht-progress').style.display='none';
     document.getElementById('ht-progress-bar').style.width='0%';
     document.getElementById('ht-save-btn').disabled=false;
@@ -7927,12 +7942,26 @@ async function renderHashtube(mc){
     if(file.size>100*1024*1024){showToast('Arquivo muito grande! Máximo 100MB.');input.value='';return;}
     document.getElementById('ht-file-name').textContent=file.name+' ('+Math.round(file.size/1024/1024*10)/10+'MB)';
   };
+  window._hashtubeThumbChosen=function(input){
+    const file=input.files[0];
+    if(!file)return;
+    if(file.size>10*1024*1024){showToast('Imagem muito grande! Máximo 10MB.');input.value='';return;}
+    document.getElementById('ht-thumb-name').textContent=file.name;
+    const reader=new FileReader();
+    reader.onload=function(e){
+      document.getElementById('ht-thumb-preview-img').src=e.target.result;
+      document.getElementById('ht-thumb-preview').style.display='block';
+    };
+    reader.readAsDataURL(file);
+  };
   window._hashtubeSalvar=async function(){
     const titulo=document.getElementById('ht-titulo').value.trim();
     const cat=document.getElementById('ht-cat').value;
     const desc=document.getElementById('ht-desc').value.trim();
     const fileInput=document.getElementById('ht-file');
     const file=fileInput.files[0];
+    const thumbInput=document.getElementById('ht-thumb-file');
+    const thumbFile=thumbInput.files[0];
     if(!titulo){showToast('Informe o título.');return;}
     if(!file){showToast('Selecione um arquivo de vídeo.');return;}
 
@@ -7953,9 +7982,9 @@ async function renderHashtube(mc){
 
       xhr.upload.onprogress=function(e){
         if(e.lengthComputable){
-          const pct=Math.round(e.loaded/e.total*85);
+          const pct=Math.round(e.loaded/e.total*75);
           document.getElementById('ht-progress-bar').style.width=pct+'%';
-          document.getElementById('ht-progress-label').textContent='Enviando... '+pct+'%';
+          document.getElementById('ht-progress-label').textContent='Enviando vídeo... '+pct+'%';
         }
       };
 
@@ -7968,12 +7997,25 @@ async function renderHashtube(mc){
         xhr.send(formData);
       });
 
+      const publicId=result.public_id;
+      let thumbUrl=`https://res.cloudinary.com/dbd9hpwyb/video/upload/so_2,w_480,h_270,c_fill,q_auto,f_jpg/${publicId}.jpg`;
+
+      // Se o usuário escolheu uma imagem própria, sobe ela como capa
+      if(thumbFile){
+        document.getElementById('ht-progress-bar').style.width='85%';
+        document.getElementById('ht-progress-label').textContent='Enviando capa...';
+        const thumbForm=new FormData();
+        thumbForm.append('file',thumbFile);
+        thumbForm.append('upload_preset','ml_default');
+        const thumbRes=await fetch('https://api.cloudinary.com/v1_1/dbd9hpwyb/image/upload',{method:'POST',body:thumbForm});
+        const thumbJson=await thumbRes.json();
+        if(thumbJson.secure_url){
+          thumbUrl=`https://res.cloudinary.com/dbd9hpwyb/image/upload/w_480,h_270,c_fill,q_auto,f_jpg/${thumbJson.public_id}.jpg`;
+        }
+      }
+
       document.getElementById('ht-progress-bar').style.width='95%';
       document.getElementById('ht-progress-label').textContent='Salvando metadados...';
-
-      // Gerar thumbnail via Cloudinary (frame do segundo 2)
-      const publicId=result.public_id;
-      const thumbUrl=`https://res.cloudinary.com/dbd9hpwyb/video/upload/so_2,w_480,h_270,c_fill,q_auto,f_jpg/${publicId}.jpg`;
 
       await addDoc(collection(db,'hashtube'),{
         titulo,
