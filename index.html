@@ -7713,13 +7713,20 @@ window.pipCobrancaSalvar=async function(){
 
 
 // ── HASHTUBE ─────────────────────────────────────────────────────────────────
-const HASHTUBE_CATS=[
+let HASHTUBE_CATS=[
   {id:'reparcelamento', label:'Criação de links de reparcelamento'},
   {id:'pagamento',      label:'Como gerar um pagamento'},
 ];
 
 async function renderHashtube(mc){
   const {isCoord}=getPerms();
+  // Carrega categorias do Firestore (se já existirem); senão usa o padrão acima
+  try{
+    const catSnap=await getDoc(doc(db,'config','hashtube_categorias'));
+    if(catSnap.exists() && Array.isArray(catSnap.data().categorias) && catSnap.data().categorias.length>0){
+      HASHTUBE_CATS=catSnap.data().categorias;
+    }
+  }catch(e){/* usa padrao */}
   const snap=await getDocs(collection(db,'hashtube'));
   const videos=[];
   snap.forEach(d=>videos.push({id:d.id,...d.data()}));
@@ -7729,12 +7736,15 @@ async function renderHashtube(mc){
 
   function catBtn(cat){
     const active=activeCat===cat.id;
-    return `<button onclick="window._hashtubeActiveCat='${cat.id}';renderHashtube(document.getElementById('mainContent'))"
-      style="display:flex;align-items:center;gap:10px;width:100%;padding:14px 16px;background:${active?'rgba(255,255,255,0.13)':'transparent'};border:none;border-radius:10px;cursor:pointer;text-align:left;transition:background 0.15s;color:#fff;font-family:var(--font);font-size:14px;font-weight:${active?'600':'400'};">
-      <span style="font-size:18px;">▶️</span>
-      <span style="flex:1;">${cat.label}</span>
-      ${active?'<span style="width:6px;height:6px;border-radius:50%;background:#ff4444;flex-shrink:0;"></span>':''}
-    </button>`;
+    return `<div style="position:relative;display:flex;align-items:center;width:100%;">
+      <button onclick="window._hashtubeActiveCat='${cat.id}';renderHashtube(document.getElementById('mainContent'))"
+        style="display:flex;align-items:center;gap:10px;flex:1;padding:14px 16px;background:${active?'rgba(255,255,255,0.13)':'transparent'};border:none;border-radius:10px;cursor:pointer;text-align:left;transition:background 0.15s;color:#fff;font-family:var(--font);font-size:14px;font-weight:${active?'600':'400'};">
+        <span style="font-size:18px;">▶️</span>
+        <span style="flex:1;">${cat.label}</span>
+        ${active?'<span style="width:6px;height:6px;border-radius:50%;background:#ff4444;flex-shrink:0;"></span>':''}
+      </button>
+      ${isCoord?`<button onclick="event.stopPropagation();window._hashtubeExcluirCategoria('${cat.id}')" title="Excluir categoria" style="position:absolute;right:6px;background:none;border:none;color:rgba(255,255,255,0.3);font-size:13px;cursor:pointer;padding:4px 6px;">🗑</button>`:''}
+    </div>`;
   }
 
   const catVideos=videos.filter(v=>v.categoria===activeCat);
@@ -7782,6 +7792,9 @@ async function renderHashtube(mc){
       <div style="width:260px;flex-shrink:0;background:rgba(255,255,255,0.03);border-right:1px solid rgba(255,255,255,0.07);padding:16px 10px;">
         <div style="font-size:10px;font-weight:600;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:0.1em;padding:0 8px;margin-bottom:8px;">Categorias</div>
         ${HASHTUBE_CATS.map(catBtn).join('')}
+        ${isCoord?`<button onclick="window._hashtubeOpenNovaCategoria()" style="display:flex;align-items:center;gap:8px;width:100%;padding:12px 16px;background:transparent;border:1px dashed rgba(255,255,255,0.2);border-radius:10px;cursor:pointer;color:rgba(255,255,255,0.5);font-family:var(--font);font-size:13px;margin-top:8px;">
+          <span style="font-size:15px;">＋</span><span>Nova categoria</span>
+        </button>`:''}
       </div>
 
       <!-- Grade de vídeos -->
@@ -7839,6 +7852,18 @@ async function renderHashtube(mc){
       </div>
     </div>
 
+    <!-- Modal de nova categoria (oculto) -->
+    <div id="hashtube-cat-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:3000;align-items:center;justify-content:center;">
+      <div style="background:#1c1c1c;border:1px solid rgba(255,255,255,0.12);border-radius:14px;padding:24px;width:100%;max-width:380px;box-shadow:0 20px 60px rgba(0,0,0,0.6);">
+        <div style="font-size:16px;font-weight:600;color:#fff;margin-bottom:16px;">＋ Nova categoria</div>
+        <input id="ht-nova-cat-nome" type="text" placeholder="Nome da categoria" style="width:100%;padding:10px 12px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:#fff;font-family:var(--font);font-size:14px;margin-bottom:16px;">
+        <div style="display:flex;gap:10px;justify-content:flex-end;">
+          <button onclick="window._hashtubeCloseNovaCategoria()" style="padding:10px 18px;background:rgba(255,255,255,0.08);color:#fff;border:none;border-radius:8px;font-family:var(--font);font-size:13px;cursor:pointer;">Cancelar</button>
+          <button onclick="window._hashtubeSalvarCategoria()" style="padding:10px 18px;background:#ff0000;color:#fff;border:none;border-radius:8px;font-family:var(--font);font-size:13px;font-weight:600;cursor:pointer;">Criar</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Modal de player (oculto) -->
     <div id="hashtube-player-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:3000;align-items:center;justify-content:center;flex-direction:column;gap:16px;">
       <button onclick="window._hashtubeClosePlayer()" style="position:absolute;top:20px;right:24px;background:rgba(255,255,255,0.1);border:none;border-radius:8px;color:#fff;font-size:18px;cursor:pointer;padding:8px 14px;">✕</button>
@@ -7849,6 +7874,39 @@ async function renderHashtube(mc){
   </div>`;
 
   // Funções globais
+  window._hashtubeOpenNovaCategoria=function(){
+    document.getElementById('hashtube-cat-modal').style.display='flex';
+    document.getElementById('ht-nova-cat-nome').value='';
+    document.getElementById('ht-nova-cat-nome').focus();
+  };
+  window._hashtubeCloseNovaCategoria=function(){
+    document.getElementById('hashtube-cat-modal').style.display='none';
+  };
+  window._hashtubeSalvarCategoria=async function(){
+    const nome=document.getElementById('ht-nova-cat-nome').value.trim();
+    if(!nome){showToast('Digite o nome da categoria.');return;}
+    const id='cat_'+Date.now();
+    const novaLista=[...HASHTUBE_CATS,{id,label:nome}];
+    try{
+      await setDoc(doc(db,'config','hashtube_categorias'),{categorias:novaLista},{merge:false});
+      window._hashtubeCloseNovaCategoria();
+      window._hashtubeActiveCat=id;
+      showToast('Categoria criada!');
+      renderHashtube(document.getElementById('mainContent'));
+    }catch(e){showToast('Erro ao criar categoria.');}
+  };
+  window._hashtubeExcluirCategoria=async function(catId){
+    const cat=HASHTUBE_CATS.find(c=>c.id===catId);
+    if(!cat)return;
+    if(!confirm('Excluir a categoria "'+cat.label+'"? Os vídeos dela continuarão salvos, mas ficarão sem categoria visível.'))return;
+    const novaLista=HASHTUBE_CATS.filter(c=>c.id!==catId);
+    try{
+      await setDoc(doc(db,'config','hashtube_categorias'),{categorias:novaLista},{merge:false});
+      if(window._hashtubeActiveCat===catId) window._hashtubeActiveCat=novaLista[0]?.id;
+      showToast('Categoria excluída.');
+      renderHashtube(document.getElementById('mainContent'));
+    }catch(e){showToast('Erro ao excluir categoria.');}
+  };
   window._hashtubeOpenUpload=function(){
     document.getElementById('hashtube-upload-modal').style.display='flex';
   };
