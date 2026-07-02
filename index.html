@@ -1566,9 +1566,63 @@ async function renderResultado(mc,op){
   if(reuniao.meet) banner+='<a class="reuniao-meet-btn" href="'+reuniao.meet+'" target="_blank"><span class="reuniao-meet-dot"></span>Entrar no Meet</a>';
   if(isCoord) banner+='<button class="reuniao-edit-btn" onclick="editarReuniao()">Editar</button>';
   banner+='</div></div>';
+  const coordBtns=isCoord
+    ? '<div style="display:flex;gap:10px;margin-bottom:1rem;justify-content:flex-end;">'+
+        '<button onclick="window._resultEditar()" style="padding:8px 16px;background:transparent;color:var(--primary);border:1px solid var(--primary);border-radius:var(--radius);font-family:var(--font);font-size:12px;font-weight:500;cursor:pointer;">\u270F Editar numeros</button>'+
+        '<button onclick="window._resultZerar()" style="padding:8px 16px;background:transparent;color:#ef4444;border:1px solid #ef4444;border-radius:var(--radius);font-family:var(--font);font-size:12px;font-weight:500;cursor:pointer;">Zerar numeros</button>'+
+      '</div>'
+    : '';
+
+  window._resultZerar=async function(){
+    if(!confirm('Tem certeza que deseja zerar todos os numeros da semana atual?\n\nEssa acao nao pode ser desfeita.')) return;
+    try{
+      await setDoc(doc(db,'semanas',op.uid),{
+        atual:{valor:'R$ 0,00',atend:0,cobr:0,raw:0,media:0,valorDia:0,valorDiaFmt:'R$ 0,00',ticketFmt:'R$ 0,00'},
+        passada:sem.passada||{valor:'R$ 0,00',raw:0},
+        descricao:sem.descricao||''
+      },{merge:true});
+      showToast('Numeros zerados!');
+      await renderResultado(document.getElementById('mainContent'),op);
+    }catch(e){showToast('Erro ao zerar.');}
+  };
+
+  window._resultEditar=async function(){
+    const novoValor=prompt('Valor Recuperado (somente numero, ex: 12530.50):',atual.raw||0);
+    if(novoValor===null) return;
+    const novoAtend=prompt('Atendimentos:',atual.atend||0);
+    if(novoAtend===null) return;
+    const novoCobr=prompt('Cobrancas Totais:',atual.cobr||0);
+    if(novoCobr===null) return;
+    const novoMedia=prompt('Media Atend./Dia:',atual.media||0);
+    if(novoMedia===null) return;
+    try{
+      const raw=parseFloat(String(novoValor).replace(',','.'))||0;
+      const atend=parseInt(novoAtend)||0;
+      const cobr=parseInt(novoCobr)||0;
+      const media=parseFloat(String(novoMedia).replace(',','.'))||0;
+      const valorDia=raw/5;
+      const ticket=cobr>0?raw/cobr:0;
+      await setDoc(doc(db,'semanas',op.uid),{
+        atual:{
+          raw,
+          valor:raw.toLocaleString('pt-BR',{style:'currency',currency:'BRL'}),
+          atend,
+          cobr,
+          media:media.toFixed(2),
+          valorDia,
+          valorDiaFmt:valorDia.toLocaleString('pt-BR',{style:'currency',currency:'BRL'}),
+          ticketFmt:ticket>0?ticket.toLocaleString('pt-BR',{style:'currency',currency:'BRL'}):''
+        }
+      },{merge:true});
+      showToast('Numeros atualizados!');
+      await renderResultado(document.getElementById('mainContent'),op);
+    }catch(e){showToast('Erro ao salvar.');}
+  };
+
   mc.innerHTML=snakeHtml()+
     pageHeaderOp(op,isCoord,'Resultado Semanal','Semana atual',sem.descricao||'Semana em andamento')+
     banner+
+    coordBtns+
     '<div class="cards-row cols-4"><div class="stat-card blue"><div class="sc-label">Valor Recuperado</div><div class="sc-value">'+atual.valor+'</div><div class="sc-sub">esta semana</div></div>'+
     '<div class="stat-card green"><div class="sc-label">Atendimentos</div><div class="sc-value">'+atual.atend+'</div><div class="sc-sub">esta semana</div></div>'+
     '<div class="stat-card amber"><div class="sc-label">Cobrancas Totais</div><div class="sc-value">'+atual.cobr+'</div><div class="sc-sub">esta semana</div></div>'+
