@@ -7023,17 +7023,17 @@ window.updateLembreteNotifDot=updateLembreteNotifDot;
 // TERMOMETRO DE DEMANDA
 // ══════════════════════════════════════════
 const TERM_NIVEIS=[
-  {id:'n10',label:'10 — Altíssima',   cor:'#7f1d1d',valor:10},
-  {id:'n9', label:'9 — Alta',          cor:'#991b1b',valor:9},
-  {id:'n8', label:'8 — Moderada/Alta', cor:'#f97316',valor:8},
-  {id:'n7', label:'7 — Moderada/Alta', cor:'#fb923c',valor:7},
-  {id:'n6', label:'6 — Moderada',      cor:'#facc15',valor:6},
-  {id:'n5', label:'5 — Moderada',      cor:'#22c55e',valor:5},
-  {id:'n4', label:'4 — Moderada/Baixa',cor:'#14b8a6',valor:4},
-  {id:'n3', label:'3 — Moderada/Baixa',cor:'#06b6d4',valor:3},
-  {id:'n2', label:'2 — Baixa',         cor:'#38bdf8',valor:2},
-  {id:'n1', label:'1 — Baixa',         cor:'#60a5fa',valor:1},
-  {id:'n0', label:'0 — Baixíssima',    cor:'#1e3a5f',valor:0},
+  {id:'n10',label:'10 – Insustentável',desc:'não dá pra respirar, pior dia de trabalho da minha vida',          cor:'#7f1d1d',valor:10},
+  {id:'n9', label:'9 – Extrema',        desc:'sufocado, nem tirei o almoço, comi trabalhando',                   cor:'#991b1b',valor:9},
+  {id:'n8', label:'8 – Muito Alta',     desc:'correndo atrás o tempo todo, sempre alguém esperando mais de 1h', cor:'#f97316',valor:8},
+  {id:'n7', label:'7 – Alta',           desc:'ritmo forte, mas dentro do controle, muito produto',               cor:'#fb923c',valor:7},
+  {id:'n6', label:'6 – Puxada',         desc:'bastante coisa, mas cabe tranquilo nas 8h de trabalho',           cor:'#facc15',valor:6},
+  {id:'n5', label:'5 – Moderada',       desc:'ocupado, ritmo normal de trabalho',                                cor:'#22c55e',valor:5},
+  {id:'n4', label:'4 – Tranquila',      desc:'dá conta com certa folga, sem correria',                          cor:'#14b8a6',valor:4},
+  {id:'n3', label:'3 – Leve',           desc:'demanda tranquila, ritmo confortável',                             cor:'#06b6d4',valor:3},
+  {id:'n2', label:'2 – Bem Leve',       desc:'quase parado, só o básico',                                       cor:'#38bdf8',valor:2},
+  {id:'n1', label:'1 – Mínima',         desc:'praticamente ocioso',                                             cor:'#60a5fa',valor:1},
+  {id:'n0', label:'0 – Zero',           desc:'de boa, muito ocioso',                                            cor:'#1e3a5f',valor:0},
 ];
 function termNivelById(id){return TERM_NIVEIS.find(n=>n.id===id);}
 function termCssClass(id){return 'led-'+id.replace(/_/g,'-');}
@@ -7136,17 +7136,23 @@ async function renderTermometroPagina(mc,_step){
   } else if(minhaResposta){
     const opts=TERM_NIVEIS.map(n=>{
       const sel=minhaResposta===n.id;
-      return `<button data-nid="${n.id}" class="term-btn-pagina" style="width:100%;display:flex;align-items:center;gap:10px;padding:14px 16px;border-radius:10px;border:2px solid ${sel?n.cor:'var(--border-md)'};background:${sel?n.cor+'18':'var(--surface)'};cursor:pointer;font-family:var(--font);font-size:14px;color:var(--text);text-align:left;margin-bottom:10px;">
-        <div style="width:18px;height:18px;border-radius:50%;background:${n.cor};flex-shrink:0;"></div>
-        <span style="flex:1;font-weight:${sel?'600':'400'};">${n.label}</span>
-        ${sel?`<span style="font-size:11px;color:${n.cor};font-weight:700;">SELECIONADO</span>`:''}
+      return `<button data-nid="${n.id}" class="term-btn-pagina" style="width:100%;display:flex;align-items:center;gap:10px;padding:14px 16px;border-radius:10px;border:2px solid ${sel?n.cor:'var(--border-md)'};background:${sel?n.cor+'18':'var(--surface)'};cursor:pointer;font-family:var(--font);font-size:14px;color:var(--text);text-align:left;margin-bottom:8px;">
+        <div style="width:18px;height:18px;border-radius:50%;background:${n.cor};flex-shrink:0;margin-top:2px;"></div>
+        <div style="flex:1;">
+          <div style="font-weight:${sel?'600':'500'};font-size:14px;">${n.label}</div>
+          <div style="font-size:11px;color:var(--text-3);margin-top:2px;">${n.desc||''}</div>
+        </div>
+        ${sel?`<span style="font-size:11px;color:${n.cor};font-weight:700;flex-shrink:0;">✓</span>`:''}
       </button>`;
     }).join('');
     conteudo='<div style="font-size:14px;color:var(--text-2);margin-bottom:18px;">Como foi a demanda?</div>'+opts;
   } else if(_step==='votacao'){
-    const opts=TERM_NIVEIS.map(n=>`<button data-nid="${n.id}" class="term-btn-pagina" style="width:100%;display:flex;align-items:center;gap:10px;padding:14px 16px;border-radius:10px;border:2px solid var(--border-md);background:var(--surface);cursor:pointer;font-family:var(--font);font-size:14px;color:var(--text);text-align:left;margin-bottom:10px;">
-      <div style="width:18px;height:18px;border-radius:50%;background:${n.cor};flex-shrink:0;"></div>
-      <span style="flex:1;">${n.label}</span>
+    const opts=TERM_NIVEIS.map(n=>`<button data-nid="${n.id}" class="term-btn-pagina" style="width:100%;display:flex;align-items:center;gap:10px;padding:14px 16px;border-radius:10px;border:2px solid var(--border-md);background:var(--surface);cursor:pointer;font-family:var(--font);font-size:14px;color:var(--text);text-align:left;margin-bottom:8px;">
+      <div style="width:18px;height:18px;border-radius:50%;background:${n.cor};flex-shrink:0;margin-top:2px;"></div>
+      <div style="flex:1;">
+        <div style="font-weight:500;font-size:14px;">${n.label}</div>
+        <div style="font-size:11px;color:var(--text-3);margin-top:2px;">${n.desc||''}</div>
+      </div>
     </button>`).join('');
     conteudo='<div style="font-size:14px;color:var(--text-2);margin-bottom:18px;">Como foi a demanda?</div>'+opts+
       '<button data-step="" class="term-step-btn" style="width:100%;padding:10px;background:transparent;border:1px solid var(--border-md);border-radius:8px;font-family:var(--font);font-size:13px;color:var(--text-3);cursor:pointer;margin-top:4px;">\u2190 Voltar</button>';
