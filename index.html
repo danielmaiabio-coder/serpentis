@@ -1885,15 +1885,59 @@ async function renderAnaliseChatContent(op,dados){
   // Calcula media geral do historico (assincrono, atualiza o painel apos render)
   carregarMediaGeralHistorico(op);
 
-  // ── Lista de chats resolvidos ──
-  const chatsHtml=chats.length===0
-    ? '<div class="panel"><div class="empty">Nenhum chat resolvido neste relatorio.</div></div>'
+  // Filtro de periodo e Chats Notaveis
+  const hoje=dataLocalStr();
+  const _periodId='achat-periodo-'+op.uid;
+  const _savedP=JSON.parse(localStorage.getItem(_periodId)||'null');
+  const _pInicio=_savedP?.inicio||'';
+  const _pFim=_savedP?.fim||hoje;
+
+  const chatsFiltrados=_pInicio
+    ? chats.filter(ch=>{const d=(ch.dataAtrelamento||ch.dataResolucao||'').split('T')[0];return d>=_pInicio&&d<=_pFim;})
+    : chats;
+
+  window._achatFiltrar=function(uid){
+    const de=document.getElementById('achat-de').value;
+    const ate=document.getElementById('achat-ate').value;
+    if(!de){showToast('Selecione a data inicial.');return;}
+    localStorage.setItem('achat-periodo-'+uid,JSON.stringify({inicio:de,fim:ate||hoje}));
+    renderNotas(document.getElementById('mainContent'),viewingOpObj,'atual');
+  };
+  window._achatLimparFiltro=function(uid){
+    localStorage.removeItem('achat-periodo-'+uid);
+    renderNotas(document.getElementById('mainContent'),viewingOpObj,'atual');
+  };
+
+  const periodoHtml='<div class="panel" style="margin-bottom:1rem;">'+
+    '<div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:10px;">Filtrar por periodo de atrelamento</div>'+
+    '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">'+
+      '<label style="font-size:12px;color:var(--text-2);">De: <input type="date" id="achat-de" value="'+_pInicio+'" style="margin-left:4px;padding:4px 8px;background:var(--surface);border:1px solid var(--border-md);border-radius:6px;color:var(--text);font-family:var(--font);font-size:12px;"></label>'+
+      '<label style="font-size:12px;color:var(--text-2);">Ate: <input type="date" id="achat-ate" value="'+_pFim+'" style="margin-left:4px;padding:4px 8px;background:var(--surface);border:1px solid var(--border-md);border-radius:6px;color:var(--text);font-family:var(--font);font-size:12px;"></label>'+
+      '<button onclick="window._achatFiltrar(\''+op.uid+'\')" style="padding:6px 14px;background:var(--primary);color:#fff;border:none;border-radius:6px;font-family:var(--font);font-size:12px;cursor:pointer;">Filtrar</button>'+
+      (_pInicio?'<button onclick="window._achatLimparFiltro(\''+op.uid+'\')" style="padding:6px 14px;background:transparent;border:1px solid var(--border-md);color:var(--text-2);border-radius:6px;font-family:var(--font);font-size:12px;cursor:pointer;">Limpar</button>':'')+
+    '</div>'+
+    (_pInicio?'<div style="font-size:11px;color:var(--text-3);margin-top:8px;">Mostrando '+chatsFiltrados.length+' de '+chats.length+' chats no periodo.</div>':'')+
+  '</div>';
+
+  const chatsNotaveis=chatsFiltrados.filter(ch=>{
+    const n=ch.notas||{};
+    return n.educacao===10||(n.ironia!=null&&n.ironia<=5)||(n.frieza!=null&&n.frieza<=5)||(n.impaciencia!=null&&n.impaciencia<=5);
+  });
+
+  const chatsHtml=chatsNotaveis.length===0
+    ? '<div class="panel"><div class="empty">Nenhum chat notavel'+(_pInicio?' no periodo selecionado':'')+'. (Criterios: Educacao 10/10, ou Ironia/Frieza/Impaciencia <= 5/10)</div></div>'
     : '<div class="panel">'+
-        '<div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:14px;">\ud83d\udcac Chats Resolvidos ('+chats.length+')</div>'+
+        '<div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:14px;">\u2B50 Chats Notaveis ('+chatsNotaveis.length+')</div>'+
         '<div style="display:flex;flex-direction:column;gap:12px;">'+
-        chats.map(ch=>{
+        chatsNotaveis.map(ch=>{
+          const n=ch.notas||{};
+          const tags=[];
+          if(n.educacao===10) tags.push('<span style="background:#22c55e22;color:#22c55e;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;">Educacao 10/10</span>');
+          if(n.ironia!=null&&n.ironia<=5) tags.push('<span style="background:#ef444422;color:#ef4444;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;">Ironia '+n.ironia+'/10</span>');
+          if(n.frieza!=null&&n.frieza<=5) tags.push('<span style="background:#ef444422;color:#ef4444;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;">Frieza '+n.frieza+'/10</span>');
+          if(n.impaciencia!=null&&n.impaciencia<=5) tags.push('<span style="background:#ef444422;color:#ef4444;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;">Impaciencia '+n.impaciencia+'/10</span>');
           const notasHtml=CHAT_CRITERIOS.map(c=>{
-            const v=ch.notas?ch.notas[c.key]:null;
+            const v=n[c.key];
             return '<div style="display:flex;flex-direction:column;align-items:center;gap:2px;min-width:64px;">'+
               '<div style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.04em;text-align:center;">'+c.label.split(' ')[0]+'</div>'+
               '<div style="font-size:13px;font-weight:700;color:'+(v!=null?c.cor:'var(--text-3)')+';">'+(v!=null?v+'/10':'\u2014')+'</div>'+
@@ -1904,6 +1948,7 @@ async function renderAnaliseChatContent(op,dados){
               '<div style="font-size:14px;font-weight:600;color:var(--text);">'+(ch.cliente||'Cliente')+'</div>'+
               (ch.url?'<a href="'+ch.url+'" target="_blank" style="font-size:11px;color:var(--primary);text-decoration:none;">Ver conversa \u2192</a>':'')+
             '</div>'+
+            (tags.length?'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">'+tags.join('')+'</div>':'')+
             (ch.problema?'<div style="font-size:12px;color:var(--text-2);margin-bottom:10px;line-height:1.5;">'+ch.problema+'</div>':'')+
             '<div style="display:flex;gap:14px;flex-wrap:wrap;border-top:1px solid var(--border-md);padding-top:10px;">'+notasHtml+'</div>'+
           '</div>';
@@ -1911,7 +1956,7 @@ async function renderAnaliseChatContent(op,dados){
         '</div>'+
       '</div>';
 
-  container.innerHTML=cardsHtml+criteriosHtml+chatsHtml;
+  container.innerHTML=cardsHtml+criteriosHtml+periodoHtml+chatsHtml;
 }
 
 function statCard(label,value){
