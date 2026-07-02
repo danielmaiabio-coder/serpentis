@@ -7023,12 +7023,17 @@ window.updateLembreteNotifDot=updateLembreteNotifDot;
 // TERMOMETRO DE DEMANDA
 // ══════════════════════════════════════════
 const TERM_NIVEIS=[
-  {id:'altissima',label:'Altissima',cor:'#7f1d1d',valor:6},
-  {id:'alta',label:'Alta',cor:'#ef4444',valor:5},
-  {id:'moderada_alta',label:'Moderada/Alta',cor:'#f97316',valor:4},
-  {id:'moderada',label:'Moderada',cor:'#22c55e',valor:3},
-  {id:'baixa_moderada',label:'Baixa/Moderada',cor:'#14b8a6',valor:2},
-  {id:'baixa',label:'Baixa',cor:'#38bdf8',valor:1},
+  {id:'n10',label:'10 — Altíssima',   cor:'#7f1d1d',valor:10},
+  {id:'n9', label:'9 — Alta',          cor:'#991b1b',valor:9},
+  {id:'n8', label:'8 — Moderada/Alta', cor:'#f97316',valor:8},
+  {id:'n7', label:'7 — Moderada/Alta', cor:'#fb923c',valor:7},
+  {id:'n6', label:'6 — Moderada',      cor:'#facc15',valor:6},
+  {id:'n5', label:'5 — Moderada',      cor:'#22c55e',valor:5},
+  {id:'n4', label:'4 — Moderada/Baixa',cor:'#14b8a6',valor:4},
+  {id:'n3', label:'3 — Moderada/Baixa',cor:'#06b6d4',valor:3},
+  {id:'n2', label:'2 — Baixa',         cor:'#38bdf8',valor:2},
+  {id:'n1', label:'1 — Baixa',         cor:'#60a5fa',valor:1},
+  {id:'n0', label:'0 — Baixíssima',    cor:'#1e3a5f',valor:0},
 ];
 function termNivelById(id){return TERM_NIVEIS.find(n=>n.id===id);}
 function termCssClass(id){return 'led-'+id.replace(/_/g,'-');}
