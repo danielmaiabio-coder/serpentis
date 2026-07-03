@@ -2167,14 +2167,15 @@ async function renderDistribuicaoMetrica(op,isCoord){
         const pctCell=editMode
           ?`<td style="padding:2px 4px;text-align:center;"><input type="text" value="${r.pct}" data-m="${m}" data-nota="${nota}" data-field="pct" style="width:60px;padding:3px 6px;text-align:center;background:var(--bg);border:1px solid var(--primary);border-radius:4px;color:var(--text);font-size:12px;"></td>`
           :`<td style="padding:4px 8px;text-align:center;font-size:12px;color:var(--text);">${r.pct}</td>`;
-        const mediaTd=editMode
-          ?`<td style="padding:2px 4px;text-align:center;"><input type="number" min="0" max="10" step="0.1" value="${(met.media||0).toFixed(1)}" data-m="${m}" data-field="media" style="width:60px;padding:3px 6px;text-align:center;background:var(--bg);border:1px solid var(--primary);border-radius:4px;color:var(--primary);font-size:12px;font-weight:700;"></td>`
-          :`<td style="padding:5px 8px;font-size:12px;font-weight:600;color:var(--primary);text-align:center;">${(met.media||0).toFixed(1)}/10</td>`;
         return `<tr style="background:${isMedia?'rgba(26,92,42,0.15)':'transparent'}">
           <td style="padding:4px 8px;text-align:center;font-size:12px;color:var(--text);">${nota}/10</td>
           ${qtdCell}${pctCell}
         </tr>`;
       }).join('');
+      // mediaTd declared outside the Array.from loop
+      const mediaTd=editMode
+        ?`<td style="padding:2px 4px;text-align:center;"><input type="number" min="0" max="10" step="0.1" value="${(met.media||0).toFixed(1)}" data-m="${m}" data-field="media" style="width:60px;padding:3px 6px;text-align:center;background:var(--bg);border:1px solid var(--primary);border-radius:4px;color:var(--primary);font-size:12px;font-weight:700;"></td>`
+        :`<td style="padding:5px 8px;font-size:12px;font-weight:600;color:var(--primary);text-align:center;">${(met.media||0).toFixed(1)}/10</td>`;
       return `<div class="panel" style="flex:1;min-width:280px;">
         <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:10px;">${m}</div>
         <table style="width:100%;border-collapse:collapse;">
@@ -2196,7 +2197,8 @@ async function renderDistribuicaoMetrica(op,isCoord){
       ? editMode
         ? `<button id="dist-save-btn" style="padding:8px 16px;background:var(--primary);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:12px;font-weight:600;cursor:pointer;">Salvar alteracoes</button>`+
           `<button onclick="renderDistribuicaoMetrica(window._distOp,true)" style="padding:8px 14px;background:transparent;border:1px solid var(--border-md);color:var(--text-2);border-radius:var(--radius);font-family:var(--font);font-size:12px;cursor:pointer;margin-left:8px;">Cancelar</button>`
-        : `<button id="dist-edit-btn" style="padding:8px 16px;background:transparent;color:var(--primary);border:1px solid var(--primary);border-radius:var(--radius);font-family:var(--font);font-size:12px;font-weight:500;cursor:pointer;">Editar numeros</button>`
+        : `<button id="dist-edit-btn" style="padding:8px 16px;background:transparent;color:var(--primary);border:1px solid var(--primary);border-radius:var(--radius);font-family:var(--font);font-size:12px;font-weight:500;cursor:pointer;">Editar numeros</button>`+
+          `<button id="dist-limpar-btn" style="padding:8px 14px;background:transparent;color:#ef4444;border:1px solid #ef4444;border-radius:var(--radius);font-family:var(--font);font-size:12px;cursor:pointer;margin-left:8px;">Limpar fatores</button>`
       : '';
 
     const geradoEm=d.geradoEm?`<div style="font-size:11px;color:var(--text-3);">Importado em ${d.geradoEm}</div>`:'';
@@ -2206,6 +2208,26 @@ async function renderDistribuicaoMetrica(op,isCoord){
         importBtn+
         `<div style="display:flex;align-items:center;gap:8px;">${geradoEm}${editBtns}</div>`+
       `</div>`+
+      `<div id="dist-limpar-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:3000;align-items:center;justify-content:center;">
+        <div style="background:var(--surface);border:1px solid var(--border-md);border-radius:14px;padding:24px;width:100%;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,0.4);">
+          <div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:4px;">Limpar fatores</div>
+          <div style="font-size:12px;color:var(--text-3);margin-bottom:16px;">Selecione quais fatores deseja zerar:</div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+            <input type="checkbox" id="dist-limpar-todos" style="cursor:pointer;">
+            <label for="dist-limpar-todos" style="font-size:13px;font-weight:600;color:var(--text);cursor:pointer;">Selecionar todos</label>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px;">
+            ${DIST_METRICAS.map(m=>`<div style="display:flex;align-items:center;gap:8px;">
+              <input type="checkbox" class="dist-limpar-cb" data-m="${m}" id="dlcb-${m.replace(/ /g,'-')}" style="cursor:pointer;">
+              <label for="dlcb-${m.replace(/ /g,'-')}" style="font-size:13px;color:var(--text);cursor:pointer;">${m}</label>
+            </div>`).join('')}
+          </div>
+          <div style="display:flex;gap:10px;justify-content:flex-end;">
+            <button onclick="document.getElementById('dist-limpar-modal').style.display='none'" style="padding:9px 18px;background:transparent;border:1px solid var(--border-md);color:var(--text-2);border-radius:var(--radius);font-family:var(--font);font-size:13px;cursor:pointer;">Cancelar</button>
+            <button id="dist-limpar-confirmar" style="padding:9px 18px;background:#ef4444;color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:13px;font-weight:600;cursor:pointer;">Confirmar</button>
+          </div>
+        </div>
+      </div>`+
       `<div style="display:flex;flex-wrap:wrap;gap:1rem;">${metricsHtml}</div>`;
 
     if(editMode){
@@ -2231,6 +2253,30 @@ async function renderDistribuicaoMetrica(op,isCoord){
       });
     } else {
       document.getElementById('dist-edit-btn')?.addEventListener('click',function(){renderMetrics(true);});
+      document.getElementById('dist-limpar-btn')?.addEventListener('click',function(){
+        document.getElementById('dist-limpar-modal').style.display='flex';
+      });
+      document.getElementById('dist-limpar-todos')?.addEventListener('change',function(){
+        document.querySelectorAll('.dist-limpar-cb').forEach(cb=>cb.checked=this.checked);
+      });
+      document.getElementById('dist-limpar-confirmar')?.addEventListener('click',async function(){
+        const selecionados=[...document.querySelectorAll('.dist-limpar-cb:checked')].map(cb=>cb.dataset.m);
+        if(selecionados.length===0){showToast('Selecione pelo menos um fator.');return;}
+        this.disabled=true;this.textContent='Zerando...';
+        selecionados.forEach(m=>{
+          if(window._distDados.metricas[m]){
+            window._distDados.metricas[m].media=0;
+            for(let i=1;i<=10;i++) window._distDados.metricas[m].notas[i]={qtd:0,pct:'0%'};
+          }
+        });
+        try{
+          await setDoc(doc(db,'distribuicao_metrica',window._distOp.uid),window._distDados,{merge:false});
+          dados=window._distDados;
+          showToast(selecionados.length+' fator(es) zerado(s)!');
+          document.getElementById('dist-limpar-modal').style.display='none';
+          renderMetrics(false);
+        }catch(e){showToast('Erro ao zerar.');this.disabled=false;this.textContent='Confirmar';}
+      });
     }
   }
 
