@@ -2293,81 +2293,82 @@ function _makeImportarDistribuicao(op){
       const buf=await file.arrayBuffer();
       const wb=window.XLSX.read(buf,{type:'array',cellFormula:false});
 
-      // Find sheet matching op name (case-insensitive, accent-insensitive)
+      // Find sheet matching op name
       const normStr=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
       const sheetName=wb.SheetNames.find(n=>normStr(n)===normStr(op.nome));
       if(!sheetName){showToast('Aba "'+op.nome+'" não encontrada no Excel.');return;}
 
       const ws=wb.Sheets[sheetName];
-      const rows=window.XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+      const rows=window.XLSX.utils.sheet_to_json(ws,{header:1,defval:null,raw:true});
 
-      // Map of metric column names → our DIST_METRICAS names
-      const colMap={
+      // Map from any name variant in Excel → our canonical DIST_METRICAS names
+      const nameMap={
         'educacao':'Educacao',
         'simpatia':'Simpatia',
         'calor humano':'Calor Humano',
+        'acolhimento':'Calor Humano',    // alias
         'paciencia':'Paciencia',
         'ausencia de ironia':'Ausencia de Ironia',
+        'taxa de seriedade':'Ausencia de Ironia', // alias
+        'calma':'Calma / Paciencia',
         'calma / paciencia':'Calma / Paciencia',
         'calma/paciencia':'Calma / Paciencia',
         'esclarece de forma completa':'Esclarece de forma completa',
       };
 
-      // Find header rows and collect column indexes
-      const acumulado={};
-      DIST_METRICAS.forEach(m=>{ acumulado[m]={}; for(let i=1;i<=10;i++) acumulado[m][i]=0; });
+      // Scan rows for metric blocks. Each block starts with a row containing metric name.
+      // Two metrics can be side by side (cols 0-2 and cols 4-6).
+      const metricas={};
 
-      let headerIndexes=null;
-
-      for(const row of rows){
-        // Detect header row by looking for 'educacao' in cells
-        const hasEducacao=row.some(c=>normStr(c)==='educacao');
-        if(hasEducacao){
-          // Build column index map
-          headerIndexes={};
-          row.forEach((c,idx)=>{
-            const mapped=colMap[normStr(c)];
-            if(mapped) headerIndexes[idx]=mapped;
-          });
-          continue;
-        }
-
-        if(!headerIndexes) continue;
-
-        // Data row: first cell must be a number (chat index)
-        const firstCell=row[0];
-        if(!firstCell||isNaN(parseInt(firstCell))) continue;
-
-        // Read each metric column
-        Object.entries(headerIndexes).forEach(([idx,metrica])=>{
-          const val=String(row[idx]||'').trim();
-          const nota=parseInt(val); // handles "9/10" → 9, or "9"
-          if(nota>=1&&nota<=10){
-            acumulado[metrica][nota]=(acumulado[metrica][nota]||0)+1;
+      function parseMetricBlock(rows, startRow, colOffset){
+        // colOffset: 0 for left block, 4 for right block
+        // Row startRow has metric name at colOffset
+        // Rows startRow+1 has headers (Nota, Qtd Chats, % do Total)
+        // Rows startRow+2 to +11 have data (1/10 to 10/10)
+        // Row startRow+12 has "Nota media" and value
+        const notas={};
+        let media=0;
+        for(let i=startRow+2;i<Math.min(startRow+13,rows.length);i++){
+          const row=rows[i];
+          if(!row) continue;
+          const cell0=String(row[colOffset]||'').trim();
+          const notaMatch=cell0.match(/^(\d+)\/10$/);
+          if(notaMatch){
+            const nota=parseInt(notaMatch[1]);
+            const qtd=parseInt(row[colOffset+1])||0;
+            const pct=String(row[colOffset+2]||'0%').trim();
+            notas[nota]={qtd,pct};
+          } else if(normStr(cell0)==='nota media'||normStr(cell0)==='nota m\xe9dia'){
+            const mediaVal=String(row[colOffset+1]||row[colOffset+2]||'0').replace('/10','').replace(',','.');
+            media=parseFloat(mediaVal)||0;
           }
-        });
+        }
+        return {notas,media};
       }
 
-      // Build final structure with percentages and media
-      const metricas={};
-      DIST_METRICAS.forEach(m=>{
-        const notas=acumulado[m];
-        const total=Object.values(notas).reduce((a,b)=>a+b,0);
-        const notasFormatadas={};
-        let somaNotas=0;
-        for(let i=1;i<=10;i++){
-          const qtd=notas[i]||0;
-          const pct=total>0?Math.round(qtd/total*100)+'%':'0%';
-          notasFormatadas[i]={qtd,pct};
-          somaNotas+=i*qtd;
+      for(let r=0;r<rows.length;r++){
+        const row=rows[r];
+        if(!row) continue;
+        // Check left block (col 0)
+        const leftName=normStr(String(row[0]||''));
+        if(nameMap[leftName]){
+          const canonical=nameMap[leftName];
+          metricas[canonical]=parseMetricBlock(rows,r,0);
         }
-        const media=total>0?somaNotas/total:0;
-        metricas[m]={notas:notasFormatadas,media,total};
-      });
+        // Check right block (col 4)
+        const rightName=normStr(String(row[4]||''));
+        if(nameMap[rightName]){
+          const canonical=nameMap[rightName];
+          metricas[canonical]=parseMetricBlock(rows,r,4);
+        }
+      }
+
+      if(Object.keys(metricas).length===0){showToast('Nenhuma métrica encontrada na aba.');return;}
 
       const now=new Date().toLocaleString('pt-BR');
       await setDoc(doc(db,'distribuicao_metrica',op.uid),{metricas,geradoEm:now},{merge:false});
-      showToast('Distribuição importada com sucesso!');
+      window._distDados={metricas,geradoEm:now};
+      showToast('Distribuição importada! ('+Object.keys(metricas).length+' métricas)');
       await renderDistribuicaoMetrica(op,true);
     }catch(e){showToast('Erro ao importar: '+e.message);console.error(e);}
     event.target.value='';
