@@ -982,7 +982,8 @@ function getPerms(){
   const canBanco = isCoord || hasSub('banco');
   const canHistEdit = isCoord || hasSub('historico_edit');
   const canVisaoEquipe = isCoord || hasSub('visao_equipe');
-  return {isCoord, canManageIA, canLancar, canRenegoc, canBanco, canHistEdit, canVisaoEquipe};
+  const canExEquipe = isCoord || hasSub('ex_equipe');
+  return {isCoord, canManageIA, canLancar, canRenegoc, canBanco, canHistEdit, canVisaoEquipe, canExEquipe};
 }
 
 // Retorna a data atual no formato YYYY-MM-DD usando o horario LOCAL do navegador
@@ -1022,7 +1023,7 @@ function updateSidebarUser(){
 }
 
 function buildNav(){
-  const {isCoord, canLancar, canVisaoEquipe} = getPerms();
+  const {isCoord, canLancar, canVisaoEquipe, canExEquipe} = getPerms();
   const isViewer = userProfile.role==='viewer';
   const chev='<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>';
   function ddItem(id,label){return '<button class="nb-dd-item" id="nav-'+id+'" data-page="'+id+'" onclick="nbClose();navigate(this.dataset.page)">'+label+'<span class="nav-badge" id="badge-'+id+'" style="display:none;"></span></button>';}
@@ -1044,10 +1045,10 @@ function buildNav(){
   let painelItems=ddItem('resultado','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780802683/result_e5qm9r.png" style="width:15px;height:15px;object-fit:contain;vertical-align:middle;margin-right:5px;"/>Resultado')+ddItem('historico','📖 Historico')+ddItem('notas','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780802759/chat_x8kvyk.png" style="width:15px;height:15px;object-fit:contain;vertical-align:middle;margin-right:5px;"/>Analise de Chat')+ddItem('dashboard','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780802810/dash_bztgjy.png" style="width:15px;height:15px;object-fit:contain;vertical-align:middle;margin-right:5px;"/>Dashboard');
   html+=group('painel','Painel Brille',painelItems);
   if(isCoord){
-    let equipeItems=ddItem('equipe','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780874328/time_uxtxl2.png" style="width:15px;height:15px;object-fit:contain;vertical-align:middle;margin-right:5px;"/>Minha Equipe')+ddItem('lancar','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780883836/results_eysruv.png" style="width:15px;height:15px;object-fit:contain;vertical-align:middle;margin-right:5px;"/>Lancar Resultados')+ddItem('escritorio','<span style="margin-right:5px;">🗂️</span>Escritorio')+ddItem('relatorio_disparos','<span style="margin-right:5px;">📊</span>Relatorio de Disparos');
+    let equipeItems=ddItem('equipe','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780874328/time_uxtxl2.png" style="width:15px;height:15px;object-fit:contain;vertical-align:middle;margin-right:5px;"/>Minha Equipe')+ddItem('ex_equipe','👋 Ex da Equipe')+ddItem('lancar','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780883836/results_eysruv.png" style="width:15px;height:15px;object-fit:contain;vertical-align:middle;margin-right:5px;"/>Lancar Resultados')+ddItem('escritorio','<span style="margin-right:5px;">🗂️</span>Escritorio')+ddItem('relatorio_disparos','<span style="margin-right:5px;">📊</span>Relatorio de Disparos');
     html+=group('equipe','Visao da Equipe',equipeItems);
   } else if(canVisaoEquipe){
-    let equipeItemsV=ddItem('equipe','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780874328/time_uxtxl2.png" style="width:15px;height:15px;object-fit:contain;vertical-align:middle;margin-right:5px;"/>Minha Equipe')+(canLancar?ddItem('lancar','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780883836/results_eysruv.png" style="width:15px;height:15px;object-fit:contain;vertical-align:middle;margin-right:5px;"/>Lancar Resultados'):'');
+    let equipeItemsV=ddItem('equipe','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780874328/time_uxtxl2.png" style="width:15px;height:15px;object-fit:contain;vertical-align:middle;margin-right:5px;"/>Minha Equipe')+(canExEquipe?ddItem('ex_equipe','👋 Ex da Equipe'):'')+(canLancar?ddItem('lancar','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780883836/results_eysruv.png" style="width:15px;height:15px;object-fit:contain;vertical-align:middle;margin-right:5px;"/>Lancar Resultados'):'');
     html+=group('equipe','Visao da Equipe',equipeItemsV);
   } else if(canLancar){
     html+=singleItem('lancar','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780883836/results_eysruv.png" style="width:15px;height:15px;object-fit:contain;vertical-align:middle;margin-right:5px;"/>Lancar Resultados');
@@ -1267,7 +1268,7 @@ window.navigate=async function(page){
     mc.style.backgroundAttachment='fixed';
     await renderFeed(mc);return;
   }
-  if(!viewingOp&&userProfile.role==='coord'){await renderEquipe(mc);return;}
+  if(page==='ex_equipe'){if(getPerms().isCoord||getPerms().canExEquipe){await renderExEquipe(mc);return;}}
   if(!viewingOp&&getPerms().canVisaoEquipe&&['resultado','historico','dashboard','equipe'].includes(page)){await renderEquipe(mc);return;}
   // canVisaoEquipe users: redirect notas to their own data
   if(viewingOp&&getPerms().canVisaoEquipe&&!getPerms().isCoord&&page==='notas'){
@@ -1292,6 +1293,94 @@ window.selectOp=async function(uid){
   viewingOp=uid;document.getElementById('sbSub').textContent='Vendo: '+(opsCache[uid]||'operador');
   await navigate('resultado');
 };
+
+async function renderExEquipe(mc){
+  const snap=await getDocs(collection(db,'ex_operadores'));
+  const exOps=[];
+  snap.forEach(d=>exOps.push({id:d.id,...d.data()}));
+  exOps.sort((a,b)=>(a.nome||'').localeCompare(b.nome||''));
+
+  mc.innerHTML=snakeHtml()+
+    '<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;">'+
+      '<div class="page-eyebrow">👋 Ex da Equipe</div>'+
+      '<div class="page-title">Ex-Operadores</div>'+
+      '<div class="page-sub">Histórico de membros anteriores da equipe</div>'+
+    '</div>'+
+    '<div style="display:flex;justify-content:flex-end;margin-bottom:1rem;">'+
+      '<button onclick="window._exOpAdicionar()" style="padding:8px 18px;background:var(--primary);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:13px;font-weight:500;cursor:pointer;">+ Adicionar ex-operador</button>'+
+    '</div>'+
+    (exOps.length===0
+      ? '<div class="panel"><div class="empty">Nenhum ex-operador cadastrado ainda.</div></div>'
+      : '<div style="display:flex;flex-direction:column;gap:10px;">'+
+          exOps.map(op=>{
+            const av=op.foto
+              ? `<img src="${op.foto}" style="width:44px;height:44px;border-radius:50%;object-fit:cover;">`
+              : `<div style="width:44px;height:44px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;">${(op.nome||'?')[0].toUpperCase()}</div>`;
+            return `<div style="display:flex;align-items:center;gap:14px;padding:14px 18px;background:var(--surface);border-radius:12px;border:1px solid var(--border-md);">
+              ${av}
+              <div style="flex:1;">
+                <div style="font-size:14px;font-weight:600;color:var(--text);">${op.nome}</div>
+                <div style="font-size:12px;color:var(--text-3);">${op.periodo||''}</div>
+              </div>
+              <button onclick="window._exOpSelectar('${op.id}','resultado')" style="padding:7px 14px;background:var(--primary);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:12px;cursor:pointer;margin-right:6px;">Resultado</button>
+              <button onclick="window._exOpSelectar('${op.id}','historico')" style="padding:7px 14px;background:transparent;border:1px solid var(--border-md);color:var(--text-2);border-radius:var(--radius);font-family:var(--font);font-size:12px;cursor:pointer;margin-right:6px;">Histórico</button>
+              <button onclick="window._exOpSelectar('${op.id}','lancar')" style="padding:7px 14px;background:transparent;border:1px solid var(--border-md);color:var(--text-2);border-radius:var(--radius);font-family:var(--font);font-size:12px;cursor:pointer;margin-right:10px;">Lançar</button>
+              <button onclick="window._exOpExcluir('${op.id}','${op.nome}')" style="background:none;border:none;color:#ef4444;font-size:16px;cursor:pointer;" title="Excluir">🗑</button>
+            </div>`;
+          }).join('')+
+        '</div>')+
+    // Modal de adicionar
+    '<div id="ex-op-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:3000;align-items:center;justify-content:center;">'+
+      '<div style="background:var(--surface);border:1px solid var(--border-md);border-radius:14px;padding:24px;width:100%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,0.4);">'+
+        '<div style="font-size:16px;font-weight:600;color:var(--text);margin-bottom:16px;">+ Adicionar ex-operador</div>'+
+        '<div style="margin-bottom:12px;"><label style="font-size:11px;font-weight:600;color:var(--text-2);text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:5px;">Nome *</label>'+
+        '<input id="ex-op-nome" type="text" placeholder="Ex: Joyce Silva" style="width:100%;padding:9px 12px;background:var(--bg);border:1px solid var(--border-md);border-radius:var(--radius);color:var(--text);font-family:var(--font);font-size:14px;"></div>'+
+        '<div style="margin-bottom:16px;"><label style="font-size:11px;font-weight:600;color:var(--text-2);text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:5px;">Período</label>'+
+        '<input id="ex-op-periodo" type="text" placeholder="Ex: Jan–Mar 2025" style="width:100%;padding:9px 12px;background:var(--bg);border:1px solid var(--border-md);border-radius:var(--radius);color:var(--text);font-family:var(--font);font-size:14px;"></div>'+
+        '<div style="display:flex;gap:10px;justify-content:flex-end;">'+
+          '<button onclick="document.getElementById(\'ex-op-modal\').style.display=\'none\'" style="padding:9px 18px;background:transparent;border:1px solid var(--border-md);color:var(--text-2);border-radius:var(--radius);font-family:var(--font);font-size:13px;cursor:pointer;">Cancelar</button>'+
+          '<button onclick="window._exOpSalvar()" style="padding:9px 18px;background:var(--primary);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:13px;font-weight:600;cursor:pointer;">Salvar</button>'+
+        '</div>'+
+      '</div>'+
+    '</div>';
+
+  window._exOpAdicionar=function(){
+    document.getElementById('ex-op-modal').style.display='flex';
+    document.getElementById('ex-op-nome').value='';
+    document.getElementById('ex-op-periodo').value='';
+    setTimeout(()=>document.getElementById('ex-op-nome').focus(),50);
+  };
+
+  window._exOpSalvar=async function(){
+    const nome=document.getElementById('ex-op-nome').value.trim();
+    if(!nome){showToast('Digite o nome.');return;}
+    const periodo=document.getElementById('ex-op-periodo').value.trim();
+    try{
+      await addDoc(collection(db,'ex_operadores'),{nome,periodo,role:'op',isExOp:true,ts:Date.now()});
+      showToast('Ex-operador adicionado!');
+      document.getElementById('ex-op-modal').style.display='none';
+      renderExEquipe(document.getElementById('mainContent'));
+    }catch(e){showToast('Erro ao salvar.');}
+  };
+
+  window._exOpExcluir=async function(id,nome){
+    if(!confirm('Excluir '+nome+'? O histórico dele será mantido no Firestore.')) return;
+    try{
+      await deleteDoc(doc(db,'ex_operadores',id));
+      showToast('Removido.');
+      renderExEquipe(document.getElementById('mainContent'));
+    }catch(e){showToast('Erro ao excluir.');}
+  };
+
+  window._exOpSelectar=async function(id,page){
+    const snapOp=await getDoc(doc(db,'ex_operadores',id));
+    if(!snapOp.exists()) return;
+    viewingOp=id;
+    viewingOpObj={uid:id,...snapOp.data()};
+    opsCache[id]=snapOp.data().nome;
+    await navigate(page);
+  };
+}
 
 async function renderEquipe(mc){
   const snap=await getDocs(collection(db,'usuarios'));const ops=[];
