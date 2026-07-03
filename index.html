@@ -1042,7 +1042,7 @@ function buildNav(){
     return '<div class="nb-item"'+hoverAttrs+'><button class="nb-btn" id="nbg-'+id+'" data-gid="'+id+'" onclick="nbToggle(this.dataset.gid)">'+icone+label+' '+chev+'</button><div class="nb-dropdown" id="nbd-'+id+'"><div class="nb-dropdown-inner">'+items+'</div></div></div>';
   }
   let html='';
-  let painelItems=ddItem('resultado','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780802683/result_e5qm9r.png" style="width:15px;height:15px;object-fit:contain;vertical-align:middle;margin-right:5px;"/>Resultado')+ddItem('historico','📖 Historico')+ddItem('notas','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780802759/chat_x8kvyk.png" style="width:15px;height:15px;object-fit:contain;vertical-align:middle;margin-right:5px;"/>Analise de Chat')+ddItem('dashboard','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780802810/dash_bztgjy.png" style="width:15px;height:15px;object-fit:contain;vertical-align:middle;margin-right:5px;"/>Dashboard');
+  let painelItems=ddItem('resultado','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780802683/result_e5qm9r.png" style="width:15px;height:15px;object-fit:contain;vertical-align:middle;margin-right:5px;"/>Resultado')+ddItem('historico','📖 Historico')+ddItem('notas','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780802759/chat_x8kvyk.png" style="width:15px;height:15px;object-fit:contain;vertical-align:middle;margin-right:5px;"/>Analise de Chat')+ddItem('dashboard','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780802810/dash_bztgjy.png" style="width:15px;height:15px;object-fit:contain;vertical-align:middle;margin-right:5px;"/>Dashboard')+(isCoord?ddItem('resultado_unificado','🏆 Resultado Unificado'):'');
   html+=group('painel','Painel Brille',painelItems);
   if(isCoord){
     let equipeItems=ddItem('equipe','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780874328/time_uxtxl2.png" style="width:15px;height:15px;object-fit:contain;vertical-align:middle;margin-right:5px;"/>Minha Equipe')+ddItem('ex_equipe','👋 Ex da Equipe')+ddItem('lancar','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780883836/results_eysruv.png" style="width:15px;height:15px;object-fit:contain;vertical-align:middle;margin-right:5px;"/>Lancar Resultados')+ddItem('escritorio','<span style="margin-right:5px;">🗂️</span>Escritorio')+ddItem('relatorio_disparos','<span style="margin-right:5px;">📊</span>Relatorio de Disparos');
@@ -1268,6 +1268,7 @@ window.navigate=async function(page){
     mc.style.backgroundAttachment='fixed';
     await renderFeed(mc);return;
   }
+  if(page==='resultado_unificado'){if(getPerms().isCoord){await renderResultadoUnificado(mc);}return;}
   if(page==='ex_equipe'){if(getPerms().isCoord||getPerms().canExEquipe){await renderExEquipe(mc);return;}}
   if(!viewingOp&&getPerms().canVisaoEquipe&&['resultado','historico','dashboard','equipe'].includes(page)){await renderEquipe(mc);return;}
   // canVisaoEquipe users: redirect notas to their own data
@@ -1293,6 +1294,140 @@ window.selectOp=async function(uid){
   viewingOp=uid;document.getElementById('sbSub').textContent='Vendo: '+(opsCache[uid]||'operador');
   await navigate('resultado');
 };
+
+// ── RESULTADO UNIFICADO ──────────────────────────────────────────────────────
+async function renderResultadoUnificado(mc){
+  mc.innerHTML=snakeHtml()+
+    '<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;">'+
+      '<div class="page-eyebrow">🏆 Painel Brille</div>'+
+      '<div class="page-title">Resultado Unificado</div>'+
+      '<div class="page-sub">Rankings acumulados de todos os operadores</div>'+
+    '</div>'+
+    '<div id="ru-conteudo"><div style="text-align:center;padding:3rem;color:var(--text-3);">Carregando...</div></div>';
+
+  await _ruCarregar(null);
+}
+
+async function _ruCarregar(semanaFiltro){
+  const container=document.getElementById('ru-conteudo');
+  if(!container) return;
+
+  // Load all active operators
+  const opsSnap=await getDocs(collection(db,'usuarios'));
+  const todosOps=[];
+  opsSnap.forEach(d=>{
+    const u=d.data();
+    if(u.role==='op') todosOps.push({uid:d.id,nome:u.nome,foto:u.foto,cor:u.cor,isEx:false});
+  });
+
+  // Load ex-operators
+  const exSnap=await getDocs(collection(db,'ex_operadores'));
+  exSnap.forEach(d=>todosOps.push({uid:d.id,...d.data(),isEx:true}));
+
+  // Load historico for each operator
+  const dados=[];
+  for(const op of todosOps){
+    const histSnap=await getDocs(collection(db,'historico',op.uid,'semanas'));
+    const semanas=[];
+    histSnap.forEach(d=>semanas.push({id:d.id,...d.data()}));
+
+    if(semanaFiltro){
+      // Filter by specific semana description
+      const sem=semanas.find(s=>(s.semana||'').trim()===semanaFiltro.trim());
+      if(!sem) continue;
+      dados.push({...op,
+        valor:sem.raw||0,
+        atend:sem.atend||0,
+        cobr:sem.cobr||0,
+        ticket:sem.ticket||0,
+        media:parseFloat(sem.media)||0,
+        valorDia:sem.valorDia||0,
+        semanas:[sem]
+      });
+    } else {
+      // Accumulate all
+      let valor=0,atend=0,cobr=0,media=0,valorDia=0,mediaCount=0;
+      semanas.forEach(s=>{
+        valor+=s.raw||0;
+        atend+=s.atend||0;
+        cobr+=s.cobr||0;
+        valorDia+=s.valorDia||0;
+        if(s.media){media+=parseFloat(s.media)||0;mediaCount++;}
+      });
+      if(semanas.length===0&&!semanaFiltro) return;
+      const ticket=cobr>0?valor/cobr:0;
+      const mediaFinal=mediaCount>0?media/mediaCount:0;
+      dados.push({...op,valor,atend,cobr,ticket,media:mediaFinal,valorDia,semanas});
+    }
+  }
+
+  // Get all unique semana names for filter dropdown
+  const todasSemanas=new Set();
+  for(const op of todosOps){
+    const histSnap=await getDocs(collection(db,'historico',op.uid,'semanas'));
+    histSnap.forEach(d=>{if(d.data().semana)todasSemanas.add(d.data().semana);});
+  }
+  const semanasOrdenadas=[...todasSemanas].sort().reverse();
+
+  // Rankings config
+  const rankings=[
+    {key:'valor',    label:'💰 Valor Recuperado', fmt:v=>'R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:2})},
+    {key:'atend',    label:'📞 Atendimentos',      fmt:v=>v.toLocaleString('pt-BR')},
+    {key:'cobr',     label:'📋 Cobranças Totais',  fmt:v=>v.toLocaleString('pt-BR')},
+    {key:'ticket',   label:'🎫 Ticket Médio',      fmt:v=>'R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:2})},
+    {key:'media',    label:'📊 Média Atend./Dia',  fmt:v=>v.toFixed(1)},
+    {key:'valorDia', label:'📅 Valor por Dia',     fmt:v=>'R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:2})},
+  ];
+
+  function medalha(pos){
+    return pos===0?'🥇':pos===1?'🥈':pos===2?'🥉':`<span style="font-size:13px;color:var(--text-3);">${pos+1}º</span>`;
+  }
+
+  function rankingCard(r){
+    const sorted=[...dados].sort((a,b)=>b[r.key]-a[r.key]).filter(d=>d[r.key]>0);
+    if(sorted.length===0) return `<div class="panel" style="min-width:300px;flex:1;"><div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:12px;">${r.label}</div><div class="empty">Sem dados.</div></div>`;
+    const max=sorted[0][r.key]||1;
+    const rows=sorted.map((op,i)=>{
+      const av=op.foto
+        ?`<img src="${op.foto}" style="width:30px;height:30px;border-radius:50%;object-fit:cover;flex-shrink:0;">`
+        :`<div style="width:30px;height:30px;border-radius:50%;background:${op.cor||'var(--primary)'};color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;">${(op.nome||'?')[0].toUpperCase()}</div>`;
+      const pct=Math.round(op[r.key]/max*100);
+      return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+        <div style="width:28px;text-align:center;font-size:16px;">${medalha(i)}</div>
+        ${av}
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:12px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${op.nome}${op.isEx?' <span style="font-size:10px;color:var(--text-3);">(ex)</span>':''}</div>
+          <div style="height:5px;background:var(--border-md);border-radius:3px;margin-top:4px;"><div style="width:${pct}%;height:100%;background:var(--primary);border-radius:3px;"></div></div>
+        </div>
+        <div style="font-size:12px;font-weight:700;color:var(--primary);white-space:nowrap;">${r.fmt(op[r.key])}</div>
+      </div>`;
+    }).join('');
+    return `<div class="panel" style="min-width:300px;flex:1;">
+      <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:14px;">${r.label}</div>
+      ${rows}
+    </div>`;
+  }
+
+  const filtroHtml=`<div class="panel" style="margin-bottom:1rem;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+    <div style="font-size:13px;font-weight:500;color:var(--text);">Filtrar por semana:</div>
+    <select id="ru-semana-select" style="padding:7px 12px;background:var(--surface);border:1px solid var(--border-md);border-radius:var(--radius);color:var(--text);font-family:var(--font);font-size:13px;">
+      <option value="">— Geral (acumulado) —</option>
+      ${semanasOrdenadas.map(s=>`<option value="${s}" ${semanaFiltro===s?'selected':''}>${s}</option>`).join('')}
+    </select>
+    <button onclick="window._ruFiltrar()" style="padding:7px 16px;background:var(--primary);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:13px;cursor:pointer;">Aplicar</button>
+    ${semanaFiltro?`<button onclick="window._ruFiltrar('')" style="padding:7px 14px;background:transparent;border:1px solid var(--border-md);color:var(--text-2);border-radius:var(--radius);font-family:var(--font);font-size:13px;cursor:pointer;">Limpar</button>`:''}
+    <span style="font-size:12px;color:var(--text-3);">${dados.length} operador${dados.length===1?'':'es'} com dados${semanaFiltro?' nesta semana':''}</span>
+  </div>`;
+
+  const rankingsHtml=`<div style="display:flex;flex-wrap:wrap;gap:1rem;">${rankings.map(rankingCard).join('')}</div>`;
+
+  container.innerHTML=filtroHtml+rankingsHtml;
+
+  window._ruFiltrar=function(forceSemana){
+    const semana=forceSemana!==undefined?forceSemana:(document.getElementById('ru-semana-select')?.value||'');
+    _ruCarregar(semana||null);
+  };
+}
 
 async function renderExEquipe(mc){
   const snap=await getDocs(collection(db,'ex_operadores'));
