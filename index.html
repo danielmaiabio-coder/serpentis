@@ -1311,30 +1311,37 @@ async function renderResultadoUnificado(mc){
 async function _ruCarregar(semanaFiltro){
   const container=document.getElementById('ru-conteudo');
   if(!container) return;
+  container.innerHTML='<div style="text-align:center;padding:2rem;color:var(--text-3);">Carregando...</div>';
 
-  // Load all active operators
-  const opsSnap=await getDocs(collection(db,'usuarios'));
+  // Load all operators in parallel
+  const [opsSnap, exSnap] = await Promise.all([
+    getDocs(collection(db,'usuarios')),
+    getDocs(collection(db,'ex_operadores'))
+  ]);
   const todosOps=[];
-  opsSnap.forEach(d=>{
-    const u=d.data();
-    if(u.role==='op') todosOps.push({uid:d.id,nome:u.nome,foto:u.foto,cor:u.cor,isEx:false});
-  });
-
-  // Load ex-operators
-  const exSnap=await getDocs(collection(db,'ex_operadores'));
+  opsSnap.forEach(d=>{const u=d.data();if(u.role==='op') todosOps.push({uid:d.id,nome:u.nome,foto:u.foto,cor:u.cor,isEx:false});});
   exSnap.forEach(d=>todosOps.push({uid:d.id,...d.data(),isEx:true}));
 
-  // Load historico for each operator
+  // Load ALL historicos in parallel (one read per operator)
+  const histResults = await Promise.all(
+    todosOps.map(op=>getDocs(collection(db,'historico',op.uid,'semanas')))
+  );
+
+  // Build dados and todasSemanas from results
+  const todasSemanas=new Set();
   const dados=[];
-  for(const op of todosOps){
-    const histSnap=await getDocs(collection(db,'historico',op.uid,'semanas'));
+
+  todosOps.forEach((op,idx)=>{
     const semanas=[];
-    histSnap.forEach(d=>semanas.push({id:d.id,...d.data()}));
+    histResults[idx].forEach(d=>{
+      const s={id:d.id,...d.data()};
+      semanas.push(s);
+      if(s.semana) todasSemanas.add(s.semana);
+    });
 
     if(semanaFiltro){
-      // Filter by specific semana description
       const sem=semanas.find(s=>(s.semana||'').trim()===semanaFiltro.trim());
-      if(!sem) continue;
+      if(!sem) return;
       dados.push({...op,
         valor:sem.raw||0,
         atend:sem.atend||0,
@@ -1342,10 +1349,9 @@ async function _ruCarregar(semanaFiltro){
         ticket:sem.ticket||0,
         media:parseFloat(sem.media)||0,
         valorDia:sem.valorDia||0,
-        semanas:[sem]
       });
     } else {
-      // Accumulate all
+      if(semanas.length===0) return;
       let valor=0,atend=0,cobr=0,media=0,valorDia=0,mediaCount=0;
       semanas.forEach(s=>{
         valor+=s.raw||0;
@@ -1354,19 +1360,12 @@ async function _ruCarregar(semanaFiltro){
         valorDia+=s.valorDia||0;
         if(s.media){media+=parseFloat(s.media)||0;mediaCount++;}
       });
-      if(semanas.length===0&&!semanaFiltro) return;
       const ticket=cobr>0?valor/cobr:0;
       const mediaFinal=mediaCount>0?media/mediaCount:0;
-      dados.push({...op,valor,atend,cobr,ticket,media:mediaFinal,valorDia,semanas});
+      dados.push({...op,valor,atend,cobr,ticket,media:mediaFinal,valorDia});
     }
-  }
+  });
 
-  // Get all unique semana names for filter dropdown
-  const todasSemanas=new Set();
-  for(const op of todosOps){
-    const histSnap=await getDocs(collection(db,'historico',op.uid,'semanas'));
-    histSnap.forEach(d=>{if(d.data().semana)todasSemanas.add(d.data().semana);});
-  }
   const semanasOrdenadas=[...todasSemanas].sort().reverse();
 
   // Rankings config
@@ -1593,9 +1592,14 @@ window.importarResultadosTodos=async function(input){
 
     if(iOp===-1){setS('❌ Coluna "Operador" não encontrada na planilha.','#ef4444');return;}
 
-    // Get ops list from mc
+    // Get ops list (ativos + ex-operadores)
     const mc=document.getElementById('mainContent');
-    const ops=mc._ops||[];
+    const ops=[...(mc._ops||[])];
+    // Add ex-operadores
+    try{
+      const exSnap=await getDocs(collection(db,'ex_operadores'));
+      exSnap.forEach(d=>ops.push({uid:d.id,...d.data()}));
+    }catch(e){}
     if(ops.length===0){setS('❌ Nenhum operador carregado.','#ef4444');return;}
 
     // Build name → uid map (normalize for fuzzy match)
