@@ -608,7 +608,7 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-let currentUser=null,userProfile=null,viewingOp=null,activePage='resultado',fbPeriodo='mensal';
+let currentUser=null,userProfile=null,viewingOp=null,viewingOpObj=null,activePage='resultado',fbPeriodo='mensal';
 const opsCache={};
 
 const SVG={
