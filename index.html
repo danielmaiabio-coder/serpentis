@@ -2148,42 +2148,93 @@ async function renderDistribuicaoMetrica(op,isCoord){
     return;
   }
 
-  // Render the metrics
-  const metricsHtml=DIST_METRICAS.map(m=>{
-    const d=dados.metricas?.[m];
-    if(!d) return '';
-    const rows=Array.from({length:10},(_,i)=>{
-      const nota=i+1;
-      const r=d.notas?.[nota]||{qtd:0,pct:'0%'};
-      const isMedia=Math.round(d.media||0)===nota;
-      return `<tr style="background:${isMedia?'rgba(26,92,42,0.15)':'transparent'}">
-        <td style="padding:4px 8px;text-align:center;font-size:12px;color:var(--text);">${nota}/10</td>
-        <td style="padding:4px 8px;text-align:center;font-size:12px;color:var(--text);">${r.qtd}</td>
-        <td style="padding:4px 8px;text-align:center;font-size:12px;color:var(--text);">${r.pct}</td>
-      </tr>`;
+  // Store dados locally for editing
+  window._distDados=JSON.parse(JSON.stringify(dados));
+  window._distOp=op;
+
+  function renderMetrics(editMode){
+    const d=window._distDados;
+    const metricsHtml=DIST_METRICAS.map(m=>{
+      const met=d.metricas?.[m];
+      if(!met) return '';
+      const rows=Array.from({length:10},(_,i)=>{
+        const nota=i+1;
+        const r=met.notas?.[nota]||{qtd:0,pct:'0%'};
+        const isMedia=Math.round(met.media||0)===nota;
+        const qtdCell=editMode
+          ?`<td style="padding:2px 4px;text-align:center;"><input type="number" min="0" value="${r.qtd}" data-m="${m}" data-nota="${nota}" data-field="qtd" style="width:60px;padding:3px 6px;text-align:center;background:var(--bg);border:1px solid var(--primary);border-radius:4px;color:var(--text);font-size:12px;"></td>`
+          :`<td style="padding:4px 8px;text-align:center;font-size:12px;color:var(--text);">${r.qtd}</td>`;
+        const pctCell=editMode
+          ?`<td style="padding:2px 4px;text-align:center;"><input type="text" value="${r.pct}" data-m="${m}" data-nota="${nota}" data-field="pct" style="width:60px;padding:3px 6px;text-align:center;background:var(--bg);border:1px solid var(--primary);border-radius:4px;color:var(--text);font-size:12px;"></td>`
+          :`<td style="padding:4px 8px;text-align:center;font-size:12px;color:var(--text);">${r.pct}</td>`;
+        const mediaTd=editMode
+          ?`<td style="padding:2px 4px;text-align:center;"><input type="number" min="0" max="10" step="0.1" value="${(met.media||0).toFixed(1)}" data-m="${m}" data-field="media" style="width:60px;padding:3px 6px;text-align:center;background:var(--bg);border:1px solid var(--primary);border-radius:4px;color:var(--primary);font-size:12px;font-weight:700;"></td>`
+          :`<td style="padding:5px 8px;font-size:12px;font-weight:600;color:var(--primary);text-align:center;">${(met.media||0).toFixed(1)}/10</td>`;
+        return `<tr style="background:${isMedia?'rgba(26,92,42,0.15)':'transparent'}">
+          <td style="padding:4px 8px;text-align:center;font-size:12px;color:var(--text);">${nota}/10</td>
+          ${qtdCell}${pctCell}
+        </tr>`;
+      }).join('');
+      return `<div class="panel" style="flex:1;min-width:280px;">
+        <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:10px;">${m}</div>
+        <table style="width:100%;border-collapse:collapse;">
+          <thead><tr style="background:var(--primary);color:#fff;">
+            <th style="padding:5px 8px;font-size:11px;font-weight:600;text-align:center;">Nota</th>
+            <th style="padding:5px 8px;font-size:11px;font-weight:600;text-align:center;">Qtd Chats</th>
+            <th style="padding:5px 8px;font-size:11px;font-weight:600;text-align:center;">% do Total</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+          <tfoot><tr style="background:var(--primary-light);">
+            <td colspan="2" style="padding:5px 8px;font-size:12px;font-weight:600;color:var(--primary);">Nota media</td>
+            ${mediaTd}
+          </tr></tfoot>
+        </table>
+      </div>`;
     }).join('');
-    return `<div class="panel" style="flex:1;min-width:280px;">
-      <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:10px;">${m}</div>
-      <table style="width:100%;border-collapse:collapse;">
-        <thead><tr style="background:var(--primary);color:#fff;">
-          <th style="padding:5px 8px;font-size:11px;font-weight:600;text-align:center;">Nota</th>
-          <th style="padding:5px 8px;font-size:11px;font-weight:600;text-align:center;">Qtd Chats</th>
-          <th style="padding:5px 8px;font-size:11px;font-weight:600;text-align:center;">% do Total</th>
-        </tr></thead>
-        <tbody>${rows}</tbody>
-        <tfoot><tr style="background:var(--primary-light);">
-          <td colspan="2" style="padding:5px 8px;font-size:12px;font-weight:600;color:var(--primary);">Nota média</td>
-          <td style="padding:5px 8px;font-size:12px;font-weight:600;color:var(--primary);text-align:center;">${(d.media||0).toFixed(1)}/10</td>
-        </tr></tfoot>
-      </table>
-    </div>`;
-  }).join('');
 
-  const geradoEm=dados.geradoEm?`<div style="font-size:11px;color:var(--text-3);margin-bottom:1rem;">Importado em ${dados.geradoEm}</div>`:'';
+    const editBtns=isCoord
+      ? editMode
+        ? `<button id="dist-save-btn" style="padding:8px 16px;background:var(--primary);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:12px;font-weight:600;cursor:pointer;">Salvar alteracoes</button>`+
+          `<button onclick="renderDistribuicaoMetrica(window._distOp,true)" style="padding:8px 14px;background:transparent;border:1px solid var(--border-md);color:var(--text-2);border-radius:var(--radius);font-family:var(--font);font-size:12px;cursor:pointer;margin-left:8px;">Cancelar</button>`
+        : `<button id="dist-edit-btn" style="padding:8px 16px;background:transparent;color:var(--primary);border:1px solid var(--primary);border-radius:var(--radius);font-family:var(--font);font-size:12px;font-weight:500;cursor:pointer;">Editar numeros</button>`
+      : '';
 
-  container.innerHTML=importBtn+geradoEm+
-    `<div style="display:flex;flex-wrap:wrap;gap:1rem;">${metricsHtml}</div>`;
+    const geradoEm=d.geradoEm?`<div style="font-size:11px;color:var(--text-3);">Importado em ${d.geradoEm}</div>`:'';
 
+    container.innerHTML=
+      `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:8px;">`+
+        importBtn+
+        `<div style="display:flex;align-items:center;gap:8px;">${geradoEm}${editBtns}</div>`+
+      `</div>`+
+      `<div style="display:flex;flex-wrap:wrap;gap:1rem;">${metricsHtml}</div>`;
+
+    if(editMode){
+      container.querySelectorAll('input[data-m]').forEach(inp=>{
+        inp.addEventListener('change',function(){
+          const m=this.dataset.m,nota=parseInt(this.dataset.nota),field=this.dataset.field;
+          if(field==='media'){
+            window._distDados.metricas[m].media=parseFloat(this.value)||0;
+          } else {
+            if(!window._distDados.metricas[m].notas[nota]) window._distDados.metricas[m].notas[nota]={qtd:0,pct:'0%'};
+            window._distDados.metricas[m].notas[nota][field]=field==='qtd'?parseInt(this.value)||0:this.value;
+          }
+        });
+      });
+      document.getElementById('dist-save-btn')?.addEventListener('click',async function(){
+        try{
+          this.disabled=true;this.textContent='Salvando...';
+          await setDoc(doc(db,'distribuicao_metrica',window._distOp.uid),window._distDados,{merge:false});
+          dados=window._distDados;
+          showToast('Alteracoes salvas!');
+          renderMetrics(false);
+        }catch(e){showToast('Erro ao salvar.');this.disabled=false;this.textContent='Salvar alteracoes';}
+      });
+    } else {
+      document.getElementById('dist-edit-btn')?.addEventListener('click',function(){renderMetrics(true);});
+    }
+  }
+
+  renderMetrics(false);
   window._importarDistribuicao=_makeImportarDistribuicao(op);
 }
 
