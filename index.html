@@ -2067,11 +2067,11 @@ async function renderHistorico(mc,op){
 const CHAT_CRITERIOS=[
   {key:'Educacao',label:'Educacao',cor:'#22c55e'},
   {key:'Simpatia',label:'Simpatia',cor:'#3b82f6'},
-  {key:'Frieza',label:'Frieza',cor:'#64748b'},
+  {key:'Acolhimento',label:'Acolhimento',cor:'#64748b'},
   {key:'Paciencia',label:'Paciencia',cor:'#14b8a6'},
-  {key:'Ironia',label:'Ironia',cor:'#f97316'},
-  {key:'Impaciencia',label:'Impaciencia',cor:'#ef4444'},
-  {key:'Esclarece',label:'Esclarece de forma completa',cor:'#a855f7'},
+  {key:'Taxa de Seriedade',label:'Taxa de Seriedade',cor:'#f97316'},
+  {key:'Calma',label:'Calma',cor:'#a855f7'},
+  {key:'Esclarece',label:'Esclarece de forma completa',cor:'#ef4444'},
 ];
 
 async function renderNotas(mc,op,activeTab){
@@ -2460,7 +2460,7 @@ async function renderAnaliseChatContent(op,dados){
 
   const chatsNotaveis=chatsFiltrados.filter(ch=>{
     const n=ch.notas||{};
-    return n.educacao===10||(n.ironia!=null&&n.ironia<=5)||(n.frieza!=null&&n.frieza<=5)||(n.impaciencia!=null&&n.impaciencia<=5);
+    return n['Educacao']===10||(n['Acolhimento']!=null&&n['Acolhimento']<=5)||(n['Taxa de Seriedade']!=null&&n['Taxa de Seriedade']<=5)||(n['Calma']!=null&&n['Calma']<=5);
   });
 
   const chatsHtml=chatsNotaveis.length===0
@@ -2472,9 +2472,9 @@ async function renderAnaliseChatContent(op,dados){
           const n=ch.notas||{};
           const tags=[];
           if(n.educacao===10) tags.push('<span style="background:#22c55e22;color:#22c55e;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;">Educacao 10/10</span>');
-          if(n.ironia!=null&&n.ironia<=5) tags.push('<span style="background:#ef444422;color:#ef4444;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;">Ironia '+n.ironia+'/10</span>');
-          if(n.frieza!=null&&n.frieza<=5) tags.push('<span style="background:#ef444422;color:#ef4444;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;">Frieza '+n.frieza+'/10</span>');
-          if(n.impaciencia!=null&&n.impaciencia<=5) tags.push('<span style="background:#ef444422;color:#ef4444;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;">Impaciencia '+n.impaciencia+'/10</span>');
+          if(n['Acolhimento']!=null&&n['Acolhimento']<=5) tags.push('<span style="background:#ef444422;color:#ef4444;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;">Acolhimento '+n['Acolhimento']+'/10</span>');
+          if(n['Taxa de Seriedade']!=null&&n['Taxa de Seriedade']<=5) tags.push('<span style="background:#ef444422;color:#ef4444;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;">Taxa de Seriedade '+n['Taxa de Seriedade']+'/10</span>');
+          if(n['Calma']!=null&&n['Calma']<=5) tags.push('<span style="background:#ef444422;color:#ef4444;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;">Calma '+n['Calma']+'/10</span>');
           const notasHtml=CHAT_CRITERIOS.map(c=>{
             const v=n[c.key];
             return '<div style="display:flex;flex-direction:column;align-items:center;gap:2px;min-width:64px;">'+
@@ -2714,8 +2714,14 @@ window.processarRelatorioWati=async function(e){
     const idxT1aResp=header.indexOf('T. Medio 1a Resposta');
     const idxMedias={};
     CHAT_CRITERIOS.forEach(c=>{
-      const colName=(c.key==='Esclarece'?'Esclarece':c.label)+' (media)';
-      idxMedias[c.key]=header.indexOf(colName);
+      // Try "Label (media)" first, then "Key (media)", then label alone
+      const colName1=c.label+' (media)';
+      const colName2=c.key+' (media)';
+      const colName3=(c.key==='Esclarece'?'Esclarece de forma completa':c.label)+' (media)';
+      let idx=header.indexOf(colName1);
+      if(idx<0) idx=header.indexOf(colName2);
+      if(idx<0) idx=header.indexOf(colName3);
+      idxMedias[c.key]=idx;
     });
 
     // Geracao - extrai do titulo da linha 0 (ex: "Relatorio WATI 24h — 15/06/2026 00:29")
@@ -2784,7 +2790,13 @@ window.processarRelatorioWati=async function(e){
           const ci=name=>opHeader.indexOf(name);
           const cCliente=ci('Cliente'),cProblema=ci('Problema Resumido'),cUrl=ci('URL Conversa');
           const cNotas={};
-          CHAT_CRITERIOS.forEach(c=>{cNotas[c.key]=ci(c.label.split(' ')[0])>=0?ci(c.label.split(' ')[0]):ci(c.key);});
+          CHAT_CRITERIOS.forEach(c=>{
+            // Try exact label match first, then key, then first word
+            let idx=ci(c.label);
+            if(idx<0) idx=ci(c.key);
+            if(idx<0) idx=ci(c.label.split(' ')[0]);
+            cNotas[c.key]=idx;
+          });
           for(let r=headerIdx+1;r<opRows.length;r++){
             const row2=opRows[r];
             if(!row2||row2[0]==null)break; // termina quando acabar a tabela
