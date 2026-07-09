@@ -1607,24 +1607,30 @@ window.importarResultadosTodos=async function(input){
     const opMap={};
     ops.forEach(op=>{ opMap[norm(op.nome)]=op.uid; });
 
-    // Process data rows
+    // Process data rows — group by uid first, then save
     const dataRows=rows.slice(headerIdx+1).filter(r=>r.some(c=>c!==''));
     let matched=0, notFound=[];
 
+    // Group rows by uid
+    const rowsByUid={};
     for(const row of dataRows){
       const opNome=(row[iOp]+'').trim();
       if(!opNome) continue;
-
-      // Try exact match first, then partial
       let uid=opMap[norm(opNome)];
       if(!uid){
-        // Try partial — find op whose name contains the spreadsheet name or vice versa
         const normOp=norm(opNome);
         const found=Object.entries(opMap).find(([n])=>n.includes(normOp)||normOp.includes(n)||n.split(' ')[0]===normOp.split(' ')[0]);
         if(found) uid=found[1];
       }
-
       if(!uid){notFound.push(opNome);continue;}
+      if(!rowsByUid[uid]) rowsByUid[uid]=[];
+      rowsByUid[uid].push(row);
+    }
+
+    for(const [uid, uidRows] of Object.entries(rowsByUid)){
+      for(let rowIdx=0; rowIdx<uidRows.length; rowIdx++){
+        const row=uidRows[rowIdx];
+        const isLastRow=rowIdx===uidRows.length-1;
 
       const desc=iDesc>=0?(row[iDesc]+'').trim():'';
       const valor=iValor>=0?parseFloat((row[iValor]+'').replace(/[^0-9.,]/g,'').replace(',','.'))||0:0;
@@ -1644,30 +1650,35 @@ window.importarResultadosTodos=async function(input){
       const ticketFmt=ticket?ticket.toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:2}):'';
       const valorDiaFmt=valorDia?valorDia.toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:2}):'';
 
-      // Load previous week for delta
+      // Load previous week for delta (only needed for last row)
       const semSnap=await getDoc(doc(db,'semanas',uid));
       const semAnterior=semSnap.exists()?semSnap.data().atual:null;
       const pRaw=semAnterior?semAnterior.raw||0:0;
       const diff=valor-pRaw;const pct=pRaw?((diff/pRaw)*100).toFixed(1):'0.0';const up=diff>=0;
 
-      await setDoc(doc(db,'semanas',uid),{descricao:desc,atual:{valor:valorFmt,atend,cobr,media,ticket,ticketFmt,valorDia,valorDiaFmt,raw:valor},passada:semAnterior||{valor:'R$ 0',raw:0}});
+      // Only update semanas (resultado atual) for the LAST row of this operator
+      if(isLastRow){
+        await setDoc(doc(db,'semanas',uid),{descricao:desc,atual:{valor:valorFmt,atend,cobr,media,ticket,ticketFmt,valorDia,valorDiaFmt,raw:valor},passada:semAnterior||{valor:'R$ 0',raw:0}});
+      }
       const ordemSnap=await getDocs(collection(db,'historico',uid,'semanas'));
       const ordem=ordemSnap.size+1;
       await setDoc(doc(db,'historico',uid,'semanas','sem-'+ordem),{semana:desc,valor:valorFmt,raw:valor,atend,cobr,media,ticket,ticketFmt,valorDia,valorDiaFmt,delta:(up?'+':'')+pct+'%',up,ordem});
 
-      // Fill fields visually too
-      const setVal=(id,v)=>{const el=document.getElementById(id);if(el)el.value=v||'';};
-      setVal('desc-'+uid,desc);
-      setVal('valor-'+uid,valor||'');
-      setVal('atend-'+uid,atend||'');
-      setVal('cobr-'+uid,cobr||'');
-      setVal('media-'+uid,media||'');
-      setVal('ticket-'+uid,ticket||'');
-      setVal('valordia-'+uid,valorDia||'');
-      const s=document.getElementById('saved-'+uid);if(s){s.style.display='inline';setTimeout(()=>s.style.display='none',4000);}
-
-      matched++;
-    }
+      // Fill fields visually too (only for last row)
+      if(isLastRow){
+        const setVal=(id,v)=>{const el=document.getElementById(id);if(el)el.value=v||'';};
+        setVal('desc-'+uid,desc);
+        setVal('valor-'+uid,valor||'');
+        setVal('atend-'+uid,atend||'');
+        setVal('cobr-'+uid,cobr||'');
+        setVal('media-'+uid,media||'');
+        setVal('ticket-'+uid,ticket||'');
+        setVal('valordia-'+uid,valorDia||'');
+        const s=document.getElementById('saved-'+uid);if(s){s.style.display='inline';setTimeout(()=>s.style.display='none',4000);}
+        matched++;
+      }
+      } // end inner row loop
+    } // end uid loop
 
     let msg='✅ '+matched+' operador(es) importado(s) com sucesso!';
     if(notFound.length) msg+=' ⚠️ Não encontrados: '+notFound.join(', ');
