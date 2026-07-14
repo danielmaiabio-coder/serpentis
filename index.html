@@ -983,7 +983,8 @@ function getPerms(){
   const canHistEdit = isCoord || hasSub('historico_edit');
   const canVisaoEquipe = isCoord || hasSub('visao_equipe');
   const canExEquipe = isCoord || hasSub('ex_equipe');
-  return {isCoord, canManageIA, canLancar, canRenegoc, canBanco, canHistEdit, canVisaoEquipe, canExEquipe};
+  const canMinhaCobranca = isCoord || hasSub('cobranca_propria');
+  return {isCoord, canManageIA, canLancar, canRenegoc, canBanco, canHistEdit, canVisaoEquipe, canExEquipe, canMinhaCobranca};
 }
 
 // Retorna a data atual no formato YYYY-MM-DD usando o horario LOCAL do navegador
@@ -1023,7 +1024,7 @@ function updateSidebarUser(){
 }
 
 function buildNav(){
-  const {isCoord, canLancar, canVisaoEquipe, canExEquipe} = getPerms();
+  const {isCoord, canLancar, canVisaoEquipe, canExEquipe, canMinhaCobranca} = getPerms();
   const isViewer = userProfile.role==='viewer';
   const chev='<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>';
   function ddItem(id,label){return '<button class="nb-dd-item" id="nav-'+id+'" data-page="'+id+'" onclick="nbClose();navigate(this.dataset.page)">'+label+'<span class="nav-badge" id="badge-'+id+'" style="display:none;"></span></button>';}
@@ -1059,7 +1060,7 @@ function buildNav(){
     let utilItems=ddItem('copys','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780800196/copy_b0dpnq.png" style="width:15px;height:15px;object-fit:contain;vertical-align:middle;margin-right:5px;"/>Banco de Copys')+ddItem('links','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780800378/links_wnwufb.jpg" style="width:15px;height:15px;object-fit:contain;vertical-align:middle;margin-right:5px;"/>Links de Reneg.')+ddItem('escala','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780800513/rotear_wgszyx.png" style="width:15px;height:15px;object-fit:contain;vertical-align:middle;margin-right:5px;"/>Escala de Roteamento')+ddItem('calc','🧮 Calculadoras')+ddItem('infos','💡 Informacoes Uteis')+ddItem('codigosoferta','📊 Cod. de Oferta')+ddItem('formsplanilhas','📋 Forms/Planilhas')+ddItem('hashtube','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1782143284/hashtube2_zwqefx.png" style="width:15px;height:15px;object-fit:contain;vertical-align:middle;margin-right:5px;"/>Hashtube');
     html+=group('utils','Utilidades',utilItems);
   }
-  let contaItems=ddItem('perfil','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780845592/home_w6kzpw.png" style="width:15px;height:15px;object-fit:contain;vertical-align:middle;margin-right:5px;"/>Pagina Inicial')+ddItem('agenda','📅 Agenda')+ddItem('caderno','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780802371/historico_zbvzr3.png" style="width:15px;height:15px;object-fit:contain;vertical-align:middle;margin-right:5px;"/>Caderno')+ddItem('basilisco','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780873587/dark_snake_puyvhs.png" style="width:15px;height:15px;object-fit:contain;vertical-align:middle;margin-right:5px;"/>Basilisco')+ddItem('feriastime','🏖️ Ferias do Time')+ddItem('lembretes','⏰ Lembretes')+(!isViewer?ddItem('feedback','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780803681/chatting_xdxyho.png" style="width:15px;height:15px;object-fit:contain;vertical-align:middle;margin-right:5px;"/>Feedbacks'):'');
+  let contaItems=ddItem('perfil','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780845592/home_w6kzpw.png" style="width:15px;height:15px;object-fit:contain;vertical-align:middle;margin-right:5px;"/>Pagina Inicial')+ddItem('agenda','📅 Agenda')+ddItem('caderno','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780802371/historico_zbvzr3.png" style="width:15px;height:15px;object-fit:contain;vertical-align:middle;margin-right:5px;"/>Caderno')+ddItem('basilisco','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780873587/dark_snake_puyvhs.png" style="width:15px;height:15px;object-fit:contain;vertical-align:middle;margin-right:5px;"/>Basilisco')+ddItem('feriastime','🏖️ Ferias do Time')+ddItem('lembretes','⏰ Lembretes')+(canMinhaCobranca?ddItem('minha_cobranca','💳 Minha Cobrança'):'')+(!isViewer?ddItem('feedback','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780803681/chatting_xdxyho.png" style="width:15px;height:15px;object-fit:contain;vertical-align:middle;margin-right:5px;"/>Feedbacks'):'');
   html+=group('conta','Conta',contaItems);
   document.getElementById('navItems').innerHTML=html;
 }
@@ -1254,6 +1255,7 @@ window.navigate=async function(page){
   if(page==='formsplanilhas'){renderFormsplanilhas(mc);return;}
   if(page==='hashtube'){await renderHashtube(mc);return;}
   if(page==='feriastime'){renderFeriasTime(mc);return;}
+  if(page==='minha_cobranca'){if(getPerms().canMinhaCobranca){await renderMinhaCobranca(mc);}return;}
   if(page==='lembretes'){await renderLembretes(mc);return;}
   if(page==='editarperfil'){await renderEditarPerfil(mc);return;}
   if(page==='termometro'){await renderTermometroPagina(mc);return;}
@@ -7485,6 +7487,240 @@ async function renderAgenda(mc){
   if(gcalToken){gcalFetchEvents().then(()=>renderPage(mc._agendaYear,mc._agendaMonth));}
 }
 
+
+// ── MINHA COBRANÇA ───────────────────────────────────────────────────────────
+const MC_MESES=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const MC_COLS={email:0,codigo:1,status:3,metodo:4,valor:5,dataPag:6,tentativas:7,ultimaVerif:8,dataAtend:9};
+
+async function renderMinhaCobranca(mc){
+  const uid=currentUser.uid;
+  // Load config (script URL) from Firestore
+  let scriptUrl='';
+  let sheetData=[];
+  let mesAtivo=new Date().getMonth(); // 0-based
+  let filtroStatus='';
+  let filtroDe='';
+  let filtroAte='';
+
+  try{
+    const cfgSnap=await getDoc(doc(db,'minha_cobranca_config',uid));
+    if(cfgSnap.exists()) scriptUrl=cfgSnap.data().scriptUrl||'';
+  }catch(e){}
+
+  async function carregarDados(){
+    if(!scriptUrl) return [];
+    try{
+      const url=scriptUrl+'?action=read&mes='+encodeURIComponent(MC_MESES[mesAtivo]);
+      const res=await fetch(url,{mode:'no-cors'});
+      // no-cors won't return data — need to use a different approach
+      // We'll read from Firestore cache instead
+      const cacheSnap=await getDoc(doc(db,'minha_cobranca_dados',uid));
+      return cacheSnap.exists()?cacheSnap.data().registros||[]:[];
+    }catch(e){return [];}
+  }
+
+  function aplicarFiltros(dados){
+    return dados.filter(r=>{
+      if(filtroStatus&&r.status!==filtroStatus) return false;
+      if(filtroDe&&r.dataPag&&r.dataPag<filtroDe) return false;
+      if(filtroAte&&r.dataPag&&r.dataPag>filtroAte) return false;
+      return true;
+    });
+  }
+
+  function calcularKPIs(dados){
+    const total=dados.length;
+    const aprovados=dados.filter(r=>r.status==='APPROVED').length;
+    const atrasados=dados.filter(r=>r.status==='Atrasado').length;
+    const valorTotal=dados.reduce((s,r)=>s+(parseFloat(String(r.valor||0).replace(',','.'))||0),0);
+    const taxaAprov=total?Math.round(aprovados/total*100):0;
+    return {total,aprovados,atrasados,valorTotal,taxaAprov};
+  }
+
+  function kpiCard(label,value,cor,sub){
+    return `<div style="flex:1;min-width:180px;background:var(--surface);border-radius:14px;padding:18px 20px;border:1px solid var(--border-md);position:relative;overflow:hidden;">
+      <div style="position:absolute;top:0;left:0;width:4px;height:100%;background:${cor};border-radius:14px 0 0 14px;"></div>
+      <div style="font-size:11px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">${label}</div>
+      <div style="font-size:28px;font-weight:700;color:var(--text);line-height:1;">${value}</div>
+      ${sub?`<div style="font-size:11px;color:var(--text-3);margin-top:6px;">${sub}</div>`:''}
+    </div>`;
+  }
+
+  function statusBadge(status){
+    const map={
+      'APPROVED':['#22c55e','#dcfce7'],
+      'Atrasado':['#ef4444','#fee2e2'],
+      'Pendente':['#f59e0b','#fef3c7'],
+    };
+    const [cor,bg]=map[status]||['#64748b','#f1f5f9'];
+    return `<span style="display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;background:${bg};color:${cor};">${status||'—'}</span>`;
+  }
+
+  async function render(){
+    sheetData=await carregarDados();
+    const filtrados=aplicarFiltros(sheetData);
+    const kpis=calcularKPIs(filtrados);
+    const statusList=[...new Set(sheetData.map(r=>r.status).filter(Boolean))];
+
+    const kpisHtml=`<div style="display:flex;flex-wrap:wrap;gap:14px;margin-bottom:1.5rem;">
+      ${kpiCard('Total de Registros',kpis.total,'var(--primary)')}
+      ${kpiCard('Aprovados',kpis.aprovados,'#22c55e',`${kpis.taxaAprov}% do total`)}
+      ${kpiCard('Atrasados',kpis.atrasados,'#ef4444')}
+      ${kpiCard('Valor Total Aprovado','R$ '+kpis.valorTotal.toLocaleString('pt-BR',{minimumFractionDigits:2}),'#3b82f6')}
+    </div>`;
+
+    const tabelaHtml=filtrados.length===0
+      ?`<div class="panel"><div class="empty">Nenhum registro encontrado${filtroStatus||filtroDe?' com os filtros aplicados':''}.</div></div>`
+      :`<div class="panel" style="overflow-x:auto;">
+        <table style="width:100%;border-collapse:collapse;font-size:12px;">
+          <thead>
+            <tr style="background:var(--primary);color:#fff;">
+              <th style="padding:10px 12px;text-align:left;border-radius:8px 0 0 0;">Email</th>
+              <th style="padding:10px 12px;text-align:left;">Código</th>
+              <th style="padding:10px 12px;text-align:center;">Status</th>
+              <th style="padding:10px 12px;text-align:left;">Método</th>
+              <th style="padding:10px 12px;text-align:right;">Valor</th>
+              <th style="padding:10px 12px;text-align:center;">Data Pag.</th>
+              <th style="padding:10px 12px;text-align:center;">Tentativas</th>
+              <th style="padding:10px 12px;text-align:center;border-radius:0 8px 0 0;">Atendimento</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${filtrados.map((r,i)=>`<tr style="background:${i%2===0?'transparent':'rgba(0,0,0,0.02)'};" onmouseover="this.style.background='rgba(26,92,42,0.06)'" onmouseout="this.style.background='${i%2===0?'transparent':'rgba(0,0,0,0.02)'}'">
+              <td style="padding:9px 12px;color:var(--text);">${r.email||'—'}</td>
+              <td style="padding:9px 12px;font-family:var(--font-mono);font-size:11px;color:var(--text-2);">${r.codigo||'—'}</td>
+              <td style="padding:9px 12px;text-align:center;">${statusBadge(r.status)}</td>
+              <td style="padding:9px 12px;color:var(--text-2);">${r.metodo||'—'}</td>
+              <td style="padding:9px 12px;text-align:right;font-weight:600;color:${r.status==='APPROVED'?'#22c55e':'var(--text)'};">${r.valor?'R$ '+parseFloat(String(r.valor).replace(',','.')).toLocaleString('pt-BR',{minimumFractionDigits:2}):'—'}</td>
+              <td style="padding:9px 12px;text-align:center;color:var(--text-2);">${r.dataPag||'—'}</td>
+              <td style="padding:9px 12px;text-align:center;color:var(--text-2);">${r.tentativas||'—'}</td>
+              <td style="padding:9px 12px;text-align:center;color:var(--text-2);">${r.dataAtend||'—'}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>`;
+
+    mc.innerHTML=`
+    <div style="width:100%;background:linear-gradient(135deg,var(--primary) 0%,var(--primary-mid) 100%);border-radius:14px;padding:1.5rem 1.75rem;margin-bottom:1.5rem;box-shadow:0 4px 24px rgba(26,92,42,0.2);position:relative;overflow:hidden;">
+      <div style="position:absolute;right:-20px;top:-20px;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,0.06);"></div>
+      <div style="position:absolute;right:40px;top:30px;width:60px;height:60px;border-radius:50%;background:rgba(255,255,255,0.06);"></div>
+      <div style="font-size:11px;font-weight:600;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">💳 Conta</div>
+      <div style="font-size:24px;font-weight:700;color:#fff;margin-bottom:2px;">Minha Cobrança</div>
+      <div style="font-size:13px;color:rgba(255,255,255,0.7);">${userProfile.nome||'Operador'} — ${MC_MESES[mesAtivo]} ${new Date().getFullYear()}</div>
+    </div>
+
+    ${!scriptUrl?`<div class="panel" style="border:2px dashed var(--primary);background:var(--primary-light);">
+      <div style="font-size:14px;font-weight:600;color:var(--primary);margin-bottom:8px;">⚙️ Configure sua planilha</div>
+      <div style="font-size:13px;color:var(--text-2);margin-bottom:12px;">Cole a URL do Apps Script da sua planilha para começar.</div>
+      <div style="display:flex;gap:10px;">
+        <input id="mc-script-url" type="text" placeholder="https://script.google.com/macros/s/.../exec" style="flex:1;padding:10px 12px;background:var(--bg);border:1px solid var(--border-md);border-radius:var(--radius);color:var(--text);font-family:var(--font);font-size:13px;">
+        <button onclick="window._mcSalvarUrl()" style="padding:10px 18px;background:var(--primary);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:13px;font-weight:600;cursor:pointer;">Salvar</button>
+      </div>
+    </div>`:
+    `<!-- Formulário de registro -->
+    <div class="panel" style="margin-bottom:1.5rem;">
+      <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:16px;">➕ Novo Registro</div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
+        <div style="flex:2;min-width:220px;">
+          <label style="font-size:11px;font-weight:600;color:var(--text-2);text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:5px;">Email do cliente</label>
+          <input id="mc-email" type="email" placeholder="cliente@email.com" style="width:100%;padding:11px 14px;background:var(--bg);border:1.5px solid var(--border-md);border-radius:var(--radius);color:var(--text);font-family:var(--font);font-size:14px;transition:border 0.15s;" onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='var(--border-md)'">
+        </div>
+        <div style="flex:1;min-width:180px;">
+          <label style="font-size:11px;font-weight:600;color:var(--text-2);text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:5px;">Código de Transação</label>
+          <input id="mc-codigo" type="text" placeholder="HP0000000000" style="width:100%;padding:11px 14px;background:var(--bg);border:1.5px solid var(--border-md);border-radius:var(--radius);color:var(--text);font-family:var(--font-mono);font-size:14px;transition:border 0.15s;" onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='var(--border-md)'">
+        </div>
+        <button id="mc-registrar-btn" onclick="window._mcRegistrar()" style="padding:11px 24px;background:var(--primary);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:14px;font-weight:700;cursor:pointer;height:44px;white-space:nowrap;transition:background 0.15s;box-shadow:0 2px 8px rgba(26,92,42,0.3);">Registrar</button>
+      </div>
+      <div id="mc-registro-status" style="margin-top:10px;font-size:12px;min-height:18px;"></div>
+    </div>
+
+    <!-- Seletor de mês -->
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:1.25rem;flex-wrap:wrap;">
+      <span style="font-size:12px;color:var(--text-2);font-weight:500;">Mês:</span>
+      ${MC_MESES.map((m,i)=>`<button onclick="window._mcMes(${i})" style="padding:5px 14px;border-radius:20px;border:1.5px solid ${i===mesAtivo?'var(--primary)':'var(--border-md)'};background:${i===mesAtivo?'var(--primary)':'transparent'};color:${i===mesAtivo?'#fff':'var(--text-2)'};font-family:var(--font);font-size:12px;cursor:pointer;font-weight:${i===mesAtivo?'600':'400'};">${m.substring(0,3)}</button>`).join('')}
+      <button onclick="window._mcConfigurar()" style="margin-left:auto;padding:5px 12px;background:transparent;border:1px solid var(--border-md);border-radius:20px;color:var(--text-3);font-family:var(--font);font-size:11px;cursor:pointer;">⚙️ Reconfigurar URL</button>
+    </div>
+
+    <!-- KPIs -->
+    ${kpisHtml}
+
+    <!-- Filtros -->
+    <div class="panel" style="margin-bottom:1rem;">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+        <div style="font-size:13px;font-weight:500;color:var(--text);">Filtros:</div>
+        <select id="mc-filtro-status" onchange="window._mcFiltrar()" style="padding:6px 10px;background:var(--surface);border:1px solid var(--border-md);border-radius:var(--radius);color:var(--text);font-family:var(--font);font-size:12px;">
+          <option value="">Todos os status</option>
+          ${statusList.map(s=>`<option value="${s}" ${s===filtroStatus?'selected':''}>${s}</option>`).join('')}
+        </select>
+        <label style="font-size:12px;color:var(--text-2);">De: <input type="date" id="mc-filtro-de" value="${filtroDe}" onchange="window._mcFiltrar()" style="padding:4px 8px;background:var(--surface);border:1px solid var(--border-md);border-radius:var(--radius);color:var(--text);font-size:12px;margin-left:4px;"></label>
+        <label style="font-size:12px;color:var(--text-2);">Até: <input type="date" id="mc-filtro-ate" value="${filtroAte}" onchange="window._mcFiltrar()" style="padding:4px 8px;background:var(--surface);border:1px solid var(--border-md);border-radius:var(--radius);color:var(--text);font-size:12px;margin-left:4px;"></label>
+        ${filtroStatus||filtroDe||filtroAte?`<button onclick="window._mcLimparFiltros()" style="padding:5px 12px;background:transparent;border:1px solid var(--border-md);border-radius:20px;color:var(--text-3);font-size:11px;cursor:pointer;font-family:var(--font);">Limpar</button>`:''}
+        <span style="margin-left:auto;font-size:11px;color:var(--text-3);">${filtrados.length} registro${filtrados.length!==1?'s':''}</span>
+      </div>
+    </div>
+
+    <!-- Tabela -->
+    ${tabelaHtml}
+    `}`;
+
+    // Bind events
+    window._mcSalvarUrl=async function(){
+      const url=(document.getElementById('mc-script-url')?.value||'').trim();
+      if(!url){showToast('Cole a URL do Apps Script.');return;}
+      await setDoc(doc(db,'minha_cobranca_config',uid),{scriptUrl:url},{merge:true});
+      scriptUrl=url;
+      showToast('URL salva!');
+      render();
+    };
+    window._mcConfigurar=function(){scriptUrl='';render();};
+    window._mcMes=function(m){mesAtivo=m;render();};
+    window._mcFiltrar=function(){
+      filtroStatus=document.getElementById('mc-filtro-status')?.value||'';
+      filtroDe=document.getElementById('mc-filtro-de')?.value||'';
+      filtroAte=document.getElementById('mc-filtro-ate')?.value||'';
+      const filtrados=aplicarFiltros(sheetData);
+      const kpis=calcularKPIs(filtrados);
+      // Re-render just the dynamic parts without full page reload
+      render();
+    };
+    window._mcLimparFiltros=function(){filtroStatus='';filtroDe='';filtroAte='';render();};
+    window._mcRegistrar=async function(){
+      const email=(document.getElementById('mc-email')?.value||'').trim();
+      const codigo=(document.getElementById('mc-codigo')?.value||'').trim();
+      const statusEl=document.getElementById('mc-registro-status');
+      const btn=document.getElementById('mc-registrar-btn');
+      if(!email&&!codigo){if(statusEl)statusEl.innerHTML='<span style="color:#ef4444;">Preencha pelo menos um campo.</span>';return;}
+      if(!scriptUrl){showToast('Configure a URL do Apps Script primeiro.');return;}
+      btn.disabled=true;btn.textContent='Registrando...';
+      if(statusEl)statusEl.innerHTML='<span style="color:var(--text-3);">Enviando...</span>';
+      try{
+        await fetch(scriptUrl,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,codigo,mes:MC_MESES[mesAtivo]})});
+        // Save to Firestore cache too for reading
+        const now=new Date();
+        const novoReg={email,codigo,status:'Pendente',metodo:'',valor:'',dataPag:'',tentativas:'1',ultimaVerif:'',dataAtend:now.toLocaleDateString('pt-BR')};
+        const cacheSnap=await getDoc(doc(db,'minha_cobranca_dados',uid));
+        const regs=cacheSnap.exists()?cacheSnap.data().registros||[]:[];
+        regs.unshift(novoReg);
+        await setDoc(doc(db,'minha_cobranca_dados',uid),{registros:regs,updatedAt:Date.now()});
+        if(statusEl)statusEl.innerHTML='<span style="color:#22c55e;">✅ Registrado com sucesso!</span>';
+        document.getElementById('mc-email').value='';
+        document.getElementById('mc-codigo').value='';
+        document.getElementById('mc-email').focus();
+        sheetData=regs;
+        // Update KPIs
+        const filtrados=aplicarFiltros(sheetData);
+        const kpis=calcularKPIs(filtrados);
+        setTimeout(()=>{if(statusEl)statusEl.innerHTML='';},4000);
+      }catch(e){
+        if(statusEl)statusEl.innerHTML='<span style="color:#ef4444;">Erro ao enviar. Tente novamente.</span>';
+      }finally{
+        btn.disabled=false;btn.textContent='Registrar';
+      }
+    };
+  }
+
+  await render();
+}
 
 async function renderLembretes(mc){
   mc.innerHTML=snakeHtml()+
