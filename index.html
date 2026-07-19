@@ -43,7 +43,257 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
 .chocalho-img{cursor:pointer;transform-origin:center bottom;}
 .chocalho-img.shaking{animation:chocalho-shake 0.6s ease;}
 .load-text{font-size:13px;color:var(--text-2);}
-#loginScreen{display:none;align-items:center;justify-content:center;min-height:100vh;padding:2rem;background:linear-gradient(135deg,#0d2e14 0%,#1A5C2A 60%,#2E8B45 100%);}
+/* ── NOVA TELA DE LOGIN ─────────────────────────────────────────────────── */
+@keyframes fadeSlideIn {
+  from { opacity:0; filter:blur(4px); transform:translateY(16px); }
+  to   { opacity:1; filter:blur(0);   transform:translateY(0); }
+}
+@keyframes slideRightIn {
+  from { opacity:0; filter:blur(4px); transform:translateX(24px); }
+  to   { opacity:1; filter:blur(0);   transform:translateX(0); }
+}
+@keyframes testimonialIn {
+  from { opacity:0; filter:blur(4px); transform:translateY(20px) scale(0.96); }
+  to   { opacity:1; filter:blur(0);   transform:translateY(0) scale(1); }
+}
+.ls-anim { opacity:0; animation:fadeSlideIn 0.55s cubic-bezier(.22,.68,0,1.2) forwards; }
+.ls-d1  { animation-delay:.08s; }
+.ls-d2  { animation-delay:.16s; }
+.ls-d3  { animation-delay:.24s; }
+.ls-d4  { animation-delay:.32s; }
+.ls-d5  { animation-delay:.40s; }
+.ls-d6  { animation-delay:.48s; }
+.ls-d7  { animation-delay:.56s; }
+.ls-d8  { animation-delay:.64s; }
+.ls-slide { opacity:0; animation:slideRightIn 0.7s cubic-bezier(.22,.68,0,1.2) .28s forwards; }
+.ls-tc1 { opacity:0; animation:testimonialIn 0.6s cubic-bezier(.22,.68,0,1.2) .9s  forwards; }
+.ls-tc2 { opacity:0; animation:testimonialIn 0.6s cubic-bezier(.22,.68,0,1.2) 1.1s forwards; }
+
+#loginScreen {
+  display:none;
+  min-height:100vh;
+  width:100%;
+  flex-direction:row;
+  font-family:var(--font);
+  background:var(--bg);
+  color:var(--text);
+}
+/* Coluna esquerda — formulário */
+.ls-left {
+  flex:1;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:2.5rem 2rem;
+}
+.ls-form-wrap {
+  width:100%;
+  max-width:400px;
+  display:flex;
+  flex-direction:column;
+  gap:0;
+}
+.ls-logo-row {
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin-bottom:2.5rem;
+}
+.ls-logo-row img { width:28px; height:28px; object-fit:contain; }
+.ls-logo-row span { font-size:13px; font-weight:600; letter-spacing:.04em; color:var(--text); }
+.ls-h1 {
+  font-size:clamp(2rem,5vw,2.8rem);
+  font-weight:600;
+  line-height:1.1;
+  letter-spacing:-.02em;
+  margin-bottom:.75rem;
+}
+.ls-sub {
+  font-size:14px;
+  color:var(--text-2);
+  margin-bottom:2rem;
+  line-height:1.5;
+}
+.ls-glass-input {
+  border-radius:14px;
+  border:1.5px solid var(--border);
+  background:var(--surface);
+  transition:border .2s, background .2s;
+  margin-top:6px;
+}
+.ls-glass-input:focus-within {
+  border-color:#1A5C2A;
+  background:rgba(26,92,42,.06);
+}
+.ls-glass-input input {
+  width:100%;
+  background:transparent;
+  border:none;
+  outline:none;
+  padding:13px 16px;
+  font-size:14px;
+  font-family:var(--font);
+  color:var(--text);
+  border-radius:14px;
+}
+.ls-glass-input input::placeholder { color:var(--text-3); }
+.ls-pw-wrap { position:relative; }
+.ls-pw-wrap input { padding-right:48px; }
+.ls-pw-toggle {
+  position:absolute;
+  right:14px;
+  top:50%;
+  transform:translateY(-50%);
+  background:none;
+  border:none;
+  cursor:pointer;
+  color:var(--text-3);
+  display:flex;
+  align-items:center;
+  padding:4px;
+  transition:color .15s;
+}
+.ls-pw-toggle:hover { color:var(--text); }
+.ls-label {
+  font-size:12px;
+  font-weight:500;
+  color:var(--text-2);
+  display:block;
+}
+.ls-field { margin-bottom:1rem; }
+.ls-row-between {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin-bottom:1.5rem;
+  font-size:13px;
+}
+.ls-remember {
+  display:flex;
+  align-items:center;
+  gap:8px;
+  cursor:pointer;
+  color:var(--text-2);
+}
+.ls-remember input[type=checkbox] {
+  width:16px;
+  height:16px;
+  accent-color:#1A5C2A;
+  cursor:pointer;
+}
+.ls-forgot {
+  color:#1A5C2A;
+  font-weight:500;
+  cursor:pointer;
+  text-decoration:none;
+  transition:opacity .15s;
+}
+.ls-forgot:hover { opacity:.75; text-decoration:underline; }
+.ls-btn-primary {
+  width:100%;
+  padding:14px;
+  border-radius:14px;
+  background:#1A5C2A;
+  color:#fff;
+  font-size:14px;
+  font-weight:600;
+  font-family:var(--font);
+  border:none;
+  cursor:pointer;
+  transition:background .15s, transform .1s;
+  margin-bottom:1.25rem;
+}
+.ls-btn-primary:hover { background:#2E8B45; }
+.ls-btn-primary:active { transform:scale(.98); }
+.ls-divider {
+  display:flex;
+  align-items:center;
+  gap:12px;
+  margin-bottom:1.25rem;
+}
+.ls-divider span.line { flex:1; height:1px; background:var(--border); }
+.ls-divider span.txt { font-size:11px; color:var(--text-3); text-transform:uppercase; letter-spacing:.06em; }
+.ls-signup-link {
+  text-align:center;
+  font-size:13px;
+  color:var(--text-2);
+  margin-top:1.25rem;
+}
+.ls-signup-link a {
+  color:#1A5C2A;
+  font-weight:600;
+  cursor:pointer;
+  text-decoration:none;
+}
+.ls-signup-link a:hover { text-decoration:underline; }
+.ls-err {
+  color:#ef4444;
+  font-size:12px;
+  margin-bottom:.75rem;
+  display:none;
+}
+
+/* Coluna direita — hero */
+.ls-right {
+  flex:1;
+  display:none;
+  position:relative;
+  padding:1rem;
+}
+@media(min-width:768px){ .ls-right { display:block; } }
+.ls-hero-img {
+  position:absolute;
+  inset:1rem;
+  border-radius:24px;
+  background-size:cover;
+  background-position:center;
+  background-image:url('https://images.unsplash.com/photo-1497366216548-37526070297c?w=1600&q=80');
+  overflow:hidden;
+}
+.ls-hero-overlay {
+  position:absolute;
+  inset:0;
+  border-radius:24px;
+  background:linear-gradient(180deg, rgba(0,0,0,.15) 0%, rgba(0,0,0,.55) 100%);
+}
+.ls-testimonials {
+  position:absolute;
+  bottom:2rem;
+  left:50%;
+  transform:translateX(-50%);
+  display:flex;
+  gap:12px;
+  padding:0 1.5rem;
+  width:100%;
+  justify-content:center;
+}
+.ls-tc {
+  display:flex;
+  align-items:flex-start;
+  gap:10px;
+  border-radius:20px;
+  background:rgba(255,255,255,.12);
+  backdrop-filter:blur(16px);
+  border:1px solid rgba(255,255,255,.18);
+  padding:14px 16px;
+  width:220px;
+  flex-shrink:0;
+}
+.ls-tc img {
+  width:38px;
+  height:38px;
+  border-radius:12px;
+  object-fit:cover;
+  flex-shrink:0;
+}
+.ls-tc-body { font-size:12px; line-height:1.4; }
+.ls-tc-name { font-weight:600; color:#fff; }
+.ls-tc-handle { color:rgba(255,255,255,.6); font-size:11px; margin-bottom:4px; }
+.ls-tc-text { color:rgba(255,255,255,.85); }
+
+/* Dark mode adjustments */
+[data-theme="dark"] .ls-glass-input { background:rgba(255,255,255,.04); }
+[data-theme="dark"] .ls-glass-input:focus-within { background:rgba(26,92,42,.12); }
 .login-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:2rem;width:100%;max-width:360px;box-shadow:0 20px 60px rgba(0,0,0,0.25);}
 .login-logo{display:flex;align-items:center;gap:10px;margin-bottom:1.75rem;}
 .login-logo img{width:32px;height:32px;object-fit:contain;}
@@ -440,17 +690,94 @@ body.dark-mode select{background:#22263a;color:#e8eaf0;border-color:rgba(255,255
 <body>
 <div id="loadingScreen"><div class="loader"></div><div class="load-text">Carregando...</div></div>
 <div id="loginScreen">
-  <div class="login-box">
-    <div class="login-logo"><img id="loginSnake" src=""/><span>Contas a Receber</span></div>
-    <div class="login-title">Bem-vindo</div>
-    <div class="login-sub">Entre com seu e-mail e senha</div>
-    <div class="field"><label>E-mail</label><input type="email" id="loginEmail" placeholder="seu@email.com"/></div>
-    <div class="field"><label>Senha</label><input type="password" id="loginPass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"/></div>
-    <button class="btn-primary" id="btnLogin" onclick="doLogin()">Entrar</button>
-    <div class="login-err" id="loginErr">E-mail ou senha incorretos.</div>
-    <span class="forgot-link" onclick="esqueceuSenha()">Esqueci minha senha</span>
-    <div style="margin-top:14px;text-align:center;font-size:13px;color:rgba(255,255,255,0.6);">
-      Ainda não tem conta? <span class="forgot-link" style="display:inline;margin:0;" onclick="mostrarTelaCadastro()">Criar conta</span>
+  <!-- Coluna esquerda: formulário -->
+  <div class="ls-left">
+    <div class="ls-form-wrap">
+
+      <!-- Logo -->
+      <div class="ls-logo-row ls-anim ls-d1">
+        <img id="loginSnake" src=""/>
+        <span>Contas a Receber · Hashtag</span>
+      </div>
+
+      <!-- Título -->
+      <h1 class="ls-h1 ls-anim ls-d2">Bem-vindo<br><span style="font-weight:300;color:var(--text-2);">de volta</span></h1>
+      <p class="ls-sub ls-anim ls-d3">Acesse seu painel e continue acompanhando sua equipe.</p>
+
+      <!-- Email -->
+      <div class="ls-field ls-anim ls-d4">
+        <label class="ls-label">E-mail</label>
+        <div class="ls-glass-input">
+          <input type="email" id="loginEmail" placeholder="seu@email.com" autocomplete="email"/>
+        </div>
+      </div>
+
+      <!-- Senha -->
+      <div class="ls-field ls-anim ls-d5">
+        <label class="ls-label">Senha</label>
+        <div class="ls-glass-input">
+          <div class="ls-pw-wrap">
+            <input type="password" id="loginPass" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"/>
+            <button type="button" class="ls-pw-toggle" onclick="window._lsTogglePw()" id="ls-pw-btn" aria-label="Mostrar senha">
+              <svg id="ls-eye-show" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              <svg id="ls-eye-hide" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Lembrar + Esqueci -->
+      <div class="ls-row-between ls-anim ls-d6">
+        <label class="ls-remember">
+          <input type="checkbox" id="ls-remember"/>
+          <span>Manter conectado</span>
+        </label>
+        <span class="ls-forgot" onclick="esqueceuSenha()">Esqueci minha senha</span>
+      </div>
+
+      <!-- Erro -->
+      <div class="ls-err" id="loginErr">E-mail ou senha incorretos.</div>
+
+      <!-- Botão entrar -->
+      <button class="ls-btn-primary ls-anim ls-d7" id="btnLogin" onclick="doLogin()">Entrar</button>
+
+      <!-- Divider -->
+      <div class="ls-divider ls-anim ls-d8">
+        <span class="line"></span>
+        <span class="txt">ou</span>
+        <span class="line"></span>
+      </div>
+
+      <!-- Criar conta -->
+      <div class="ls-signup-link ls-anim ls-d8">
+        Ainda não tem conta? <a onclick="mostrarTelaCadastro()">Criar conta</a>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Coluna direita: hero -->
+  <div class="ls-right ls-slide">
+    <div class="ls-hero-img">
+      <div class="ls-hero-overlay"></div>
+    </div>
+    <div class="ls-testimonials">
+      <div class="ls-tc ls-tc1">
+        <img src="https://randomuser.me/api/portraits/women/44.jpg" alt="">
+        <div class="ls-tc-body">
+          <div class="ls-tc-name">Ana Beatriz</div>
+          <div class="ls-tc-handle">@anab</div>
+          <div class="ls-tc-text">Painel incrível, organiza tudo numa tela só.</div>
+        </div>
+      </div>
+      <div class="ls-tc ls-tc2">
+        <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="">
+        <div class="ls-tc-body">
+          <div class="ls-tc-name">Carlos R.</div>
+          <div class="ls-tc-handle">@carlosr</div>
+          <div class="ls-tc-text">Acompanho meu resultado em tempo real.</div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -750,6 +1077,14 @@ window.doSignup=async function(){
   }
 };
 
+window._lsTogglePw=function(){
+  const inp=document.getElementById('loginPass');
+  const show=document.getElementById('ls-eye-show');
+  const hide=document.getElementById('ls-eye-hide');
+  if(inp.type==='password'){inp.type='text';show.style.display='none';hide.style.display='block';}
+  else{inp.type='password';show.style.display='block';hide.style.display='none';}
+};
+
 window.doLogin=async function(){
   const email=document.getElementById('loginEmail').value.trim();
   const pass=document.getElementById('loginPass').value;
@@ -967,7 +1302,7 @@ document.addEventListener('click',function(e){
   }
 });
 
-function showLogin(){hide('appShell');hide('signupScreen');show('loginScreen','flex');}
+function showLogin(){hide('appShell');hide('signupScreen');show('loginScreen','flex');document.getElementById('loginScreen').style.flexDirection='row';}
 
 function getPerms(){
   const isCoord = userProfile.role==='coord';
@@ -975,7 +1310,7 @@ function getPerms(){
   const subs = Array.isArray(userProfile.subrole)
     ? userProfile.subrole
     : (userProfile.subrole ? [userProfile.subrole] : []);
-  const hasSub = (s) => subs.includes(s);
+  const hasSub = (s) => subs.map(x=>x.trim()).includes(s.trim());
   const canManageIA = isCoord || hasSub('iamanager');
   const canLancar = isCoord || hasSub('economic');
   const canRenegoc = isCoord || hasSub('renegoc');
