@@ -2177,25 +2177,224 @@ async function renderResultado(mc,op){
     }catch(e){showToast('Erro ao salvar.');}
   };
 
-  mc.innerHTML=snakeHtml()+
-    pageHeaderOp(op,isCoord,'Resultado Semanal','Semana atual',sem.descricao||'Semana em andamento')+
-    banner+
-    coordBtns+
-    '<div class="cards-row cols-4"><div class="stat-card blue"><div class="sc-label">Valor Recuperado</div><div class="sc-value">'+atual.valor+'</div><div class="sc-sub">esta semana</div></div>'+
-    '<div class="stat-card green"><div class="sc-label">Atendimentos</div><div class="sc-value">'+atual.atend+'</div><div class="sc-sub">esta semana</div></div>'+
-    '<div class="stat-card amber"><div class="sc-label">Cobrancas Totais</div><div class="sc-value">'+atual.cobr+'</div><div class="sc-sub">esta semana</div></div>'+
-    (atual.valorDiaFmt?'<div class="stat-card purple"><div class="sc-label">Valor por Dia</div><div class="sc-value">'+atual.valorDiaFmt+'</div><div class="sc-sub">media diaria</div></div>':'')+
-    '</div>'+
-    '<div class="cards-row cols-4">'+
-    (atual.media?'<div class="stat-card green"><div class="sc-label">Media Atend./Dia</div><div class="sc-value">'+atual.media+'</div><div class="sc-sub">media diaria</div></div>':'')+
-    (atual.ticketFmt?'<div class="stat-card amber"><div class="sc-label">Ticket Medio</div><div class="sc-value">'+atual.ticketFmt+'</div><div class="sc-sub">por atendimento</div></div>':'')+
-    '</div>'+
-    '<div class="panel"><div class="panel-title">Comparativo semanal</div>'+
-    '<div class="compare-grid"><div class="cmp-item"><div class="cmp-label">Semana atual</div><div class="cmp-val">'+atual.valor+'</div></div>'+
-    '<div class="cmp-item"><div class="cmp-label">Semana passada</div><div class="cmp-val">'+passada.valor+'</div></div></div>'+
-    '<div class="divider"></div><div class="diff-grid">'+
-    '<div><div class="diff-label">Diferenca em valor</div><div class="diff-val '+(up?'pos':'neg')+'">'+(up?'+':'')+diff.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})+'</div></div>'+
-    '<div><div class="diff-label">Diferenca em percentual</div><div class="diff-val '+(up?'pos':'neg')+'">'+(up?'+':'')+pct+'%</div></div></div></div>';
+  // ── BENTO GRID RESULTADO ────────────────────────────────────────────────────
+  const fotoOp=op.foto||'';
+  const corOp=op.cor||'#1A5C2A';
+  const nomeOp=op.nome||'Operador';
+  const cargoOp=op.cargo||'Operador de Cobrança';
+  const semDesc=sem.descricao||'Semana atual';
+  const difValorFmt=(up?'+':'')+diff.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+  const difPctFmt=(up?'+':'')+pct+'%';
+  const difCor=up?'#2d7a3a':'#c0392b';
+  const difBg=up?'rgba(45,122,58,.12)':'rgba(192,57,43,.1)';
+
+  const avatarHtml=fotoOp
+    ?`<img src="${fotoOp}" style="width:100%;height:100%;object-fit:cover;border-radius:20px;">`
+    :`<div style="width:100%;height:100%;border-radius:20px;background:${corOp};display:flex;align-items:center;justify-content:center;font-size:52px;font-weight:700;color:#fff;">${nomeOp[0].toUpperCase()}</div>`;
+
+  // Mini bar chart (7 bars — placeholder visual)
+  const bars=['S','M','T','W','T','F','S'];
+  const barHeights=[40,55,35,70,65,85,50];
+  const barsHtml=bars.map((d,i)=>`
+    <div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;">
+      <div style="width:100%;border-radius:4px;background:${i===5?'#f5d547':'rgba(0,0,0,0.08)'};height:${barHeights[i]}px;"></div>
+      <span style="font-size:10px;color:#8a8a8a;">${d}</span>
+    </div>`).join('');
+
+  // Comparativo diff pill
+  const diffPill=`<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;background:${difBg};color:${difCor};font-size:12px;font-weight:600;">${difValorFmt} (${difPctFmt})</span>`;
+
+  mc.innerHTML=`
+  <style>
+    .br-page { padding:1.25rem; background:#eeeeee; min-height:calc(100vh - 64px); }
+    .br-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:1.25rem; flex-wrap:wrap; gap:10px; }
+    .br-header-left { display:flex; align-items:center; gap:12px; }
+    .br-header-name { font-size:22px; font-weight:500; letter-spacing:-.02em; color:#111; }
+    .br-header-sub { font-size:13px; color:#8a8a8a; margin-top:2px; }
+    .br-header-pills { display:flex; gap:8px; flex-wrap:wrap; }
+    .br-pill { display:inline-flex; align-items:center; padding:6px 14px; border-radius:20px; font-size:12px; font-weight:500; background:#fff; color:#111; }
+    .br-pill-active { background:#f5d547; color:#111; }
+    .br-grid { display:grid; grid-template-columns:220px 1fr 1fr; grid-template-rows:auto auto; gap:12px; }
+    @media(max-width:900px){ .br-grid { grid-template-columns:1fr 1fr; } }
+    @media(max-width:600px){ .br-grid { grid-template-columns:1fr; } }
+    .br-card { border-radius:20px; padding:22px; }
+    .br-card-cream { background:#faf7f0; }
+    .br-card-yellow { background:#f5d547; }
+    .br-card-dark { background:#1a1a1a; color:#fff; }
+    .br-card-white { background:#fff; }
+    .br-card-label { font-size:11px; font-weight:600; color:#8a8a8a; text-transform:uppercase; letter-spacing:.08em; margin-bottom:6px; }
+    .br-card-label-dark { color:rgba(255,255,255,.5); }
+    .br-big-num { font-size:42px; font-weight:600; letter-spacing:-.03em; color:#111; line-height:1; }
+    .br-big-num-light { color:#fff; }
+    .br-big-num-green { color:#2d7a3a; }
+    .br-card-arrow { font-size:16px; color:#8a8a8a; }
+    .br-metric-row { display:flex; align-items:baseline; gap:8px; }
+    .br-metric-unit { font-size:14px; color:#8a8a8a; font-weight:400; }
+    .br-card-desc { font-size:12px; color:#8a8a8a; margin-top:6px; }
+    .br-bottom-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-top:12px; }
+    @media(max-width:700px){ .br-bottom-grid { grid-template-columns:1fr; } }
+    .br-task-row { display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom:1px solid rgba(255,255,255,.08); }
+    .br-task-row:last-child { border-bottom:none; }
+    .br-task-icon { width:32px; height:32px; border-radius:50%; background:rgba(255,255,255,.1); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .br-check { width:22px; height:22px; border-radius:50%; background:#f5d547; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  </style>
+  <div class="br-page">
+
+    ${coordBtns}
+
+    <!-- Header -->
+    <div class="br-header">
+      <div class="br-header-left">
+        ${fotoOp?`<img src="${fotoOp}" style="width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid #fff;">`:`<div style="width:44px;height:44px;border-radius:50%;background:${corOp};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:18px;">${nomeOp[0].toUpperCase()}</div>`}
+        <div>
+          <div class="br-header-name">Olá, ${nomeOp.split(' ')[0]} 👋</div>
+          <div class="br-header-sub">${semDesc}</div>
+        </div>
+      </div>
+      <div class="br-header-pills">
+        <span class="br-pill">Atendimentos <strong style="margin-left:6px;">${atual.atend||0}</strong></span>
+        <span class="br-pill br-pill-active">Valor <strong style="margin-left:6px;">${atual.valor}</strong></span>
+        <span class="br-pill">Cobranças <strong style="margin-left:6px;">${atual.cobr||0}</strong></span>
+      </div>
+    </div>
+
+    <!-- Bento Grid principal -->
+    <div class="br-grid">
+
+      <!-- Card perfil (esquerda, ocupa 2 linhas) -->
+      <div style="border-radius:20px;overflow:hidden;position:relative;min-height:320px;grid-row:span 2;background:${corOp};">
+        <div style="position:absolute;inset:0;">${avatarHtml}</div>
+        <div style="position:absolute;bottom:0;left:0;right:0;padding:20px;background:linear-gradient(0deg,rgba(0,0,0,.75) 0%,transparent 100%);border-radius:0 0 20px 20px;">
+          <div style="font-size:17px;font-weight:600;color:#fff;letter-spacing:-.01em;">${nomeOp}</div>
+          <div style="font-size:12px;color:rgba(255,255,255,.7);margin-bottom:10px;">${cargoOp}</div>
+          <span style="display:inline-block;padding:5px 14px;border-radius:20px;background:#f5d547;color:#111;font-size:12px;font-weight:600;">${atual.valor}</span>
+        </div>
+      </div>
+
+      <!-- Card Valor Recuperado (amarelo) -->
+      <div class="br-card br-card-yellow">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;">
+          <span style="font-size:13px;font-weight:600;color:#111;">Valor Recuperado</span>
+          <span class="br-card-arrow">↗</span>
+        </div>
+        <div class="br-big-num">${atual.valor}</div>
+        <div style="font-size:12px;color:rgba(0,0,0,.5);margin-top:8px;">esta semana</div>
+        <div style="margin-top:16px;padding-top:14px;border-top:1px solid rgba(0,0,0,.1);display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:12px;color:#555;">vs semana anterior</span>
+          ${diffPill}
+        </div>
+      </div>
+
+      <!-- Card Ticket Médio (creme) -->
+      <div class="br-card br-card-cream">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;">
+          <span style="font-size:13px;font-weight:600;color:#111;">Ticket Médio</span>
+          <span class="br-card-arrow" style="color:#8a8a8a;">↗</span>
+        </div>
+        <div class="br-big-num br-big-num-green">${atual.ticketFmt||'—'}</div>
+        <div class="br-card-desc">por atendimento</div>
+        <div style="margin-top:20px;display:flex;align-items:flex-end;gap:6px;height:60px;">${barsHtml}</div>
+      </div>
+
+      <!-- Card Atendimentos (creme) -->
+      <div class="br-card br-card-cream">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;">
+          <span style="font-size:13px;font-weight:600;color:#111;">Atendimentos</span>
+          <span class="br-card-arrow" style="color:#8a8a8a;">↗</span>
+        </div>
+        <div class="br-big-num">${atual.atend||0}</div>
+        <div class="br-card-desc">esta semana</div>
+        <div style="margin-top:16px;display:flex;gap:10px;">
+          <div style="flex:1;padding:10px;border-radius:12px;background:rgba(0,0,0,.05);text-align:center;">
+            <div style="font-size:18px;font-weight:600;color:#111;">${atual.media||'—'}</div>
+            <div style="font-size:10px;color:#8a8a8a;margin-top:2px;">média/dia</div>
+          </div>
+          <div style="flex:1;padding:10px;border-radius:12px;background:rgba(0,0,0,.05);text-align:center;">
+            <div style="font-size:18px;font-weight:600;color:#111;">${atual.cobr||0}</div>
+            <div style="font-size:10px;color:#8a8a8a;margin-top:2px;">cobranças</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card Valor por Dia (creme) -->
+      <div class="br-card br-card-cream">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;">
+          <span style="font-size:13px;font-weight:600;color:#111;">Valor por Dia</span>
+          <span class="br-card-arrow" style="color:#8a8a8a;">↗</span>
+        </div>
+        <div class="br-big-num br-big-num-green">${atual.valorDiaFmt||'—'}</div>
+        <div class="br-card-desc">média diária</div>
+      </div>
+
+    </div>
+
+    <!-- Bottom grid -->
+    <div class="br-bottom-grid">
+
+      <!-- Card Reunião Semanal (escuro) -->
+      <div class="br-card br-card-dark">
+        <div style="font-size:11px;font-weight:600;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px;">📅 Reunião Semanal</div>
+        ${banner.replace(/class="reuniao-/g,'class="brd-reuniao-').replace(/style="/g,'style="').replace(/<div class="brd-reuniao-banner">/,'<div>').replace(/<div class="brd-reuniao-info">/,'<div style="display:flex;gap:10px;align-items:center;margin-bottom:12px;">').replace(/<div class="brd-reuniao-label">/,'<div style="font-size:12px;color:rgba(255,255,255,.5);">').replace(/<div class="brd-reuniao-datetime">/,'<div style="font-size:14px;font-weight:500;color:#fff;margin-top:2px;">').replace(/<div class="brd-reuniao-icon">[\s\S]*?<\/div>/,'').replace(/<div class="brd-reuniao-actions">/,'<div style="display:flex;gap:8px;flex-wrap:wrap;">').replace(/<a class="brd-reuniao-meet-btn"/g,'<a style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:#f5d547;color:#111;border-radius:12px;font-size:12px;font-weight:600;text-decoration:none;"').replace(/<span class="brd-reuniao-meet-dot"><\/span>/,'<span style="width:7px;height:7px;border-radius:50%;background:#2d7a3a;display:inline-block;"></span>').replace(/<button class="brd-reuniao-edit-btn"/g,'<button style="padding:8px 14px;background:rgba(255,255,255,.1);color:#fff;border:none;border-radius:12px;font-size:12px;cursor:pointer;"')}
+      </div>
+
+      <!-- Card Comparativo (creme) -->
+      <div class="br-card br-card-cream">
+        <div style="font-size:11px;font-weight:600;color:#8a8a8a;text-transform:uppercase;letter-spacing:.08em;margin-bottom:16px;">📊 Comparativo</div>
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <div>
+            <div style="font-size:11px;color:#8a8a8a;margin-bottom:3px;">Semana atual</div>
+            <div style="font-size:22px;font-weight:600;color:#111;letter-spacing:-.02em;">${atual.valor}</div>
+          </div>
+          <div style="height:1px;background:rgba(0,0,0,.08);"></div>
+          <div>
+            <div style="font-size:11px;color:#8a8a8a;margin-bottom:3px;">Semana anterior</div>
+            <div style="font-size:22px;font-weight:600;color:#111;letter-spacing:-.02em;">${passada.valor}</div>
+          </div>
+          <div style="height:1px;background:rgba(0,0,0,.08);"></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;">
+            <span style="font-size:12px;color:#8a8a8a;">Variação</span>
+            ${diffPill}
+          </div>
+        </div>
+      </div>
+
+      <!-- Card Metas rápidas (branco) -->
+      <div class="br-card br-card-white">
+        <div style="font-size:11px;font-weight:600;color:#8a8a8a;text-transform:uppercase;letter-spacing:.08em;margin-bottom:16px;">🎯 Resumo da Semana</div>
+        <div style="display:flex;flex-direction:column;gap:0;">
+          <div class="br-task-row">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <div class="br-task-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8a8a8a" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+              <div><div style="font-size:12px;font-weight:500;color:#111;">Valor Recuperado</div><div style="font-size:11px;color:#8a8a8a;">${atual.valor}</div></div>
+            </div>
+            <div class="br-check"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></div>
+          </div>
+          <div class="br-task-row">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <div class="br-task-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8a8a8a" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.23 12 19.79 19.79 0 0 1 1.17 3.4 2 2 0 0 1 3.14 1h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 8.7a16 16 0 0 0 6 6l.38-.38a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 21 17z"/></svg></div>
+              <div><div style="font-size:12px;font-weight:500;color:#111;">Atendimentos</div><div style="font-size:11px;color:#8a8a8a;">${atual.atend||0} contatos</div></div>
+            </div>
+            <div class="br-check"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></div>
+          </div>
+          <div class="br-task-row">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <div class="br-task-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8a8a8a" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+              <div><div style="font-size:12px;font-weight:500;color:#111;">Ticket Médio</div><div style="font-size:11px;color:#8a8a8a;">${atual.ticketFmt||'—'}</div></div>
+            </div>
+            ${atual.ticketFmt?`<div class="br-check"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></div>`:`<div style="width:22px;height:22px;border-radius:50%;border:1.5px solid #ddd;"></div>`}
+          </div>
+          <div class="br-task-row">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <div class="br-task-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8a8a8a" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div>
+              <div><div style="font-size:12px;font-weight:500;color:#111;">Cobranças Totais</div><div style="font-size:11px;color:#8a8a8a;">${atual.cobr||0} registros</div></div>
+            </div>
+            ${atual.cobr?`<div class="br-check"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></div>`:`<div style="width:22px;height:22px;border-radius:50%;border:1.5px solid #ddd;"></div>`}
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>`;
 }
 
 window.editarReuniao=async function(){
