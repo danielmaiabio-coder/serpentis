@@ -434,7 +434,7 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
 .cmp-item{background:var(--bg);border-radius:var(--radius);padding:12px 14px;}
 .cmp-label{font-size:11px;color:var(--text-3);margin-bottom:5px;}
 .cmp-val{font-size:20px;font-weight:500;color:var(--text);}
-.divider{height:1px;background:var(--border);margin:1rem 0;}
+.divider{height:1px;background:var(--border); class='br-divider'margin:1rem 0;}
 .diff-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
 .diff-label{font-size:11px;color:var(--text-3);margin-bottom:5px;}
 .diff-val{font-size:20px;font-weight:500;}
@@ -2222,8 +2222,15 @@ async function renderResultado(mc,op){
     .br-card-yellow { background:#f5d547; border:none; }
     .br-card-dark { background:#1a1a1a; color:#fff; border:none; }
     .br-card-white { background:#ffffff; border:1px solid rgba(0,0,0,.06); }
-    [data-theme="dark"] .br-card-cream,
-    [data-theme="dark"] .br-card-white { background:#2c2c2c; border:1px solid rgba(255,255,255,.08); }
+    body.dark-mode .br-card-cream,
+    body.dark-mode .br-card-white { background:#1e2130; border:1px solid rgba(255,255,255,.08); }
+    body.dark-mode .br-big-num { color:#e8eaf0; }
+    body.dark-mode .br-header-name { color:#e8eaf0; }
+    body.dark-mode .br-pill { background:#22263a; color:#e8eaf0; border-color:rgba(255,255,255,.12); }
+    body.dark-mode .br-mini-sub { background:rgba(255,255,255,.06) !important; }
+    body.dark-mode .br-divider { background:rgba(255,255,255,.08) !important; }
+    body.dark-mode .br-card-cream .br-task-icon,
+    body.dark-mode .br-card-white .br-task-icon { background:rgba(255,255,255,.06); }
     .br-card-label { font-size:11px; font-weight:600; color:var(--text-3); text-transform:uppercase; letter-spacing:.08em; margin-bottom:6px; }
     .br-card-label-dark { color:rgba(255,255,255,.5); }
     .br-big-num { font-size:42px; font-weight:600; letter-spacing:-.03em; color:var(--text); line-height:1; }
@@ -2307,11 +2314,11 @@ async function renderResultado(mc,op){
         <div class="br-big-num">${atual.atend||0}</div>
         <div class="br-card-desc">esta semana</div>
         <div style="margin-top:16px;display:flex;gap:10px;">
-          <div style="flex:1;padding:10px;border-radius:12px;background:var(--bg);border:1px solid var(--border);text-align:center;">
+          <div style="flex:1;padding:10px;border-radius:12px;background:rgba(0,0,0,.04);text-align:center;">
             <div style="font-size:18px;font-weight:600;color:#111;">${atual.media||'—'}</div>
             <div style="font-size:10px;color:var(--text-3);margin-top:2px;">média/dia</div>
           </div>
-          <div style="flex:1;padding:10px;border-radius:12px;background:var(--bg);border:1px solid var(--border);text-align:center;">
+          <div style="flex:1;padding:10px;border-radius:12px;background:rgba(0,0,0,.04);text-align:center;">
             <div style="font-size:18px;font-weight:600;color:#111;">${atual.cobr||0}</div>
             <div style="font-size:10px;color:var(--text-3);margin-top:2px;">cobranças</div>
           </div>
@@ -2347,12 +2354,12 @@ async function renderResultado(mc,op){
             <div style="font-size:11px;color:var(--text-3);margin-bottom:3px;">Semana atual</div>
             <div style="font-size:22px;font-weight:600;color:var(--text);letter-spacing:-.02em;">${atual.valor}</div>
           </div>
-          <div style="height:1px;background:var(--border);"></div>
+          <div style="height:1px;background:var(--border); class='br-divider'"></div>
           <div>
             <div style="font-size:11px;color:var(--text-3);margin-bottom:3px;">Semana anterior</div>
             <div style="font-size:22px;font-weight:600;color:var(--text);letter-spacing:-.02em;">${passada.valor}</div>
           </div>
-          <div style="height:1px;background:var(--border);"></div>
+          <div style="height:1px;background:var(--border); class='br-divider'"></div>
           <div style="display:flex;align-items:center;justify-content:space-between;">
             <span style="font-size:12px;color:var(--text-3);">Variação</span>
             ${diffPill}
