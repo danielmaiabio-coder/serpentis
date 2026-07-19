@@ -2198,7 +2198,7 @@ async function renderResultado(mc,op){
   const barsHtml=bars.map((d,i)=>`
     <div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;">
       <div style="width:100%;border-radius:4px;background:${i===5?'#f5d547':'rgba(0,0,0,0.08)'};height:${barHeights[i]}px;"></div>
-      <span style="font-size:10px;color:#8a8a8a;">${d}</span>
+      <span style="font-size:10px;color:var(--text-3);">${d}</span>
     </div>`).join('');
 
   // Comparativo diff pill
@@ -2209,33 +2209,35 @@ async function renderResultado(mc,op){
     .br-page { padding:1.25rem; background:var(--bg); min-height:calc(100vh - 64px); }
     .br-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:1.25rem; flex-wrap:wrap; gap:10px; }
     .br-header-left { display:flex; align-items:center; gap:12px; }
-    .br-header-name { font-size:22px; font-weight:500; letter-spacing:-.02em; color:#111; }
-    .br-header-sub { font-size:13px; color:#8a8a8a; margin-top:2px; }
+    .br-header-name { font-size:22px; font-weight:500; letter-spacing:-.02em; color:var(--text); }
+    .br-header-sub { font-size:13px; color:var(--text-3); margin-top:2px; }
     .br-header-pills { display:flex; gap:8px; flex-wrap:wrap; }
-    .br-pill { display:inline-flex; align-items:center; padding:6px 14px; border-radius:20px; font-size:12px; font-weight:500; background:var(--surface); color:#111; }
-    .br-pill-active { background:#f5d547; color:#111; }
+    .br-pill { display:inline-flex; align-items:center; padding:6px 14px; border-radius:20px; font-size:12px; font-weight:500; background:var(--surface); color:var(--text); border:1px solid var(--border-md); }
+    .br-pill-active { background:#f5d547; color:#111; border-color:#f5d547; }
     .br-grid { display:grid; grid-template-columns:220px 1fr 1fr; grid-template-rows:auto auto; gap:12px; }
     @media(max-width:900px){ .br-grid { grid-template-columns:1fr 1fr; } }
     @media(max-width:600px){ .br-grid { grid-template-columns:1fr; } }
     .br-card { border-radius:20px; padding:22px; }
-    .br-card-cream { background:var(--surface); }
-    .br-card-yellow { background:#f5d547; }
-    .br-card-dark { background:#1a1a1a; color:#fff; }
-    .br-card-white { background:var(--surface); }
-    .br-card-label { font-size:11px; font-weight:600; color:#8a8a8a; text-transform:uppercase; letter-spacing:.08em; margin-bottom:6px; }
+    .br-card-cream { background:#ffffff; border:1px solid rgba(0,0,0,.06); }
+    .br-card-yellow { background:#f5d547; border:none; }
+    .br-card-dark { background:#1a1a1a; color:#fff; border:none; }
+    .br-card-white { background:#ffffff; border:1px solid rgba(0,0,0,.06); }
+    [data-theme="dark"] .br-card-cream,
+    [data-theme="dark"] .br-card-white { background:#2c2c2c; border:1px solid rgba(255,255,255,.08); }
+    .br-card-label { font-size:11px; font-weight:600; color:var(--text-3); text-transform:uppercase; letter-spacing:.08em; margin-bottom:6px; }
     .br-card-label-dark { color:rgba(255,255,255,.5); }
-    .br-big-num { font-size:42px; font-weight:600; letter-spacing:-.03em; color:#111; line-height:1; }
+    .br-big-num { font-size:42px; font-weight:600; letter-spacing:-.03em; color:var(--text); line-height:1; }
     .br-big-num-light { color:#fff; }
     .br-big-num-green { color:#2d7a3a; }
-    .br-card-arrow { font-size:16px; color:#8a8a8a; }
+    .br-card-arrow { font-size:16px; color:var(--text-3); }
     .br-metric-row { display:flex; align-items:baseline; gap:8px; }
-    .br-metric-unit { font-size:14px; color:#8a8a8a; font-weight:400; }
-    .br-card-desc { font-size:12px; color:#8a8a8a; margin-top:6px; }
+    .br-metric-unit { font-size:14px; color:var(--text-3); font-weight:400; }
+    .br-card-desc { font-size:12px; color:var(--text-3); margin-top:6px; }
     .br-bottom-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-top:12px; }
     @media(max-width:700px){ .br-bottom-grid { grid-template-columns:1fr; } }
-    .br-task-row { display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom:1px solid rgba(255,255,255,.08); }
+    .br-task-row { display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom:1px solid var(--border); }
     .br-task-row:last-child { border-bottom:none; }
-    .br-task-icon { width:32px; height:32px; border-radius:50%; background:rgba(255,255,255,.1); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .br-task-icon { width:32px; height:32px; border-radius:50%; background:var(--bg); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
     .br-check { width:22px; height:22px; border-radius:50%; background:#f5d547; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
   </style>
   <div class="br-page">
@@ -2274,13 +2276,13 @@ async function renderResultado(mc,op){
       <!-- Card Valor Recuperado (amarelo) -->
       <div class="br-card br-card-yellow">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;">
-          <span style="font-size:13px;font-weight:600;color:#111;">Valor Recuperado</span>
+          <span style="font-size:13px;font-weight:600;color:var(--text);">Valor Recuperado</span>
           <span class="br-card-arrow">↗</span>
         </div>
         <div class="br-big-num">${atual.valor}</div>
         <div style="font-size:12px;color:rgba(0,0,0,.5);margin-top:8px;">esta semana</div>
-        <div style="margin-top:16px;padding-top:14px;border-top:1px solid rgba(0,0,0,.1);display:flex;justify-content:space-between;align-items:center;">
-          <span style="font-size:12px;color:#555;">vs semana anterior</span>
+        <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:12px;color:var(--text-3);">vs semana anterior</span>
           ${diffPill}
         </div>
       </div>
@@ -2288,8 +2290,8 @@ async function renderResultado(mc,op){
       <!-- Card Ticket Médio (creme) -->
       <div class="br-card br-card-cream">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;">
-          <span style="font-size:13px;font-weight:600;color:#111;">Ticket Médio</span>
-          <span class="br-card-arrow" style="color:#8a8a8a;">↗</span>
+          <span style="font-size:13px;font-weight:600;color:var(--text);">Ticket Médio</span>
+          <span class="br-card-arrow" style="color:var(--text-3);">↗</span>
         </div>
         <div class="br-big-num br-big-num-green">${atual.ticketFmt||'—'}</div>
         <div class="br-card-desc">por atendimento</div>
@@ -2299,17 +2301,17 @@ async function renderResultado(mc,op){
       <!-- Card Atendimentos (creme) -->
       <div class="br-card br-card-cream">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;">
-          <span style="font-size:13px;font-weight:600;color:#111;">Atendimentos</span>
-          <span class="br-card-arrow" style="color:#8a8a8a;">↗</span>
+          <span style="font-size:13px;font-weight:600;color:var(--text);">Atendimentos</span>
+          <span class="br-card-arrow" style="color:var(--text-3);">↗</span>
         </div>
         <div class="br-big-num">${atual.atend||0}</div>
         <div class="br-card-desc">esta semana</div>
         <div style="margin-top:16px;display:flex;gap:10px;">
-          <div style="flex:1;padding:10px;border-radius:12px;background:rgba(0,0,0,.05);text-align:center;">
+          <div style="flex:1;padding:10px;border-radius:12px;background:var(--bg);border:1px solid var(--border);text-align:center;">
             <div style="font-size:18px;font-weight:600;color:#111;">${atual.media||'—'}</div>
             <div style="font-size:10px;color:var(--text-3);margin-top:2px;">média/dia</div>
           </div>
-          <div style="flex:1;padding:10px;border-radius:12px;background:rgba(0,0,0,.05);text-align:center;">
+          <div style="flex:1;padding:10px;border-radius:12px;background:var(--bg);border:1px solid var(--border);text-align:center;">
             <div style="font-size:18px;font-weight:600;color:#111;">${atual.cobr||0}</div>
             <div style="font-size:10px;color:var(--text-3);margin-top:2px;">cobranças</div>
           </div>
@@ -2319,8 +2321,8 @@ async function renderResultado(mc,op){
       <!-- Card Valor por Dia (creme) -->
       <div class="br-card br-card-cream">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;">
-          <span style="font-size:13px;font-weight:600;color:#111;">Valor por Dia</span>
-          <span class="br-card-arrow" style="color:#8a8a8a;">↗</span>
+          <span style="font-size:13px;font-weight:600;color:var(--text);">Valor por Dia</span>
+          <span class="br-card-arrow" style="color:var(--text-3);">↗</span>
         </div>
         <div class="br-big-num br-big-num-green">${atual.valorDiaFmt||'—'}</div>
         <div class="br-card-desc">média diária</div>
@@ -2352,7 +2354,7 @@ async function renderResultado(mc,op){
           </div>
           <div style="height:1px;background:var(--border);"></div>
           <div style="display:flex;align-items:center;justify-content:space-between;">
-            <span style="font-size:12px;color:#8a8a8a;">Variação</span>
+            <span style="font-size:12px;color:var(--text-3);">Variação</span>
             ${diffPill}
           </div>
         </div>
@@ -2365,28 +2367,28 @@ async function renderResultado(mc,op){
           <div class="br-task-row">
             <div style="display:flex;align-items:center;gap:10px;">
               <div class="br-task-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
-              <div><div style="font-size:12px;font-weight:500;color:#111;">Valor Recuperado</div><div style="font-size:11px;color:#8a8a8a;">${atual.valor}</div></div>
+              <div><div style="font-size:12px;font-weight:500;color:var(--text);">Valor Recuperado</div><div style="font-size:11px;color:var(--text-3);">${atual.valor}</div></div>
             </div>
             <div class="br-check"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></div>
           </div>
           <div class="br-task-row">
             <div style="display:flex;align-items:center;gap:10px;">
               <div class="br-task-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.23 12 19.79 19.79 0 0 1 1.17 3.4 2 2 0 0 1 3.14 1h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 8.7a16 16 0 0 0 6 6l.38-.38a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 21 17z"/></svg></div>
-              <div><div style="font-size:12px;font-weight:500;color:#111;">Atendimentos</div><div style="font-size:11px;color:#8a8a8a;">${atual.atend||0} contatos</div></div>
+              <div><div style="font-size:12px;font-weight:500;color:var(--text);">Atendimentos</div><div style="font-size:11px;color:var(--text-3);">${atual.atend||0} contatos</div></div>
             </div>
             <div class="br-check"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></div>
           </div>
           <div class="br-task-row">
             <div style="display:flex;align-items:center;gap:10px;">
               <div class="br-task-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
-              <div><div style="font-size:12px;font-weight:500;color:#111;">Ticket Médio</div><div style="font-size:11px;color:#8a8a8a;">${atual.ticketFmt||'—'}</div></div>
+              <div><div style="font-size:12px;font-weight:500;color:var(--text);">Ticket Médio</div><div style="font-size:11px;color:var(--text-3);">${atual.ticketFmt||'—'}</div></div>
             </div>
             ${atual.ticketFmt?`<div class="br-check"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></div>`:`<div style="width:22px;height:22px;border-radius:50%;border:1.5px solid var(--border);"></div>`}
           </div>
           <div class="br-task-row">
             <div style="display:flex;align-items:center;gap:10px;">
               <div class="br-task-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div>
-              <div><div style="font-size:12px;font-weight:500;color:#111;">Cobranças Totais</div><div style="font-size:11px;color:#8a8a8a;">${atual.cobr||0} registros</div></div>
+              <div><div style="font-size:12px;font-weight:500;color:var(--text);">Cobranças Totais</div><div style="font-size:11px;color:var(--text-3);">${atual.cobr||0} registros</div></div>
             </div>
             ${atual.cobr?`<div class="br-check"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></div>`:`<div style="width:22px;height:22px;border-radius:50%;border:1.5px solid var(--border);"></div>`}
           </div>
@@ -5640,7 +5642,7 @@ async function renderCaderno(mc){
     '<div style="background:#fffef5;border-radius:16px;width:100%;max-width:640px;box-shadow:0 20px 60px rgba(0,0,0,0.3);overflow:hidden;border-top:8px solid #8B4513;">'+
     '<div style="padding:1.5rem;border-bottom:1px solid #ede8da;display:flex;gap:12px;background:#fffef5;">'+
       '<div style="flex:1;"><input id="caderno-titulo" type="text" placeholder="Título..." style="width:100%;font-size:18px;font-weight:600;border:none;outline:none;background:#fffef5;color:#2d2d2d;font-family:var(--font);" maxlength="100"/></div>'+
-      '<select id="caderno-topico" style="padding:6px 10px;border:1px solid #e8dfc8;border-radius:8px;font-family:var(--font);font-size:12px;background:var(--surface);color:#555;">'+
+      '<select id="caderno-topico" style="padding:6px 10px;border:1px solid #e8dfc8;border-radius:8px;font-family:var(--font);font-size:12px;background:var(--surface);color:var(--text-3);">'+
         topicoList.map(t=>'<option value="'+t+'">'+t+'</option>').join('')+
         '<option value="Geral">Geral</option>'+
       '</select>'+
