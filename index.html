@@ -1197,6 +1197,21 @@ window.playSnakeSound=function(){
   a.play().catch(e=>console.log('snake sound error:',e));
 };
 
+window.forcarAtualizacao=async function(){
+  showToast('Atualizando...');
+  try{
+    if('serviceWorker' in navigator){
+      const regs=await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map(r=>r.unregister()));
+    }
+    if('caches' in window){
+      const keys=await caches.keys();
+      await Promise.all(keys.map(k=>caches.delete(k)));
+    }
+  }catch(e){console.log('erro ao limpar cache:',e);}
+  location.reload();
+};
+
 window.doLogout=async function(){
   await signOut(auth);currentUser=null;userProfile=null;viewingOp=null;
   hide('appShell');showLogin();
@@ -1377,7 +1392,7 @@ function buildNav(){
   let socialItems=ddItem('feed','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780800099/foto_feed_zkeahk.png"/>Feed da Cobranca')+ddItem('perfis','👥 Perfis');
   html+=group('social','Social',socialItems);
   if(!isViewer){
-    let utilItems=ddItem('copys','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780800196/copy_b0dpnq.png"/>Banco de Copys')+ddItem('links','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780800378/links_wnwufb.jpg"/>Links de Reneg.')+ddItem('escala','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780800513/rotear_wgszyx.png"/>Escala de Roteamento')+ddItem('calc','🧮 Calculadoras')+ddItem('infos','💡 Informacoes Uteis')+ddItem('codigosoferta','📊 Cod. de Oferta')+ddItem('formsplanilhas','📋 Forms/Planilhas')+ddItem('hashtube','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1782143284/hashtube2_zwqefx.png"/>Hashtube');
+    let utilItems=ddItem('copys','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780800196/copy_b0dpnq.png"/>Banco de Copys')+ddItem('links','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780800378/links_wnwufb.jpg"/>Links de Reneg.')+ddItem('escala','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780800513/rotear_wgszyx.png"/>Escala de Roteamento')+ddItem('calc','🧮 Calculadoras')+ddItem('infos','💡 Informacoes Uteis')+ddItem('codigosoferta','📊 Cod. de Oferta')+ddItem('formsplanilhas','📋 Forms/Planilhas')+ddItem('hashtube','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1782143284/hashtube2_zwqefx.png"/>Hashtube')+'<button class="nb-dd-item" onclick="nbClose();window.forcarAtualizacao()"><span class="nb-icon">🔄</span>Atualizar</button>';
     html+=group('utils','Utilidades',utilItems);
   }
   let contaItems=ddItem('perfil','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780845592/home_w6kzpw.png"/>Pagina Inicial')+ddItem('agenda','<span class="nb-icon">📅</span>Agenda')+ddItem('caderno','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780802371/historico_zbvzr3.png"/>Caderno')+ddItem('basilisco','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780873587/dark_snake_puyvhs.png"/>Basilisco')+ddItem('feriastime','<span class="nb-icon">🏖️</span>Ferias do Time')+ddItem('lembretes','<span class="nb-icon">⏰</span>Lembretes')+(canMinhaCobranca?ddItem('minha_cobranca','<span class="nb-icon">💳</span>Minha Cobrança'):'')+(!isViewer?ddItem('feedback','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780803681/chatting_xdxyho.png"/>Feedbacks'):'');
