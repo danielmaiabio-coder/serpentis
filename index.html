@@ -325,6 +325,8 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
 .nb-btn.open svg{transform:rotate(180deg);}
 .nb-btn-single{display:flex;align-items:center;gap:7px;padding:10.5px 18px;border:none;background:var(--primary);color:#fff;font-family:var(--font);font-size:14px;cursor:pointer;border-radius:10px;transition:all 0.15s;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.15);}
 .nb-btn-single>img,.nb-btn-single .nb-icon,.nb-btn-single>span.nb-icon{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;flex-shrink:0;font-size:13px;object-fit:contain;}
+.update-banner{display:none;text-align:center;padding:8px 12px;background:#ff4d4d;color:#fff;font-family:var(--font);font-weight:600;font-size:13px;cursor:pointer;transition:background 0.15s;}
+.update-banner:hover{background:#e63939;}
 .nb-btn-single:hover,.nb-btn-single.active{background:var(--primary-mid);color:#fff;}
 .nb-dropdown{position:absolute;top:100%;left:0;padding-top:8px;background:transparent;display:none;z-index:600;}
 .nb-dropdown-inner{background:#0d2e14;border:1px solid rgba(255,255,255,0.12);border-radius:10px;min-width:200px;padding:6px;box-shadow:0 8px 32px rgba(0,0,0,0.4);}
@@ -868,6 +870,7 @@ body.dark-mode select{background:#22263a;color:#e8eaf0;border-color:rgba(255,255
       </div>
     </div>
   </nav>
+  <div id="updateBanner" class="update-banner" onclick="window.forcarAtualizacao()">🔄 Atualize! Uma nova versão do Chocalho está disponível — clique aqui para atualizar.</div>
   <div class="main" id="mainContent">
   </div>
 </div>
@@ -1211,6 +1214,25 @@ window.forcarAtualizacao=async function(){
   }catch(e){console.log('erro ao limpar cache:',e);}
   location.reload();
 };
+
+// ── Aviso de nova versão disponível ─────────────────────────────────────
+(function(){
+  let baselineTag=null;
+  async function checkForUpdate(){
+    try{
+      const res=await fetch('/index.html',{method:'HEAD',cache:'no-store'});
+      const tag=res.headers.get('etag')||res.headers.get('last-modified');
+      if(!tag) return;
+      if(baselineTag===null){baselineTag=tag;return;}
+      if(tag!==baselineTag){
+        const b=document.getElementById('updateBanner');
+        if(b) b.style.display='block';
+      }
+    }catch(e){/* offline ou erro de rede: ignora */}
+  }
+  checkForUpdate();
+  setInterval(checkForUpdate,3*60*1000);
+})();
 
 window.doLogout=async function(){
   await signOut(auth);currentUser=null;userProfile=null;viewingOp=null;
