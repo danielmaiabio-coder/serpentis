@@ -5185,6 +5185,8 @@ window.uploadCapa=async function(e){
       const area=document.querySelector('.perfil-capa-placeholder');
       if(area) area.outerHTML='<img src="'+urlOtimizada+'" class="perfil-capa" id="perfil-capa-preview-img"/>';
     }
+    const btnSalvar=document.getElementById('btn-salvar-foto-perfil');
+    if(btnSalvar) btnSalvar.style.display='inline-block';
     showToast('Capa pronta! Clique em salvar.');
   }catch(e){showToast('Erro ao enviar capa.');}
 };
@@ -5201,6 +5203,8 @@ window.uploadFoto=async function(e){
     if(av){av.innerHTML='<img src="'+urlOtimizada+'" alt="foto"/>';}
     const bigImg=document.querySelector('.perfil-avatar-big img');
     if(bigImg)bigImg.src=urlOtimizada;
+    const btnSalvar=document.getElementById('btn-salvar-foto-perfil');
+    if(btnSalvar) btnSalvar.style.display='inline-block';
     showToast('Foto pronta! Clique em salvar.');
   }catch(e){showToast('Erro ao enviar foto.');}
 };
@@ -6523,6 +6527,7 @@ async function renderPerfil(mc){
     (perfil.foto?'<span onclick="removerFoto()" style="padding:4px 12px;background:rgba(180,0,0,0.5);color:#fff;border-radius:20px;font-size:11px;cursor:pointer;border:1px solid rgba(255,255,255,0.2);backdrop-filter:blur(4px);">Remover foto</span>':'')+
     '<label onclick="document.getElementById(\'input-capa\').click()" style="cursor:pointer;"><span style="padding:4px 12px;background:rgba(0,0,0,0.45);color:#fff;border-radius:20px;font-size:11px;border:1px solid rgba(255,255,255,0.3);backdrop-filter:blur(4px);">+ Capa</span></label>'+
     (perfil.capa?'<span onclick="removerCapa()" style="padding:4px 12px;background:rgba(180,0,0,0.5);color:#fff;border-radius:20px;font-size:11px;cursor:pointer;border:1px solid rgba(255,255,255,0.2);backdrop-filter:blur(4px);">Remover capa</span>':'')+
+    '<span id="btn-salvar-foto-perfil" onclick="salvarFotoPerfil()" style="display:none;padding:4px 12px;background:var(--primary);color:#fff;border-radius:20px;font-size:11px;cursor:pointer;border:1px solid rgba(255,255,255,0.3);backdrop-filter:blur(4px);font-weight:500;">Salvar</span>'+
     '</div></div>'+
     '<input type="file" id="input-capa" accept="image/*" style="display:none;" onchange="uploadCapa(event)"/>'+
     '<img id="perfil-capa-preview" src="'+(perfil.capa||'')+'" style="display:none;"/>'+
@@ -6990,6 +6995,8 @@ window.uploadCapa=async function(e){
       const area=document.querySelector('.perfil-capa-placeholder');
       if(area) area.outerHTML='<img src="'+urlOtimizada+'" class="perfil-capa" id="perfil-capa-preview-img"/>';
     }
+    const btnSalvar=document.getElementById('btn-salvar-foto-perfil');
+    if(btnSalvar) btnSalvar.style.display='inline-block';
     showToast('Capa pronta! Clique em salvar.');
   }catch(e){showToast('Erro ao enviar capa.');}
 };
@@ -7011,6 +7018,8 @@ window.uploadFoto=async function(e){
     if(av){av.innerHTML='<img src="'+urlOtimizada+'" alt="foto"/>';}
     const bigImg=document.querySelector('.perfil-avatar-big img');
     if(bigImg)bigImg.src=urlOtimizada;
+    const btnSalvar=document.getElementById('btn-salvar-foto-perfil');
+    if(btnSalvar) btnSalvar.style.display='inline-block';
     showToast('Foto pronta! Clique em salvar.');
   }catch(e){showToast('Erro ao enviar foto.');}
 };
@@ -7018,6 +7027,25 @@ function cloudinaryFotoPerfil(url){
   if(!url||!url.includes('/upload/')) return url;
   return url.replace('/upload/','/upload/w_500,h_500,c_fill,g_auto,q_auto:best,f_auto,e_sharpen:60/');
 }
+window.salvarFotoPerfil=async function(){
+  const fotoEl=document.getElementById('perfil-foto-preview');
+  const capaEl=document.getElementById('perfil-capa-preview');
+  const fotoSrc=fotoEl?fotoEl.src:'';
+  const capaSrc=capaEl?capaEl.src:'';
+  const valido=(src)=>src&&src.length>10&&src!==window.location.href&&!src.endsWith('/');
+  const updates={};
+  if(valido(fotoSrc)&&fotoSrc!==userProfile.foto) updates.foto=fotoSrc;
+  if(valido(capaSrc)&&capaSrc!==userProfile.capa) updates.capa=capaSrc;
+  if(Object.keys(updates).length===0){showToast('Nada para salvar.');return;}
+  try{
+    await setDoc(doc(db,'usuarios',currentUser.uid),updates,{merge:true});
+    if(updates.foto) userProfile.foto=updates.foto;
+    if(updates.capa) userProfile.capa=updates.capa;
+    updateSidebarUser();
+    showToast('Foto atualizada!');
+    await renderPerfil(document.getElementById('mainContent'));
+  }catch(e){showToast('Erro ao salvar: '+e.message);}
+};
 window.salvarPerfil=async function(){
   const nome=document.getElementById('perfil-nome').value.trim();
   const fotoEl=document.getElementById('perfil-foto-preview');
