@@ -823,6 +823,17 @@ body.dark-mode select{background:#22263a;color:#e8eaf0;border-color:rgba(255,255
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         </button>
         <div id="nb-notif-wrap"></div>
+        <div class="nb-user-wrap" id="qfq-wrap">
+          <button class="nb-icon-btn" title="Quem faz o que" style="padding:5px;display:flex;align-items:center;position:relative;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            <span id="qfq-dot" style="display:none;position:absolute;top:2px;right:2px;width:7px;height:7px;border-radius:50%;background:#5DCAA5;"></span>
+          </button>
+          <div class="nb-user-dropdown">
+            <div class="nb-user-dropdown-inner" id="qfq-dropdown-inner" style="min-width:250px;max-height:340px;overflow-y:auto;">
+              <div style="padding:6px;font-size:11px;color:rgba(255,255,255,.5);">Carregando...</div>
+            </div>
+          </div>
+        </div>
         <img id="snakeCornerNav" src="" style="width:28px;height:28px;object-fit:contain;opacity:0.85;cursor:pointer;filter:drop-shadow(0 1px 4px rgba(0,0,0,0.3));transition:transform 0.15s,opacity 0.15s;" onclick="playSnakeSound()" title="Ssss..." onmouseover="this.style.transform='scale(1.12)'" onmouseout="this.style.transform='scale(1)'"/>
         <button class="nb-icon-btn" onclick="navigate('editarperfil')" title="Editar Perfil" style="padding:5px;display:flex;align-items:center;">
           <img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1781717151/user_wh77ep.png" style="width:18px;height:18px;object-fit:contain;"/>
@@ -1355,10 +1366,70 @@ function dataLocalStr(d){
 }
 
 
+let qfqUnsub=null, qfqOpsCache={};
+async function initQuemFazOQue(){
+  const snap=await getDocs(collection(db,'usuarios'));
+  qfqOpsCache={};
+  snap.forEach(d=>{const data=d.data();if(data.role==='op')qfqOpsCache[d.id]={nome:data.nome,foto:data.foto,cor:data.cor};});
+  if(qfqUnsub) qfqUnsub();
+  qfqUnsub=onSnapshot(doc(db,'quemFazOQue',dataLocalStr()),snap=>{
+    window._qfqData=snap.exists()?snap.data():{itens:{}};
+    renderQuemFazOQue();
+  });
+}
+function renderQuemFazOQue(){
+  const box=document.getElementById('qfq-dropdown-inner');
+  if(!box) return;
+  const isCoord=getPerms().isCoord;
+  const itens=(window._qfqData&&window._qfqData.itens)||{};
+  const uids=Object.keys(qfqOpsCache);
+  let temAlgo=false;
+  const rows=uids.map(uid=>{
+    const op=qfqOpsCache[uid];
+    const item=itens[uid];
+    const texto=item?item.texto:'';
+    if(texto) temAlgo=true;
+    const ini=(op.nome||'?').split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
+    const avHtml=op.foto?'<img src="'+op.foto+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/>':ini;
+    if(isCoord){
+      return '<div style="display:flex;align-items:center;gap:9px;padding:6px;">'+
+        '<div style="width:28px;height:28px;border-radius:50%;background:'+(op.cor||'#1A5C2A')+';color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;flex-shrink:0;overflow:hidden;">'+avHtml+'</div>'+
+        '<div style="flex:1;min-width:0;">'+
+          '<div style="font-size:11px;font-weight:500;color:#fff;margin-bottom:3px;">'+op.nome+'</div>'+
+          '<input id="qfq-input-'+uid+'" value="'+(texto||'').replace(/"/g,'&quot;')+'" placeholder="O que esta fazendo..." onkeydown="if(event.key===\'Enter\')this.blur()" onblur="qfqSave(\''+uid+'\')" style="width:100%;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:6px;padding:4px 8px;font-size:11px;color:#fff;font-family:var(--font);outline:none;"/>'+
+        '</div>'+
+      '</div>';
+    }
+    return '<div style="display:flex;align-items:center;gap:9px;padding:7px 6px;'+(texto?'':'opacity:.55;')+'">'+
+      '<div style="width:28px;height:28px;border-radius:50%;background:'+(op.cor||'#1A5C2A')+';color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;flex-shrink:0;overflow:hidden;">'+avHtml+'</div>'+
+      '<div style="flex:1;min-width:0;">'+
+        '<div style="font-size:12px;font-weight:500;color:#fff;">'+op.nome+'</div>'+
+        '<div style="font-size:11px;color:rgba(255,255,255,.55);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+(texto||'Sem tarefa definida')+'</div>'+
+      '</div>'+
+    '</div>';
+  }).join('');
+  box.innerHTML='<div style="font-size:12px;font-weight:500;color:rgba(255,255,255,.85);padding:4px 6px 8px;">Quem faz o que hoje</div>'+(rows||'<div style="padding:6px;font-size:11px;color:rgba(255,255,255,.5);">Nenhum operador cadastrado.</div>');
+  const dot=document.getElementById('qfq-dot');
+  if(dot) dot.style.display=temAlgo?'block':'none';
+}
+window.qfqSave=async function(uid){
+  const el=document.getElementById('qfq-input-'+uid);
+  if(!el) return;
+  const texto=el.value.trim();
+  const atual=(window._qfqData&&window._qfqData.itens)?{...window._qfqData.itens}:{};
+  if(texto){
+    atual[uid]={nome:(qfqOpsCache[uid]&&qfqOpsCache[uid].nome)||'',texto,ts:Date.now()};
+  } else {
+    delete atual[uid];
+  }
+  await setDoc(doc(db,'quemFazOQue',dataLocalStr()),{itens:atual});
+};
+
 function setupApp(){
   hide('loginScreen');show('appShell','flex');
   updateSidebarUser();buildNav();
   updateLedTermometro();
+  initQuemFazOQue();
   if(window._termometroInterval) clearInterval(window._termometroInterval);
   window._termometroInterval=setInterval(updateLedTermometro, 60000); // atualiza a cada minuto
   if(userProfile.bgColor) aplicarBg(userProfile.bgColor);
