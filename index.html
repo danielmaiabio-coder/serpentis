@@ -1368,13 +1368,21 @@ function dataLocalStr(d){
 
 let qfqUnsub=null, qfqOpsCache={};
 async function initQfqBarra(){
-  const snap=await getDocs(collection(db,'usuarios'));
-  qfqOpsCache={};
-  snap.forEach(d=>{const data=d.data();if(data.role==='op')qfqOpsCache[d.id]={nome:data.nome,foto:data.foto,cor:data.cor};});
+  const box=document.getElementById('qfq-dropdown-inner');
+  try{
+    const snap=await getDocs(collection(db,'usuarios'));
+    qfqOpsCache={};
+    snap.forEach(d=>{const data=d.data();if(data.role==='op')qfqOpsCache[d.id]={nome:data.nome,foto:data.foto,cor:data.cor};});
+  }catch(e){
+    if(box) box.innerHTML='<div style="padding:6px;font-size:11px;color:#F09595;">Erro ao carregar usuarios: '+e.message+'</div>';
+    return;
+  }
   if(qfqUnsub) qfqUnsub();
   qfqUnsub=onSnapshot(doc(db,'quemFazOQue',dataLocalStr()),snap=>{
     window._qfqData=snap.exists()?snap.data():{itens:{}};
     renderQfqBarra();
+  },err=>{
+    if(box) box.innerHTML='<div style="padding:6px;font-size:11px;color:#F09595;">Erro Firestore: '+err.message+'</div>';
   });
 }
 function renderQfqBarra(){
