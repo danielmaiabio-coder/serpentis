@@ -1367,17 +1367,17 @@ function dataLocalStr(d){
 
 
 let qfqUnsub=null, qfqOpsCache={};
-async function initQuemFazOQue(){
+async function initQfqBarra(){
   const snap=await getDocs(collection(db,'usuarios'));
   qfqOpsCache={};
   snap.forEach(d=>{const data=d.data();if(data.role==='op')qfqOpsCache[d.id]={nome:data.nome,foto:data.foto,cor:data.cor};});
   if(qfqUnsub) qfqUnsub();
   qfqUnsub=onSnapshot(doc(db,'quemFazOQue',dataLocalStr()),snap=>{
     window._qfqData=snap.exists()?snap.data():{itens:{}};
-    renderQuemFazOQue();
+    renderQfqBarra();
   });
 }
-function renderQuemFazOQue(){
+function renderQfqBarra(){
   const box=document.getElementById('qfq-dropdown-inner');
   if(!box) return;
   const isCoord=getPerms().isCoord;
@@ -1429,7 +1429,7 @@ function setupApp(){
   hide('loginScreen');show('appShell','flex');
   updateSidebarUser();buildNav();
   updateLedTermometro();
-  initQuemFazOQue();
+  initQfqBarra();
   if(window._termometroInterval) clearInterval(window._termometroInterval);
   window._termometroInterval=setInterval(updateLedTermometro, 60000); // atualiza a cada minuto
   if(userProfile.bgColor) aplicarBg(userProfile.bgColor);
