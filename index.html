@@ -9871,6 +9871,16 @@ async function renderCodigosOferta(mc){
             '<button onclick="msModeloSalvarN()" id="modal-n-save-btn" style="padding:8px 18px;background:var(--primary);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:13px;font-weight:500;cursor:pointer;">Salvar e ler U</button>'+
           '</div>'+
         '</div>'+
+      '</div>'+
+      // ── Modal Confirmacao (ultimas 3 linhas apos salvar) ──
+      '<div id="modal-turma-confirm" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:3100;align-items:center;justify-content:center;">'+
+        '<div style="background:var(--surface);border-radius:var(--radius-lg);padding:1.5rem;width:100%;max-width:760px;max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.4);">'+
+          '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">'+
+            '<div><div style="font-size:15px;font-weight:600;">✅ Registro salvo — confira na planilha</div><div style="font-size:12px;color:var(--text-2);margin-top:2px;">Últimas 3 linhas da aba Turmas, lidas agora do OneDrive</div></div>'+
+            '<button onclick="document.getElementById(\'modal-turma-confirm\').style.display=\'none\'" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-2);flex-shrink:0;">✕</button>'+
+          '</div>'+
+          '<div id="modal-turma-confirm-body"><div class="empty">Carregando...</div></div>'+
+        '</div>'+
       '</div>';
     window._msOfertaData=data||{};
   }
@@ -10034,10 +10044,37 @@ async function renderCodigosOferta(mc){
         const rows=await carregarAbaSeNecessario('Turmas');
         document.getElementById('oferta-table').innerHTML=buildTable(rows,q);
       }
+      await msOfertaMostrarConfirmacao();
     }catch(e){
       showToast('Erro: '+e.message);
     }finally{
       if(btn){btn.textContent='Salvar';btn.disabled=false;}
+    }
+  };
+
+  // ── Confirmacao pos-salvar: busca a aba de novo (bypass cache) e mostra as ultimas 3 linhas ──
+  window.msOfertaMostrarConfirmacao=async function(){
+    const modal=document.getElementById('modal-turma-confirm');
+    const body=document.getElementById('modal-turma-confirm-body');
+    modal.style.display='flex';
+    body.innerHTML='<div class="empty">Carregando...</div>';
+    try{
+      const rows=await fetchSheetData('Turmas'); // sempre busca fresco, ignora cache
+      window._msOfertaCache['Turmas']=rows;
+      const headers=rows[0]||[];
+      const dataRows=rows.slice(1).filter(r=>r.some(c=>c!==''&&c!==null));
+      const ultimas=dataRows.slice(-3).reverse();
+      if(ultimas.length===0){
+        body.innerHTML='<div class="empty">Nenhuma linha encontrada.</div>';
+        return;
+      }
+      body.innerHTML='<div style="overflow-x:auto;"><table class="hist-table" style="min-width:600px;">'+
+        '<thead><tr>'+headers.map(h=>'<th>'+(h||'')+'</th>').join('')+'</tr></thead>'+
+        '<tbody>'+ultimas.map((r,i)=>'<tr style="'+(i===0?'background:var(--primary-light);':'')+'">'+r.map(c=>'<td>'+(c??'')+'</td>').join('')+'</tr>').join('')+
+        '</tbody></table></div>'+
+        '<div style="font-size:11px;color:var(--text-3);margin-top:8px;">Linha destacada = mais recente.</div>';
+    }catch(e){
+      body.innerHTML='<div class="empty">Erro ao carregar: '+e.message+'</div>';
     }
   };
 
