@@ -1372,7 +1372,7 @@ async function initQfqBarra(){
   try{
     const snap=await getDocs(collection(db,'usuarios'));
     qfqOpsCache={};
-    snap.forEach(d=>{const data=d.data();if(data.role==='op')qfqOpsCache[d.id]={nome:data.nome,foto:data.foto,cor:data.cor};});
+    snap.forEach(d=>{const data=d.data();if(data.role==='op'&&data.ativo!==false)qfqOpsCache[d.id]={nome:data.nome,foto:data.foto,cor:data.cor};});
   }catch(e){
     if(box) box.innerHTML='<div style="padding:6px;font-size:11px;color:#F09595;">Erro ao carregar usuarios: '+e.message+'</div>';
     return;
@@ -1757,7 +1757,7 @@ async function _ruCarregar(semanaFiltro){
     getDocs(collection(db,'ex_operadores'))
   ]);
   const todosOps=[];
-  opsSnap.forEach(d=>{const u=d.data();if(u.role==='op') todosOps.push({uid:d.id,nome:u.nome,foto:u.foto,cor:u.cor,isEx:false});});
+  opsSnap.forEach(d=>{const u=d.data();if(u.role==='op'&&u.ativo!==false) todosOps.push({uid:d.id,nome:u.nome,foto:u.foto,cor:u.cor,isEx:false});});
   exSnap.forEach(d=>todosOps.push({uid:d.id,...d.data(),isEx:true}));
 
   // Load ALL historicos in parallel (one read per operator)
@@ -1878,7 +1878,8 @@ async function renderExEquipe(mc){
       '<div class="page-title">Ex-Operadores</div>'+
       '<div class="page-sub">Histórico de membros anteriores da equipe</div>'+
     '</div>'+
-    '<div style="display:flex;justify-content:flex-end;margin-bottom:1rem;">'+
+    '<div style="display:flex;justify-content:flex-end;gap:10px;margin-bottom:1rem;">'+
+      '<button onclick="window._exOpMigrarAbrir()" style="padding:8px 18px;background:transparent;border:1px solid var(--border-md);color:var(--text-2);border-radius:var(--radius);font-family:var(--font);font-size:13px;font-weight:500;cursor:pointer;">🔄 Migrar operador existente</button>'+
       '<button onclick="window._exOpAdicionar()" style="padding:8px 18px;background:var(--primary);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:13px;font-weight:500;cursor:pointer;">+ Adicionar ex-operador</button>'+
     '</div>'+
     (exOps.length===0
@@ -1914,7 +1915,59 @@ async function renderExEquipe(mc){
           '<button onclick="window._exOpSalvar()" style="padding:9px 18px;background:var(--primary);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:13px;font-weight:600;cursor:pointer;">Salvar</button>'+
         '</div>'+
       '</div>'+
+    '</div>'+
+    // Modal de migrar operador existente
+    '<div id="ex-op-migrar-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:3000;align-items:center;justify-content:center;">'+
+      '<div style="background:var(--surface);border:1px solid var(--border-md);border-radius:14px;padding:24px;width:100%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,0.4);">'+
+        '<div style="font-size:16px;font-weight:600;color:var(--text);margin-bottom:8px;">🔄 Migrar operador existente</div>'+
+        '<div style="font-size:12px;color:var(--text-3);margin-bottom:16px;">Move um operador ativo para Ex da Equipe mantendo historico, feedbacks e notas ja salvos. O login dela continua funcionando.</div>'+
+        '<div style="margin-bottom:12px;"><label style="font-size:11px;font-weight:600;color:var(--text-2);text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:5px;">Operador *</label>'+
+        '<select id="ex-op-migrar-uid" style="width:100%;padding:9px 12px;background:var(--bg);border:1px solid var(--border-md);border-radius:var(--radius);color:var(--text);font-family:var(--font);font-size:14px;"><option value="">Carregando...</option></select></div>'+
+        '<div style="margin-bottom:16px;"><label style="font-size:11px;font-weight:600;color:var(--text-2);text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:5px;">Período</label>'+
+        '<input id="ex-op-migrar-periodo" type="text" placeholder="Ex: Jan–Ago 2026" style="width:100%;padding:9px 12px;background:var(--bg);border:1px solid var(--border-md);border-radius:var(--radius);color:var(--text);font-family:var(--font);font-size:14px;"></div>'+
+        '<div style="display:flex;gap:10px;justify-content:flex-end;">'+
+          '<button onclick="document.getElementById(\'ex-op-migrar-modal\').style.display=\'none\'" style="padding:9px 18px;background:transparent;border:1px solid var(--border-md);color:var(--text-2);border-radius:var(--radius);font-family:var(--font);font-size:13px;cursor:pointer;">Cancelar</button>'+
+          '<button onclick="window._exOpMigrarConfirmar()" style="padding:9px 18px;background:var(--primary);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:13px;font-weight:600;cursor:pointer;">Migrar</button>'+
+        '</div>'+
+      '</div>'+
     '</div>';
+
+  window._exOpMigrarAbrir=async function(){
+    const modal=document.getElementById('ex-op-migrar-modal');
+    const sel=document.getElementById('ex-op-migrar-uid');
+    document.getElementById('ex-op-migrar-periodo').value='';
+    sel.innerHTML='<option value="">Carregando...</option>';
+    modal.style.display='flex';
+    try{
+      const snap=await getDocs(collection(db,'usuarios'));
+      const ativos=[];
+      snap.forEach(d=>{const data=d.data();if(data.role==='op'&&data.ativo!==false)ativos.push({uid:d.id,nome:data.nome||'(sem nome)'});});
+      ativos.sort((a,b)=>a.nome.localeCompare(b.nome));
+      sel.innerHTML=ativos.length
+        ? ativos.map(o=>`<option value="${o.uid}">${o.nome}</option>`).join('')
+        : '<option value="">Nenhum operador ativo</option>';
+    }catch(e){
+      sel.innerHTML='<option value="">Erro ao carregar</option>';
+    }
+  };
+
+  window._exOpMigrarConfirmar=async function(){
+    const sel=document.getElementById('ex-op-migrar-uid');
+    const uid=sel.value;
+    if(!uid){showToast('Selecione um operador.');return;}
+    const nome=sel.options[sel.selectedIndex].textContent;
+    const periodo=document.getElementById('ex-op-migrar-periodo').value.trim();
+    if(!confirm('Migrar '+nome+' para Ex da Equipe?\n\nHistorico, feedbacks e notas continuam preservados. Ela sai das telas de equipe ativa, mas o login continua funcionando normalmente.')) return;
+    try{
+      const usnap=await getDoc(doc(db,'usuarios',uid));
+      const udata=usnap.exists()?usnap.data():{};
+      await setDoc(doc(db,'ex_operadores',uid),{nome,periodo,role:'op',isExOp:true,foto:udata.foto||null,cor:udata.cor||null,ts:Date.now(),migradoDeAtivo:true});
+      await setDoc(doc(db,'usuarios',uid),{ativo:false},{merge:true});
+      showToast('Migrado para Ex da Equipe!');
+      document.getElementById('ex-op-migrar-modal').style.display='none';
+      renderExEquipe(document.getElementById('mainContent'));
+    }catch(e){showToast('Erro ao migrar: '+e.message);}
+  };
 
   window._exOpAdicionar=function(){
     document.getElementById('ex-op-modal').style.display='flex';
@@ -1956,7 +2009,7 @@ async function renderExEquipe(mc){
 
 async function renderEquipe(mc){
   const snap=await getDocs(collection(db,'usuarios'));const ops=[];
-  snap.forEach(d=>{const data=d.data();if(data.role==='op'){ops.push({uid:d.id,...data});opsCache[d.id]=data.nome;}});
+  snap.forEach(d=>{const data=d.data();if(data.role==='op'&&data.ativo!==false){ops.push({uid:d.id,...data});opsCache[d.id]=data.nome;}});
   mc.innerHTML=snakeHtml()+'<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;"><div class="page-eyebrow">* Minha Equipe</div><div class="page-title">Equipe</div><div class="page-sub">Selecione um operador</div></div>'+
     (ops.length===0?'<div class="empty">Nenhum operador cadastrado.</div>':ops.map(op=>{
       const ini=(op.nome||'?').split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
@@ -1967,7 +2020,7 @@ async function renderEquipe(mc){
 
 async function renderLancar(mc){
   const snap=await getDocs(collection(db,'usuarios'));const ops=[];
-  snap.forEach(d=>{const data=d.data();if(data.role==='op')ops.push({uid:d.id,...data});});
+  snap.forEach(d=>{const data=d.data();if(data.role==='op'&&data.ativo!==false)ops.push({uid:d.id,...data});});
   // store ops on mc for global import
   mc._ops = ops;
   mc.innerHTML=snakeHtml()+'<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">'+
@@ -3926,7 +3979,7 @@ async function renderEscala(mc){
   const watiDaniel=escala.watiDaniel||[{},{},{},{}];
   const snap2=await getDocs(collection(db,'usuarios'));
   const ops=[];
-  snap2.forEach(function(d){var data=d.data();if(data.role==='op')ops.push({uid:d.id,nome:data.nome,email:data.email});});
+  snap2.forEach(function(d){var data=d.data();if(data.role==='op'&&data.ativo!==false)ops.push({uid:d.id,nome:data.nome,email:data.email});});
 
   // Check if current user is escalado THIS week
   const hoje=new Date();
@@ -4914,7 +4967,7 @@ async function renderEscritorio(mc,activeTab){
   if(!isCoord){mc.innerHTML=snakeHtml()+'<div class="empty">Acesso restrito ao coordenador.</div>';return;}
   const snap=await getDocs(collection(db,'usuarios'));
   const ops=[];
-  snap.forEach(d=>{const data=d.data();if(data.role==='op')ops.push({uid:d.id,...data});});
+  snap.forEach(d=>{const data=d.data();if(data.role==='op'&&data.ativo!==false)ops.push({uid:d.id,...data});});
 
   const tabBtn=(id,label)=>{
     const active=activeTab===id;
@@ -8882,7 +8935,7 @@ async function carregarTermometroHistorico(){
     let totalOperadoresAtivos=0;
     usuariosSnap.forEach(d=>{
       const u=d.data();
-      if(u.role==='op'){
+      if(u.role==='op'&&u.ativo!==false){
         const nomeNorm=(u.nome||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
         if(!EXCLUIR_TERM.includes(nomeNorm)) totalOperadoresAtivos++;
       }
