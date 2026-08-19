@@ -39,6 +39,7 @@ module.exports = async function handler(req, res) {
       }
     }
 
+    const via = tData.ticket.via || {};
     res.status(200).json({
       ticket: {
         id: tData.ticket.id,
@@ -46,11 +47,17 @@ module.exports = async function handler(req, res) {
         status: tData.ticket.status,
         priority: tData.ticket.priority,
         requester_name: requesterName,
+        requester_id: tData.ticket.requester_id,
+        channel: via.channel || null,
+        via_from: (via.source && via.source.from) || null,
+        via_to: (via.source && via.source.to) || null,
         tags: tData.ticket.tags,
       },
       comments: (cData.comments || []).map(c => ({
         id: c.id,
         author_id: c.author_id,
+        is_requester: c.author_id === tData.ticket.requester_id,
+        channel: (c.via && c.via.channel) || null,
         body: c.plain_body || c.body,
         public: c.public,
         created_at: c.created_at,
