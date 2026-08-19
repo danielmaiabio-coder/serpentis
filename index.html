@@ -4102,23 +4102,48 @@ async function zdFetch(path,opts){
   return data;
 }
 
+const ZD_VIEWS=[
+  {id:'24470168935444',label:'🫂 Meus tickets sem resolução'},
+  {id:'25525906945556',label:'😴 Meus tickets pendentes'},
+  {id:'25525886586772',label:'🚀 Meus tickets resolvidos'},
+  {id:'25746423406740',label:'🥅 Sem dono - Cobrança'},
+  {id:'25746480058260',label:'⏱️ Não resolvidos - Cobrança'},
+  {id:'',label:'📋 Todos (abertos/pendentes)'},
+];
+let zdViewAtual=ZD_VIEWS[0].id;
 let zdTicketAtual=null;
+
+function zdPillsHtml(){
+  return ZD_VIEWS.map(v=>{
+    const ativo=v.id===zdViewAtual;
+    return '<button onclick="zdSelecionarView(\''+v.id+'\')" style="padding:7px 14px;border-radius:20px;border:1px solid '+(ativo?'var(--primary)':'var(--border-md)')+';background:'+(ativo?'var(--primary)':'transparent')+';color:'+(ativo?'#fff':'var(--text-2)')+';font-family:var(--font);font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap;">'+v.label+'</button>';
+  }).join('');
+}
 
 async function renderZendesk(mc){
   mc.innerHTML=snakeHtml()+
-    '<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;"><div class="page-eyebrow">🎫 Zendesk</div><div class="page-title">Tickets</div><div class="page-sub">Abertos e pendentes, mais recentes primeiro</div></div>'+
+    '<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;"><div class="page-eyebrow">🎫 Zendesk</div><div class="page-title">Tickets</div><div class="page-sub">Escolha uma visualização</div></div>'+
+    '<div id="zd-pills" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1rem;">'+zdPillsHtml()+'</div>'+
     '<div id="zd-conteudo"><div class="empty">Carregando tickets...</div></div>';
   await window.zdCarregarLista();
 }
+
+window.zdSelecionarView=async function(viewId){
+  zdViewAtual=viewId;
+  const pillsWrap=document.getElementById('zd-pills');
+  if(pillsWrap) pillsWrap.innerHTML=zdPillsHtml();
+  await window.zdCarregarLista();
+};
 
 window.zdCarregarLista=async function(){
   const wrap=document.getElementById('zd-conteudo');
   if(!wrap) return;
   wrap.innerHTML='<div class="empty">Carregando tickets...</div>';
   try{
-    const data=await zdFetch('/api/zendesk/tickets');
+    const path=zdViewAtual?('/api/zendesk/view-tickets?view_id='+zdViewAtual):'/api/zendesk/tickets';
+    const data=await zdFetch(path);
     const tickets=data.tickets||[];
-    if(tickets.length===0){ wrap.innerHTML='<div class="panel"><div class="empty">Nenhum ticket aberto ou pendente. 🎉</div></div>'; return; }
+    if(tickets.length===0){ wrap.innerHTML='<div class="panel"><div class="empty">Nenhum ticket nessa visualização. 🎉</div></div>'; return; }
     const corStatus={new:'#3b82f6',open:'#f59e0b',pending:'#8b5cf6',hold:'#6b7280'};
     const corPrioridade={urgent:'#ef4444',high:'#f97316',normal:'#6b7280',low:'#9ca3af'};
     wrap.innerHTML='<div style="display:flex;flex-direction:column;gap:8px;">'+
