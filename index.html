@@ -4006,6 +4006,32 @@ window.salvarLinksBulk=async function(){
   if(ok>0) setTimeout(()=>renderLinks(document.getElementById('mainContent')),800);
 };
 
+function legacyDatesParaISO(datesStr){
+  if(!datesStr) return null;
+  const matches=[...datesStr.matchAll(/(\d{2})\/(\d{2})/g)];
+  if(!matches||matches.length<1) return null;
+  const ano=new Date().getFullYear();
+  const pad=n=>String(n).padStart(2,'0');
+  const inicio=ano+'-'+pad(matches[0][2])+'-'+pad(matches[0][1]);
+  let fim;
+  if(matches.length>=2){
+    fim=ano+'-'+pad(matches[1][2])+'-'+pad(matches[1][1]);
+  } else {
+    const dt=new Date(ano,parseInt(matches[0][2])-1,parseInt(matches[0][1]));
+    dt.setDate(dt.getDate()+6);
+    fim=dt.getFullYear()+'-'+pad(dt.getMonth()+1)+'-'+pad(dt.getDate());
+  }
+  return {inicio,fim};
+}
+function formatarPeriodoEscala(sem){
+  if(sem.inicio&&sem.fim){
+    const [,m1,d1]=sem.inicio.split('-');
+    const [,m2,d2]=sem.fim.split('-');
+    return d1+'/'+m1+' até '+d2+'/'+m2;
+  }
+  return sem.dates||'';
+}
+
 async function renderEscala(mc){
   const isCoord=userProfile.role==='coord';
   const snap=await getDoc(doc(db,'config','escala'));
@@ -4016,109 +4042,21 @@ async function renderEscala(mc){
   const ops=[];
   snap2.forEach(function(d){var data=d.data();if(data.role==='op'&&data.ativo!==false)ops.push({uid:d.id,nome:data.nome,email:data.email});});
 
-  // Check if current user is escalado THIS week
-  const hoje=new Date();
-  const nome=(userProfile.nome||'').toLowerCase();
-  let escaladoAgora=null;
-
-  function isThisWeek(datesStr){
-    if(!datesStr)return false;
-    // Parse "15/06 a 19/06" — pega início E fim explicitamente
-    const matches=[...datesStr.matchAll(/(\d{2})\/(\d{2})/g)];
-    if(!matches||matches.length<1)return false;
-    const ano=hoje.getFullYear();
-    const [d1,m1]=[parseInt(matches[0][1]),parseInt(matches[0][2])-1];
-    const inicio=new Date(ano,m1,d1);
-    inicio.setHours(0,0,0,0);
-    let fim;
-    if(matches.length>=2){
-      const [d2,m2]=[parseInt(matches[1][1]),parseInt(matches[1][2])-1];
-      fim=new Date(ano,m2,d2);
-    } else {
-      fim=new Date(inicio);fim.setDate(fim.getDate()+6);
-    }
-    fim.setHours(23,59,59,999);
-    const hojeClean=new Date(hoje);hojeClean.setHours(0,0,0,0);
-    return hojeClean>=inicio&&hojeClean<=fim;
-  }
-
-  [...watiPedro.map((s,i)=>({...s,wati:'WATI Pedro'})),...watiDaniel.map((s,i)=>({...s,wati:'WATI Daniel'}))].forEach(s=>{
-    if(s.operador&&s.operador.toLowerCase()===nome&&isThisWeek(s.dates)){
-      escaladoAgora={wati:s.wati,dates:s.dates};
-    }
-  });
-
-  // Load today's pontos if escalado
-  let pontosHoje=[];
-  if(escaladoAgora){
-    const dataKey=hoje.toISOString().split('T')[0];
-    try{
-      const pontoSnap=await getDocs(query(collection(db,'roteamento_pontos',currentUser.uid,'pontos'),where('dataKey','==',dataKey),orderBy('ts','asc')));
-      pontoSnap.forEach(d=>pontosHoje.push({id:d.id,...d.data()}));
-    }catch(e){pontosHoje=[];}
-  }
-
-  // Build high-five button section
-  let highFiveHtml='';
-  if(escaladoAgora&&!isCoord){
-    const agora=hoje;
-    const diaSemana=agora.getDay(); // 0=dom, 6=sab
-    const ehDiaUtil=diaSemana>=1&&diaSemana<=5;
-    const totalMin=agora.getHours()*60+agora.getMinutes();
-    // Slots liberados: 09h15, 10h15, ..., 17h15
-    const slots=[9*60+15,10*60+15,11*60+15,12*60+15,13*60+15,14*60+15,15*60+15,16*60+15,17*60+15];
-    const ultimo=pontosHoje.length?pontosHoje[pontosHoje.length-1]:null;
-    // Slot atual = maior slot que já chegou
-    const slotAtual=slots.filter(s=>s<=totalMin).pop();
-    // Próximo slot futuro
-    const proximoSlot=slots.find(s=>s>totalMin);
-    // Verifica se já bateu neste slot (entre slotAtual e proximoSlot)
-    const slotAtualJaBatido=slotAtual!==undefined&&pontosHoje.some(p=>{
-      const [h,m]=p.hora.split(':').map(Number);
-      const pMin=h*60+m;
-      return pMin>=slotAtual&&(proximoSlot===undefined||pMin<proximoSlot);
-    });
-    const podeBater=ehDiaUtil&&slotAtual!==undefined&&!slotAtualJaBatido;
-
-    let statusMsg='';
-    if(!ehDiaUtil){
-      statusMsg='Disponível apenas de segunda a sexta';
-    } else if(slotAtual===undefined){
-      statusMsg='Disponível a partir das 09h15';
-    } else if(slotAtualJaBatido){
-      if(proximoSlot){
-        const h=Math.floor(proximoSlot/60),m=proximoSlot%60;
-        statusMsg='Próximo High Five às '+h+'h'+(m<10?'0'+m:m);
-      } else {
-        statusMsg='Todos os High Fives do dia concluídos! 🎉';
-      }
-    }
-
-    highFiveHtml='<div style="background:linear-gradient(135deg,#1e3a8a,#2563eb);border-radius:var(--radius-lg);padding:1.5rem 2rem;margin-bottom:1.5rem;color:#fff;">'+
-      '<div style="font-size:11px;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">Você está escalado agora · '+escaladoAgora.wati+'</div>'+
-      '<div style="display:flex;align-items:center;gap:1.5rem;flex-wrap:wrap;">'+
-      '<div>'+
-      '<div style="font-size:15px;font-weight:500;margin-bottom:4px;">High Fives hoje: <b>'+pontosHoje.length+'</b></div>'+
-      '<div style="font-size:12px;color:rgba(255,255,255,0.6);">'+pontosHoje.map(p=>'✓ '+p.hora).join(' · ')+'</div>'+
-      '</div>'+
-      (podeBater?
-        '<button onclick="baterPontoRoteamento()" style="margin-left:auto;padding:16px 24px;background:rgba(255,255,255,0.15);border:2px solid rgba(255,255,255,0.3);border-radius:16px;cursor:pointer;font-size:36px;transition:all 0.15s;backdrop-filter:blur(4px);" title="Dar High Five!" onmouseover="this.style.background=\'rgba(255,255,255,0.25)\'" onmouseout="this.style.background=\'rgba(255,255,255,0.15)\'">🖐️</button>'
-        :
-        '<div style="margin-left:auto;padding:16px 24px;background:rgba(0,0,0,0.2);border:2px solid rgba(255,255,255,0.1);border-radius:16px;font-size:36px;opacity:0.4;" title="'+statusMsg+'">🖐️</div>'
-      )+
-      '</div>'+
-      (statusMsg?'<div style="font-size:11px;color:rgba(255,255,255,0.5);margin-top:8px;">'+statusMsg+'</div>':'')+
-      '</div>';
-  }
-
   function renderGrid(key,semanas){
     var html='';
     for(var i=0;i<4;i++){
       var sem=semanas[i]||{};
+      var legacy=(!sem.inicio&&sem.dates)?legacyDatesParaISO(sem.dates):null;
+      var inicioVal=sem.inicio||(legacy&&legacy.inicio)||'';
+      var fimVal=sem.fim||(legacy&&legacy.fim)||'';
       html+='<div class="escala-item"><div class="escala-week">Semana '+(i+1)+'</div>';
       if(isCoord){
-        html+='<div style="margin-bottom:8px;"><label class="inp-label" style="font-size:10px;">Datas</label>';
-        html+='<input type="text" class="inp" id="'+key+'-dates-'+i+'" value="'+(sem.dates||'')+'" placeholder="02/06 a 06/06" style="font-size:12px;padding:6px 10px;"/></div>';
+        html+='<div style="display:flex;gap:8px;margin-bottom:8px;">';
+        html+='<div style="flex:1;"><label class="inp-label" style="font-size:10px;">Inicio</label>';
+        html+='<input type="date" class="inp" id="'+key+'-inicio-'+i+'" value="'+inicioVal+'" style="font-size:12px;padding:6px 8px;"/></div>';
+        html+='<div style="flex:1;"><label class="inp-label" style="font-size:10px;">Fim</label>';
+        html+='<input type="date" class="inp" id="'+key+'-fim-'+i+'" value="'+fimVal+'" style="font-size:12px;padding:6px 8px;"/></div>';
+        html+='</div>';
         html+='<div><label class="inp-label" style="font-size:10px;">Operador</label>';
         html+='<select class="inp" id="'+key+'-op-'+i+'" style="font-size:12px;padding:6px 10px;">';
         html+='<option value="">selecionar</option>';
@@ -4128,7 +4066,7 @@ async function renderEscala(mc){
         html+='</select></div>';
       } else {
         html+='<div class="escala-name">'+(sem.operador||'-')+'</div>';
-        html+='<div class="escala-dates">'+(sem.dates||'')+'</div>';
+        html+='<div class="escala-dates">'+formatarPeriodoEscala(sem)+'</div>';
       }
       html+='</div>';
     }
@@ -4137,29 +4075,16 @@ async function renderEscala(mc){
 
   mc.innerHTML=snakeHtml()+
     '<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;"><div class="page-eyebrow">&#9679; Escala de Roteamento</div><div class="page-title">Escala do mes</div><div class="page-sub">Distribuicao dos operadores por semana</div></div>'+
-    highFiveHtml+
     '<div class="escala-section"><div class="escala-section-title">WATI Pedro</div>'+
     '<div class="escala-grid">'+renderGrid('pedro',watiPedro)+'</div></div>'+
     '<div class="escala-section"><div class="escala-section-title">WATI Daniel</div>'+
     '<div class="escala-grid">'+renderGrid('daniel',watiDaniel)+'</div></div>'+
     (isCoord?'<div style="margin-top:1rem;"><button class="btn-blue" onclick="salvarEscala()">Publicar escala</button></div>':'');
 }
-window.baterPontoRoteamento=async function(){
-  const agora=new Date();
-  const hora=agora.getHours().toString().padStart(2,'0')+':'+agora.getMinutes().toString().padStart(2,'0');
-  const dataKey=agora.toISOString().split('T')[0];
-  try{
-    await addDoc(collection(db,'roteamento_pontos',currentUser.uid,'pontos'),{
-      hora,dataKey,ts:Date.now(),nome:userProfile.nome||'?'
-    });
-    showToast('🖐️ High Five registrado às '+hora+'!');
-    await renderEscala(document.getElementById('mainContent'));
-  }catch(e){showToast('Erro ao registrar ponto.');}
-};
 
 window.salvarEscala=async function(){
-  const watiPedro=[0,1,2,3].map(i=>({dates:document.getElementById('pedro-dates-'+i).value.trim(),operador:document.getElementById('pedro-op-'+i).value}));
-  const watiDaniel=[0,1,2,3].map(i=>({dates:document.getElementById('daniel-dates-'+i).value.trim(),operador:document.getElementById('daniel-op-'+i).value}));
+  const watiPedro=[0,1,2,3].map(i=>({inicio:document.getElementById('pedro-inicio-'+i).value,fim:document.getElementById('pedro-fim-'+i).value,operador:document.getElementById('pedro-op-'+i).value}));
+  const watiDaniel=[0,1,2,3].map(i=>({inicio:document.getElementById('daniel-inicio-'+i).value,fim:document.getElementById('daniel-fim-'+i).value,operador:document.getElementById('daniel-op-'+i).value}));
   try{await setDoc(doc(db,'config','escala'),{watiPedro,watiDaniel,ts:Date.now()});showToast('Escala publicada!');await renderEscala(document.getElementById('mainContent'));}
   catch(e){showToast('Erro.');}
 };
@@ -5628,62 +5553,6 @@ async function setupBadges(){
       }
     });
   }
-
-  // 2) High Five — avisa 1 min antes de cada slot (09:15, 10:15 ... 17:15)
-  // Só para quem está escalado nesta semana
-  (async()=>{
-    const escSnap = await getDoc(doc(db,'config','escala'));
-    if(!escSnap.exists()||userProfile.role==='coord') return;
-    const escData = escSnap.data();
-    const nome = (userProfile.nome||'').toLowerCase();
-    function isThisWeekHF(datesStr){
-      if(!datesStr) return false;
-      const matches=[...datesStr.matchAll(/(\d{2})\/(\d{2})/g)];
-      if(!matches||matches.length<1) return false;
-      const hoje=new Date(); hoje.setHours(0,0,0,0);
-      const ano=hoje.getFullYear();
-      const [d1,m1]=[parseInt(matches[0][1]),parseInt(matches[0][2])-1];
-      const inicio=new Date(ano,m1,d1); inicio.setHours(0,0,0,0);
-      let fim;
-      if(matches.length>=2){const [d2,m2]=[parseInt(matches[1][1]),parseInt(matches[1][2])-1];fim=new Date(ano,m2,d2);}
-      else{fim=new Date(inicio);fim.setDate(fim.getDate()+6);}
-      fim.setHours(23,59,59,999);
-      return hoje>=inicio&&hoje<=fim;
-    }
-    let escalado = false;
-    ['watiPedro','watiDaniel'].forEach(wati=>{
-      (escData[wati]||[]).forEach(sem=>{
-        if(sem.operador&&sem.operador.toLowerCase()===nome&&isThisWeekHF(sem.dates)) escalado=true;
-      });
-    });
-    if(!escalado) return;
-
-    const HF_SLOTS = [9*60+15,10*60+15,11*60+15,12*60+15,13*60+15,14*60+15,15*60+15,16*60+15,17*60+15];
-    const HF_NOTIF_KEY = 'notif_hf_fired_'; // + date + slot
-
-    function scheduleHFNotifs(){
-      const now = new Date();
-      const dow = now.getDay();
-      if(dow===0||dow===6) return; // só dias úteis
-      const todayStr = dataLocalStr(now);
-      const nowMin = now.getHours()*60+now.getMinutes();
-
-      HF_SLOTS.forEach(slot=>{
-        const key = HF_NOTIF_KEY+todayStr+'-'+slot;
-        if(localStorage.getItem(key)) return; // já disparou hoje neste slot
-        const msUntil = (slot-1)*60*1000 - (nowMin*60+now.getSeconds())*1000; // 1 min antes
-        if(msUntil > 0 && msUntil < 4*60*60*1000){ // só agenda se for nas próximas 4h
-          setTimeout(()=>{
-            localStorage.setItem(key,'1');
-            notificarBrowser('🖐️ Hora do High Five!', 'Seu High Five está disponível em 1 minuto (às '+(Math.floor(slot/60))+'h'+(slot%60<10?'0'+slot%60:slot%60)+').');
-          }, msUntil);
-        }
-      });
-    }
-    scheduleHFNotifs();
-    // Re-agenda a cada hora para pegar novos slots
-    setInterval(scheduleHFNotifs, 60*60*1000);
-  })();
 
   // 3) Reunião próxima — 30 min e 5 min antes
   (async()=>{
