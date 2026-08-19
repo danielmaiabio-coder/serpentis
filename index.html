@@ -914,7 +914,7 @@ body.dark-mode select{background:#22263a;color:#e8eaf0;border-color:rgba(255,255
 <div class="toast" id="toast"></div>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, updatePassword, sendPasswordResetEmail, EmailAuthProvider, reauthenticateWithCredential } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, updatePassword, sendPasswordResetEmail, EmailAuthProvider, reauthenticateWithCredential, getIdToken } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDocs, query, where, limit, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const SNAKE_IMG = "https://res.cloudinary.com/dbd9hpwyb/image/upload/q_auto/f_auto/v1780709517/snake_jet3mt.png";
@@ -1496,7 +1496,7 @@ function buildNav(){
   let socialItems=ddItem('feed','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780800099/foto_feed_zkeahk.png"/>Feed da Cobranca')+ddItem('perfis','👥 Perfis');
   html+=group('social','Social',socialItems);
   if(!isViewer){
-    let utilItems=ddItem('copys','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780800196/copy_b0dpnq.png"/>Banco de Copys')+ddItem('links','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780800378/links_wnwufb.jpg"/>Links de Reneg.')+ddItem('escala','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780800513/rotear_wgszyx.png"/>Escala de Roteamento')+ddItem('calc','🧮 Calculadoras')+ddItem('infos','💡 Informacoes Uteis')+ddItem('codigosoferta','📊 Cod. de Oferta')+ddItem('formsplanilhas','📋 Forms/Planilhas')+ddItem('hashtube','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1782143284/hashtube2_zwqefx.png"/>Hashtube')+'<button class="nb-dd-item" onclick="nbClose();window.forcarAtualizacao()"><span class="nb-icon">🔄</span>Atualizar</button>';
+    let utilItems=ddItem('copys','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780800196/copy_b0dpnq.png"/>Banco de Copys')+ddItem('links','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780800378/links_wnwufb.jpg"/>Links de Reneg.')+ddItem('escala','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780800513/rotear_wgszyx.png"/>Escala de Roteamento')+ddItem('zendesk','<span class="nb-icon">🎫</span>Zendesk')+ddItem('calc','🧮 Calculadoras')+ddItem('infos','💡 Informacoes Uteis')+ddItem('codigosoferta','📊 Cod. de Oferta')+ddItem('formsplanilhas','📋 Forms/Planilhas')+ddItem('hashtube','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1782143284/hashtube2_zwqefx.png"/>Hashtube')+'<button class="nb-dd-item" onclick="nbClose();window.forcarAtualizacao()"><span class="nb-icon">🔄</span>Atualizar</button>';
     html+=group('utils','Utilidades',utilItems);
   }
   let contaItems=ddItem('perfil','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780845592/home_w6kzpw.png"/>Pagina Inicial')+ddItem('agenda','<span class="nb-icon">📅</span>Agenda')+ddItem('caderno','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780802371/historico_zbvzr3.png"/>Caderno')+ddItem('basilisco','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780873587/dark_snake_puyvhs.png"/>Basilisco')+ddItem('feriastime','<span class="nb-icon">🏖️</span>Ferias do Time')+ddItem('lembretes','<span class="nb-icon">⏰</span>Lembretes')+(canMinhaCobranca?ddItem('minha_cobranca','<span class="nb-icon">💳</span>Minha Cobrança'):'')+(!isViewer?ddItem('feedback','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780803681/chatting_xdxyho.png"/>Feedbacks'):'');
@@ -1535,6 +1535,7 @@ const QUICK_SEARCH_PAGES=[
   {page:'feedback',label:'Feedbacks',icon:'📝'},
   {page:'feed',label:'Feed / Social',icon:'📰'},
   {page:'basilisco',label:'Basilisco (Xadrez)',icon:'♟️'},
+  {page:'zendesk',label:'Zendesk',icon:'🎫'},
   {page:'agenda',label:'Agenda',icon:'📅'},
   {page:'caderno',label:'Caderno',icon:'📓'},
   {page:'feriastime',label:'Ferias do Time',icon:'🏖️'},
@@ -1661,7 +1662,7 @@ document.addEventListener('keydown',function(e){
 });
 
 // ── URLs por pagina (fase 1: telas principais da navbar; fase 2: sub-telas por operador) ──
-const HASH_PAGES=['equipe','escritorio','lancar','copys','links','escala','calc','calcquit','calcreneg','relatorio_disparos','infos','agenda','codigosoferta','formsplanilhas','hashtube','feriastime','minha_cobranca','lembretes','editarperfil','termometro','basilisco','perfis','caderno','perfil','feed','resultado_unificado','ex_equipe'];
+const HASH_PAGES=['equipe','escritorio','lancar','copys','links','escala','calc','calcquit','calcreneg','relatorio_disparos','infos','agenda','codigosoferta','formsplanilhas','hashtube','feriastime','minha_cobranca','lembretes','editarperfil','termometro','basilisco','perfis','caderno','perfil','feed','resultado_unificado','ex_equipe','zendesk'];
 const HASH_OP_PAGES=['resultado','historico','notas','dashboard','feedback'];
 function parseHash(){
   const parts=(location.hash||'').replace(/^#\/?/,'').split('/').filter(Boolean);
@@ -1731,6 +1732,7 @@ window.navigate=async function(page,historyMode){
   if(page==='editarperfil'){await renderEditarPerfil(mc);return;}
   if(page==='termometro'){await renderTermometroPagina(mc);return;}
   if(page==='basilisco'){await renderBasilisco(mc);return;}
+  if(page==='zendesk'){await renderZendesk(mc);return;}
   if(page==='perfis'){await renderPerfis(mc);return;}
   if(page==='caderno'){await renderCaderno(mc);return;}
   if(page==='perfil'){await renderPerfil(mc);return;}
@@ -4087,6 +4089,111 @@ window.salvarEscala=async function(){
   const watiDaniel=[0,1,2,3].map(i=>({inicio:document.getElementById('daniel-inicio-'+i).value,fim:document.getElementById('daniel-fim-'+i).value,operador:document.getElementById('daniel-op-'+i).value}));
   try{await setDoc(doc(db,'config','escala'),{watiPedro,watiDaniel,ts:Date.now()});showToast('Escala publicada!');await renderEscala(document.getElementById('mainContent'));}
   catch(e){showToast('Erro.');}
+};
+
+// ── ZENDESK ──────────────────────────────────────────────────────────────
+async function zdFetch(path,opts){
+  const token=await getIdToken(currentUser);
+  const res=await fetch(path,Object.assign({},opts,{
+    headers:Object.assign({'Authorization':'Bearer '+token,'Content-Type':'application/json'},(opts&&opts.headers)||{})
+  }));
+  const data=await res.json().catch(()=>({}));
+  if(!res.ok) throw new Error(data.error||'Erro na requisicao');
+  return data;
+}
+
+let zdTicketAtual=null;
+
+async function renderZendesk(mc){
+  mc.innerHTML=snakeHtml()+
+    '<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;"><div class="page-eyebrow">🎫 Zendesk</div><div class="page-title">Tickets</div><div class="page-sub">Abertos e pendentes, mais recentes primeiro</div></div>'+
+    '<div id="zd-conteudo"><div class="empty">Carregando tickets...</div></div>';
+  await window.zdCarregarLista();
+}
+
+window.zdCarregarLista=async function(){
+  const wrap=document.getElementById('zd-conteudo');
+  if(!wrap) return;
+  wrap.innerHTML='<div class="empty">Carregando tickets...</div>';
+  try{
+    const data=await zdFetch('/api/zendesk/tickets');
+    const tickets=data.tickets||[];
+    if(tickets.length===0){ wrap.innerHTML='<div class="panel"><div class="empty">Nenhum ticket aberto ou pendente. 🎉</div></div>'; return; }
+    const corStatus={new:'#3b82f6',open:'#f59e0b',pending:'#8b5cf6',hold:'#6b7280'};
+    const corPrioridade={urgent:'#ef4444',high:'#f97316',normal:'#6b7280',low:'#9ca3af'};
+    wrap.innerHTML='<div style="display:flex;flex-direction:column;gap:8px;">'+
+      tickets.map(t=>{
+        const dt=new Date(t.updated_at);
+        const dataFmt=dt.toLocaleDateString('pt-BR')+' '+dt.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+        const cs=corStatus[t.status]||'#6b7280';
+        const cp=corPrioridade[t.priority]||'#6b7280';
+        return '<div onclick="zdAbrirTicket('+t.id+')" style="display:flex;align-items:center;gap:12px;padding:14px 18px;background:var(--surface);border-radius:12px;border:1px solid var(--border-md);cursor:pointer;">'+
+          '<div style="width:8px;height:8px;border-radius:50%;background:'+cs+';flex-shrink:0;"></div>'+
+          '<div style="flex:1;min-width:0;">'+
+            '<div style="font-size:14px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+(t.subject||'(sem assunto)')+'</div>'+
+            '<div style="font-size:11px;color:var(--text-3);">#'+t.id+' · '+dataFmt+'</div>'+
+          '</div>'+
+          '<span style="font-size:10px;font-weight:600;padding:3px 10px;border-radius:20px;background:'+cp+'22;color:'+cp+';text-transform:uppercase;">'+(t.priority||'-')+'</span>'+
+          '<span style="font-size:10px;font-weight:600;padding:3px 10px;border-radius:20px;background:'+cs+'22;color:'+cs+';text-transform:uppercase;">'+t.status+'</span>'+
+        '</div>';
+      }).join('')+
+    '</div>';
+  }catch(e){
+    wrap.innerHTML='<div class="panel"><div class="empty">Erro ao carregar tickets: '+e.message+'</div></div>';
+  }
+};
+
+window.zdAbrirTicket=async function(id){
+  const wrap=document.getElementById('zd-conteudo');
+  if(!wrap) return;
+  wrap.innerHTML='<div class="empty">Carregando ticket...</div>';
+  try{
+    const data=await zdFetch('/api/zendesk/ticket?id='+id);
+    zdTicketAtual=id;
+    const t=data.ticket;
+    const comments=data.comments||[];
+    wrap.innerHTML=
+      '<button onclick="zdCarregarLista()" style="margin-bottom:14px;padding:7px 14px;background:transparent;border:1px solid var(--border-md);color:var(--text-2);border-radius:var(--radius);font-family:var(--font);font-size:12px;cursor:pointer;">← Voltar</button>'+
+      '<div class="panel" style="margin-bottom:1rem;">'+
+        '<div style="font-size:16px;font-weight:600;color:var(--text);margin-bottom:4px;">'+(t.subject||'(sem assunto)')+'</div>'+
+        '<div style="font-size:12px;color:var(--text-3);">#'+t.id+' · '+(t.requester_name||'Solicitante desconhecido')+' · status: '+t.status+'</div>'+
+      '</div>'+
+      '<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:1rem;">'+
+        comments.map(c=>{
+          const dt=new Date(c.created_at);
+          const dataFmt=dt.toLocaleDateString('pt-BR')+' '+dt.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+          const corpo=(c.body||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+          return '<div style="padding:12px 16px;border-radius:10px;background:'+(c.public?'var(--surface)':'#fef9c3')+';border:1px solid var(--border-md);">'+
+            '<div style="font-size:11px;color:var(--text-3);margin-bottom:6px;">'+(c.public?'Publico':'🔒 Nota interna')+' · '+dataFmt+'</div>'+
+            '<div style="font-size:13px;color:var(--text);white-space:pre-wrap;">'+corpo+'</div>'+
+          '</div>';
+        }).join('')+
+      '</div>'+
+      '<div class="panel">'+
+        '<label class="inp-label" style="margin-bottom:6px;display:block;">Responder</label>'+
+        '<textarea id="zd-resposta" rows="4" class="inp" placeholder="Escreva sua resposta..." style="margin-bottom:10px;width:100%;"></textarea>'+
+        '<div style="display:flex;align-items:center;gap:14px;">'+
+          '<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-2);cursor:pointer;"><input type="checkbox" id="zd-publico" checked/> Resposta publica (visivel ao cliente)</label>'+
+          '<button onclick="zdEnviarResposta()" class="btn-blue" style="margin-left:auto;">Enviar</button>'+
+        '</div>'+
+      '</div>';
+  }catch(e){
+    wrap.innerHTML='<div class="panel"><div class="empty">Erro ao carregar ticket: '+e.message+'</div></div>';
+  }
+};
+
+window.zdEnviarResposta=async function(){
+  const textarea=document.getElementById('zd-resposta');
+  const body=textarea.value.trim();
+  if(!body){showToast('Escreva uma resposta antes de enviar.');return;}
+  const isPublic=document.getElementById('zd-publico').checked;
+  try{
+    await zdFetch('/api/zendesk/reply',{method:'POST',body:JSON.stringify({id:zdTicketAtual,body,isPublic})});
+    showToast('Resposta enviada!');
+    await window.zdAbrirTicket(zdTicketAtual);
+  }catch(e){
+    showToast('Erro ao enviar: '+e.message);
+  }
 };
 
 let CURSOS=[];
