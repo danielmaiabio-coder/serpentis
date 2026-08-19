@@ -1247,6 +1247,7 @@ window.forcarAtualizacao=async function(){
 
 window.doLogout=async function(){
   await signOut(auth);currentUser=null;userProfile=null;viewingOp=null;
+  history.replaceState(null,'',location.pathname+location.search);
   hide('appShell');showLogin();
 };
 
@@ -1446,7 +1447,8 @@ function setupApp(){
     Notification.requestPermission();
   }
   setupBadges();
-  navigate('perfil');
+  const paginaInicial=pageFromHash();
+  navigate(paginaInicial||'perfil','replace');
 }
 
 function updateSidebarUser(){
@@ -1657,8 +1659,27 @@ document.addEventListener('keydown',function(e){
   }
 });
 
-window.navigate=async function(page){
+// ── URLs por pagina (fase 1: telas principais da navbar) ───────────────────
+const HASH_PAGES=['equipe','escritorio','lancar','copys','links','escala','calc','calcquit','calcreneg','relatorio_disparos','infos','agenda','codigosoferta','formsplanilhas','hashtube','feriastime','minha_cobranca','lembretes','editarperfil','termometro','basilisco','perfis','caderno','perfil','feed','resultado_unificado','ex_equipe'];
+function pageFromHash(){
+  const h=(location.hash||'').replace(/^#\/?/,'');
+  return HASH_PAGES.includes(h)?h:null;
+}
+window.addEventListener('popstate',()=>{
+  if(!userProfile) return;
+  const p=pageFromHash();
+  if(p) navigate(p,'skip');
+});
+
+window.navigate=async function(page,historyMode){
   activePage=page;
+  if(HASH_PAGES.includes(page)){
+    const newHash='#/'+page;
+    if(location.hash!==newHash){
+      if(historyMode==='replace') history.replaceState({page},'',newHash);
+      else if(historyMode!=='skip') history.pushState({page},'',newHash);
+    }
+  }
   // Atualiza item ativo na navbar
   document.querySelectorAll('.nav-item,.nb-dd-item,.nb-btn-single').forEach(el=>el.classList.remove('active'));
   const el=document.getElementById('nav-'+page);if(el)el.classList.add('active');
