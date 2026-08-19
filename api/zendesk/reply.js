@@ -1,6 +1,8 @@
 const { requireAuth } = require('../../lib/firebaseAuth');
 const { zendeskFetch } = require('../../lib/zendeskClient');
 
+const VALID_STATUSES = new Set(['new', 'open', 'pending', 'hold', 'solved']);
+
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') { res.status(405).json({ error: 'method not allowed' }); return; }
 
@@ -12,21 +14,25 @@ module.exports = async function handler(req, res) {
     return;
   }
 
-  const { id, body, isPublic } = req.body || {};
+  const { id, body, isPublic, status } = req.body || {};
   if (!id || !/^\d+$/.test(String(id))) { res.status(400).json({ error: 'id invalido' }); return; }
-  if (!body || !String(body).trim()) { res.status(400).json({ error: 'resposta vazia' }); return; }
+
+  const temBody = body && String(body).trim();
+  const temStatus = status && VALID_STATUSES.has(status);
+  if (!temBody && !temStatus) { res.status(400).json({ error: 'nada para atualizar (resposta ou status)' }); return; }
+
+  const ticketPayload = {};
+  if (temBody) {
+    ticketPayload.comment = { body: String(body), public: isPublic !== false };
+  }
+  if (temStatus) {
+    ticketPayload.status = status;
+  }
 
   try {
     const zres = await zendeskFetch(`/api/v2/tickets/${id}.json`, {
       method: 'PUT',
-      body: JSON.stringify({
-        ticket: {
-          comment: {
-            body: String(body),
-            public: isPublic !== false,
-          },
-        },
-      }),
+      body: JSON.stringify({ ticket: ticketPayload }),
     });
     if (!zres.ok) {
       const detail = await zres.text();

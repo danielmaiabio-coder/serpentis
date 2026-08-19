@@ -4112,6 +4112,7 @@ const ZD_VIEWS=[
 ];
 let zdViewAtual=ZD_VIEWS[0].id;
 let zdTicketAtual=null;
+const ZD_STATUS_LABEL={new:'Novo',open:'Aberto',pending:'Pendente',hold:'Em espera',solved:'Resolvido'};
 
 function zdPillsHtml(){
   return ZD_VIEWS.map(v=>{
@@ -4181,7 +4182,14 @@ window.zdAbrirTicket=async function(id){
       '<button onclick="zdCarregarLista()" style="margin-bottom:14px;padding:7px 14px;background:transparent;border:1px solid var(--border-md);color:var(--text-2);border-radius:var(--radius);font-family:var(--font);font-size:12px;cursor:pointer;">← Voltar</button>'+
       '<div class="panel" style="margin-bottom:1rem;">'+
         '<div style="font-size:16px;font-weight:600;color:var(--text);margin-bottom:4px;">'+(t.subject||'(sem assunto)')+'</div>'+
-        '<div style="font-size:12px;color:var(--text-3);">#'+t.id+' · '+(t.requester_name||'Solicitante desconhecido')+' · status: '+t.status+'</div>'+
+        '<div style="font-size:12px;color:var(--text-3);margin-bottom:12px;">#'+t.id+' · '+(t.requester_name||'Solicitante desconhecido')+'</div>'+
+        '<div style="display:flex;align-items:center;gap:10px;">'+
+          '<label class="inp-label" style="margin:0;">Status</label>'+
+          '<select id="zd-status" class="inp" style="width:auto;padding:6px 10px;font-size:12px;">'+
+            ['new','open','pending','hold','solved'].map(s=>'<option value="'+s+'"'+(s===t.status?' selected':'')+'>'+ZD_STATUS_LABEL[s]+'</option>').join('')+
+          '</select>'+
+          '<button onclick="zdAtualizarStatus()" style="padding:6px 14px;background:transparent;border:1px solid var(--primary);color:var(--primary);border-radius:var(--radius);font-family:var(--font);font-size:12px;font-weight:500;cursor:pointer;">Salvar status</button>'+
+        '</div>'+
       '</div>'+
       '<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:1rem;">'+
         comments.map(c=>{
@@ -4212,12 +4220,26 @@ window.zdEnviarResposta=async function(){
   const body=textarea.value.trim();
   if(!body){showToast('Escreva uma resposta antes de enviar.');return;}
   const isPublic=document.getElementById('zd-publico').checked;
+  const statusSel=document.getElementById('zd-status');
+  const status=statusSel?statusSel.value:undefined;
   try{
-    await zdFetch('/api/zendesk/reply',{method:'POST',body:JSON.stringify({id:zdTicketAtual,body,isPublic})});
+    await zdFetch('/api/zendesk/reply',{method:'POST',body:JSON.stringify({id:zdTicketAtual,body,isPublic,status})});
     showToast('Resposta enviada!');
     await window.zdAbrirTicket(zdTicketAtual);
   }catch(e){
     showToast('Erro ao enviar: '+e.message);
+  }
+};
+
+window.zdAtualizarStatus=async function(){
+  const statusSel=document.getElementById('zd-status');
+  if(!statusSel) return;
+  try{
+    await zdFetch('/api/zendesk/reply',{method:'POST',body:JSON.stringify({id:zdTicketAtual,status:statusSel.value})});
+    showToast('Status atualizado para '+(ZD_STATUS_LABEL[statusSel.value]||statusSel.value)+'!');
+    await window.zdAbrirTicket(zdTicketAtual);
+  }catch(e){
+    showToast('Erro ao atualizar status: '+e.message);
   }
 };
 
