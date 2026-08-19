@@ -1447,8 +1447,9 @@ function setupApp(){
     Notification.requestPermission();
   }
   setupBadges();
-  const paginaInicial=pageFromHash();
-  navigate(paginaInicial||'perfil','replace');
+  const parsedInicial=parseHash();
+  if(parsedInicial&&parsedInicial.uid) viewingOp=parsedInicial.uid;
+  navigate((parsedInicial&&parsedInicial.page)||'perfil','replace');
 }
 
 function updateSidebarUser(){
@@ -1659,16 +1660,23 @@ document.addEventListener('keydown',function(e){
   }
 });
 
-// ── URLs por pagina (fase 1: telas principais da navbar) ───────────────────
+// ── URLs por pagina (fase 1: telas principais da navbar; fase 2: sub-telas por operador) ──
 const HASH_PAGES=['equipe','escritorio','lancar','copys','links','escala','calc','calcquit','calcreneg','relatorio_disparos','infos','agenda','codigosoferta','formsplanilhas','hashtube','feriastime','minha_cobranca','lembretes','editarperfil','termometro','basilisco','perfis','caderno','perfil','feed','resultado_unificado','ex_equipe'];
-function pageFromHash(){
-  const h=(location.hash||'').replace(/^#\/?/,'');
-  return HASH_PAGES.includes(h)?h:null;
+const HASH_OP_PAGES=['resultado','historico','notas','dashboard','feedback'];
+function parseHash(){
+  const parts=(location.hash||'').replace(/^#\/?/,'').split('/').filter(Boolean);
+  if(parts.length===0) return null;
+  const page=parts[0];
+  if(HASH_PAGES.includes(page)) return {page};
+  if(HASH_OP_PAGES.includes(page)&&parts[1]) return {page,uid:parts[1]};
+  return null;
 }
 window.addEventListener('popstate',()=>{
   if(!userProfile) return;
-  const p=pageFromHash();
-  if(p) navigate(p,'skip');
+  const parsed=parseHash();
+  if(!parsed) return;
+  if(parsed.uid) viewingOp=parsed.uid;
+  navigate(parsed.page,'skip');
 });
 
 window.navigate=async function(page,historyMode){
@@ -1678,6 +1686,12 @@ window.navigate=async function(page,historyMode){
     if(location.hash!==newHash){
       if(historyMode==='replace') history.replaceState({page},'',newHash);
       else if(historyMode!=='skip') history.pushState({page},'',newHash);
+    }
+  } else if(HASH_OP_PAGES.includes(page)&&viewingOp){
+    const newHash='#/'+page+'/'+viewingOp;
+    if(location.hash!==newHash){
+      if(historyMode==='replace') history.replaceState({page,uid:viewingOp},'',newHash);
+      else if(historyMode!=='skip') history.pushState({page,uid:viewingOp},'',newHash);
     }
   }
   // Atualiza item ativo na navbar
