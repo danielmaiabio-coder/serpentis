@@ -4112,6 +4112,9 @@ const ZD_VIEWS=[
 ];
 let zdViewAtual=ZD_VIEWS[0].id;
 let zdTicketAtual=null;
+let zdTicketObjAtual=null;
+let zdComentariosAtuais=[];
+let zdSugestaoAtual='';
 const ZD_STATUS_LABEL={new:'Novo',open:'Aberto',pending:'Pendente',hold:'Em espera',solved:'Resolvido'};
 const ZD_CANAL_LABEL={email:'📧 E-mail',whatsapp:'💬 WhatsApp',web:'🌐 Web',api:'⚙️ API',chat:'💬 Chat'};
 
@@ -4202,6 +4205,20 @@ function zdRenderConversa(t,comments){
   return zdRenderConversaGenerica(comments);
 }
 
+// Transcript em texto puro (so trocas publicas com o cliente) pra usar como
+// contexto do Gemini ou como exemplo salvo no Basilisco.
+function zdFormatarTranscript(t,comments){
+  if(t.channel==='whatsapp'){
+    return zdParseWhatsApp(t,comments).filter(m=>!m.nota)
+      .map(m=>(m.deCliente?'Cliente':'Equipe')+' ['+m.hora+']: '+m.texto).join('\n');
+  }
+  return comments.filter(c=>c.public).map(c=>{
+    const dt=new Date(c.created_at);
+    const hora=dt.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    return (c.is_requester?(t.requester_name||'Cliente'):'Equipe')+' ['+hora+']: '+(c.body||'');
+  }).join('\n');
+}
+
 function zdPillsHtml(){
   return ZD_VIEWS.map(v=>{
     const ativo=v.id===zdViewAtual;
@@ -4266,6 +4283,9 @@ window.zdAbrirTicket=async function(id){
     zdTicketAtual=id;
     const t=data.ticket;
     const comments=data.comments||[];
+    zdTicketObjAtual=t;
+    zdComentariosAtuais=comments;
+    const {canManageIA}=getPerms();
     wrap.innerHTML=
       '<button onclick="zdCarregarLista()" style="margin-bottom:14px;padding:7px 14px;background:transparent;border:1px solid var(--border-md);color:var(--text-2);border-radius:var(--radius);font-family:var(--font);font-size:12px;cursor:pointer;">← Voltar</button>'+
       '<div class="panel" style="margin-bottom:1rem;">'+
@@ -4280,6 +4300,16 @@ window.zdAbrirTicket=async function(id){
         '</div>'+
       '</div>'+
       zdRenderConversa(t,comments)+
+      '<div class="panel" style="margin-bottom:1rem;">'+
+        '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px;">'+
+          '<label class="inp-label" style="margin:0;">🐍 Sugestão do Basilisco</label>'+
+          '<div style="display:flex;gap:8px;">'+
+            (canManageIA?'<button onclick="zdSalvarComoExemplo()" style="padding:6px 12px;background:transparent;border:1px solid var(--border-md);color:var(--text-2);border-radius:var(--radius);font-family:var(--font);font-size:11px;cursor:pointer;">📌 Salvar como exemplo</button>':'')+
+            '<button onclick="zdSugerirResposta()" style="padding:6px 12px;background:var(--primary);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:11px;font-weight:500;cursor:pointer;">✨ Sugerir resposta</button>'+
+          '</div>'+
+        '</div>'+
+        '<div id="zd-sugestao-box" style="display:none;"></div>'+
+      '</div>'+
       '<div class="panel">'+
         '<label class="inp-label" style="margin-bottom:6px;display:block;">Responder</label>'+
         '<textarea id="zd-resposta" rows="4" class="inp" placeholder="Escreva sua resposta..." style="margin-bottom:10px;width:100%;"></textarea>'+
@@ -4319,6 +4349,79 @@ window.zdAtualizarStatus=async function(){
   }catch(e){
     showToast('Erro ao atualizar status: '+e.message);
   }
+};
+
+window.zdSalvarComoExemplo=async function(){
+  if(!zdTicketObjAtual){showToast('Abra um ticket primeiro.');return;}
+  const transcript=zdFormatarTranscript(zdTicketObjAtual,zdComentariosAtuais);
+  if(!transcript.trim()){showToast('Essa conversa nao tem mensagens publicas para salvar.');return;}
+  if(!confirm('Salvar esta conversa como exemplo real para o Basilisco usar em sugestões futuras?')) return;
+  try{
+    const snap=await getDoc(doc(db,'config','basilisco'));
+    const atual=snap.exists()?snap.data():{key:'',docs:[]};
+    const docs=atual.docs||[];
+    docs.push({
+      nome:'Exemplo Zendesk #'+zdTicketObjAtual.id+' - '+(zdTicketObjAtual.subject||'sem assunto').slice(0,60),
+      texto:transcript,
+      tipo:'exemplo_conversa',
+      ts:Date.now()
+    });
+    await setDoc(doc(db,'config','basilisco'),{key:atual.key||'',docs},{merge:true});
+    showToast('Conversa salva como exemplo no Basilisco!');
+  }catch(e){
+    showToast('Erro ao salvar exemplo: '+e.message);
+  }
+};
+
+window.zdSugerirResposta=async function(){
+  if(!zdTicketObjAtual){showToast('Abra um ticket primeiro.');return;}
+  const box=document.getElementById('zd-sugestao-box');
+  if(!box) return;
+  box.style.display='block';
+  box.innerHTML='<div class="empty">🐍 Pensando...</div>';
+  try{
+    const snap=await getDoc(doc(db,'config','basilisco'));
+    if(!snap.exists()||!snap.data().key){
+      box.innerHTML='<div class="empty">Basilisco ainda nao esta configurado (falta a chave da API). Configure na aba Basilisco.</div>';
+      return;
+    }
+    const cfg=snap.data();
+    const todosDocs=cfg.docs||[];
+    const docsGerais=todosDocs.filter(d=>d.tipo!=='exemplo_conversa');
+    const exemplos=todosDocs.filter(d=>d.tipo==='exemplo_conversa');
+    const contextoDocs=docsGerais.length?'DOCUMENTOS INTERNOS:\n\n'+docsGerais.map(d=>'=== '+d.nome+' ===\n'+d.texto).join('\n\n'):'Nenhum documento interno carregado.';
+    const contextoExemplos=exemplos.length?'\n\nEXEMPLOS REAIS DE CONVERSAS JA RESPONDIDAS PELA EQUIPE (use como referencia de tom e estilo):\n\n'+exemplos.map(d=>'=== '+d.nome+' ===\n'+d.texto).join('\n\n'):'';
+    const transcript=zdFormatarTranscript(zdTicketObjAtual,zdComentariosAtuais);
+    const systemPrompt='Voce e o Basilisco, assistente interno da equipe de Contas a Receber da Hashtag Treinamentos.\n'+
+      'Sua tarefa e sugerir a proxima resposta da equipe para o cliente no ticket de suporte abaixo.\n'+
+      'Baseie-se nos documentos internos e nos exemplos reais de conversas para manter o mesmo tom, estilo e politicas ja usados pela equipe.\n'+
+      'Se a situacao nao estiver coberta pelos documentos ou exemplos, sugira uma resposta profissional e cautelosa, deixando claro (em uma nota separada) que pode precisar de confirmacao humana antes de enviar.\n'+
+      'Responda em portugues. De a resposta pronta para ser enviada ao cliente, sem aspas e sem comentarios extras sobre o que voce fez.\n\n'+
+      contextoDocs+contextoExemplos;
+    const geminiBody={
+      system_instruction:{parts:[{text:systemPrompt}]},
+      contents:[{role:'user',parts:[{text:'CONVERSA DO TICKET #'+zdTicketObjAtual.id+' ("'+(zdTicketObjAtual.subject||'')+'"):\n\n'+(transcript||'(sem mensagens publicas ainda)')+'\n\nSugira a proxima resposta da equipe para este cliente.'}]}],
+      generationConfig:{maxOutputTokens:800,temperature:0.3}
+    };
+    const res=await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent',{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':cfg.key},body:JSON.stringify(geminiBody)});
+    const data=await res.json();
+    if(data.error){box.innerHTML='<div class="empty">Erro: '+data.error.message+'</div>';return;}
+    const sugestao=data.candidates&&data.candidates[0]&&data.candidates[0].content&&data.candidates[0].content.parts&&data.candidates[0].content.parts[0]&&data.candidates[0].content.parts[0].text||'Nao foi possivel gerar uma sugestao.';
+    zdSugestaoAtual=sugestao;
+    box.innerHTML='<div style="padding:12px 16px;background:var(--bg);border:1px solid var(--border-md);border-radius:10px;font-size:13px;color:var(--text);white-space:pre-wrap;line-height:1.6;margin-bottom:10px;">'+zdEscapeHtml(sugestao)+'</div>'+
+      '<div style="display:flex;gap:8px;">'+
+        '<button onclick="zdUsarSugestao()" class="btn-blue">Usar esta resposta</button>'+
+        '<button onclick="zdSugerirResposta()" style="padding:8px 16px;background:transparent;border:1px solid var(--border-md);color:var(--text-2);border-radius:var(--radius);font-family:var(--font);font-size:13px;cursor:pointer;">🔄 Gerar novamente</button>'+
+      '</div>';
+  }catch(e){
+    box.innerHTML='<div class="empty">Erro de conexao: '+e.message+'</div>';
+  }
+};
+
+window.zdUsarSugestao=function(){
+  const textarea=document.getElementById('zd-resposta');
+  if(textarea) textarea.value=zdSugestaoAtual;
+  showToast('Sugestão copiada — revise antes de enviar!');
 };
 
 let CURSOS=[];
