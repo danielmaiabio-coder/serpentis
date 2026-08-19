@@ -4115,6 +4115,12 @@ let zdTicketAtual=null;
 let zdTicketObjAtual=null;
 let zdComentariosAtuais=[];
 let zdSugestaoAtual='';
+let zdMeta=null;
+async function zdCarregarMeta(){
+  if(zdMeta) return zdMeta;
+  zdMeta=await zdFetch('/api/zendesk/meta');
+  return zdMeta;
+}
 const ZD_STATUS_LABEL={new:'Novo',open:'Aberto',pending:'Pendente',hold:'Em espera',solved:'Resolvido'};
 const ZD_CANAL_LABEL={email:'📧 E-mail',whatsapp:'💬 WhatsApp',web:'🌐 Web',api:'⚙️ API',chat:'💬 Chat'};
 
@@ -4279,13 +4285,16 @@ window.zdAbrirTicket=async function(id){
   if(!wrap) return;
   wrap.innerHTML='<div class="empty">Carregando ticket...</div>';
   try{
-    const data=await zdFetch('/api/zendesk/ticket?id='+id);
+    const [data,meta]=await Promise.all([zdFetch('/api/zendesk/ticket?id='+id),zdCarregarMeta()]);
     zdTicketAtual=id;
     const t=data.ticket;
     const comments=data.comments||[];
     zdTicketObjAtual=t;
     zdComentariosAtuais=comments;
     const {canManageIA}=getPerms();
+    const brandOpts=(meta.brands||[]).map(b=>'<option value="'+b.id+'"'+(String(b.id)===String(t.brand_id)?' selected':'')+'>'+zdEscapeHtml(b.name)+'</option>').join('');
+    const groupOpts=(meta.groups||[]).map(g=>'<option value="'+g.id+'"'+(String(g.id)===String(t.group_id)?' selected':'')+'>'+zdEscapeHtml(g.name)+'</option>').join('');
+    const agentOpts='<option value="">Não atribuído</option>'+(meta.agents||[]).map(a=>'<option value="'+a.id+'"'+(String(a.id)===String(t.assignee_id)?' selected':'')+'>'+zdEscapeHtml(a.name)+'</option>').join('');
     wrap.innerHTML=
       '<button onclick="zdCarregarLista()" style="margin-bottom:14px;padding:7px 14px;background:transparent;border:1px solid var(--border-md);color:var(--text-2);border-radius:var(--radius);font-family:var(--font);font-size:12px;cursor:pointer;">← Voltar</button>'+
       '<div class="panel" style="margin-bottom:1rem;">'+
@@ -4298,6 +4307,16 @@ window.zdAbrirTicket=async function(id){
           '</select>'+
           '<button onclick="zdAtualizarStatus()" style="padding:6px 14px;background:transparent;border:1px solid var(--primary);color:var(--primary);border-radius:var(--radius);font-family:var(--font);font-size:12px;font-weight:500;cursor:pointer;">Salvar status</button>'+
         '</div>'+
+      '</div>'+
+      '<div class="panel" style="margin-bottom:1rem;">'+
+        '<label class="inp-label" style="margin-bottom:10px;display:block;">Atribuição</label>'+
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">'+
+          '<div><label class="inp-label" style="font-size:10px;">Marca</label><select id="zd-marca" class="inp" style="font-size:12px;">'+brandOpts+'</select></div>'+
+          '<div><label class="inp-label" style="font-size:10px;">Solicitante</label><div class="inp" style="font-size:12px;background:var(--bg);display:flex;align-items:center;">'+zdEscapeHtml(t.requester_name||'Desconhecido')+'</div></div>'+
+          '<div><label class="inp-label" style="font-size:10px;">Time</label><select id="zd-grupo" class="inp" style="font-size:12px;">'+groupOpts+'</select></div>'+
+          '<div><label class="inp-label" style="font-size:10px;">Agente</label><select id="zd-agente" class="inp" style="font-size:12px;">'+agentOpts+'</select></div>'+
+        '</div>'+
+        '<button onclick="zdSalvarAtribuicao()" style="padding:7px 16px;background:transparent;border:1px solid var(--primary);color:var(--primary);border-radius:var(--radius);font-family:var(--font);font-size:12px;font-weight:500;cursor:pointer;">Salvar atribuição</button>'+
       '</div>'+
       zdRenderConversa(t,comments)+
       '<div class="panel" style="margin-bottom:1rem;">'+
@@ -4348,6 +4367,24 @@ window.zdAtualizarStatus=async function(){
     await window.zdAbrirTicket(zdTicketAtual);
   }catch(e){
     showToast('Erro ao atualizar status: '+e.message);
+  }
+};
+
+window.zdSalvarAtribuicao=async function(){
+  const marca=document.getElementById('zd-marca');
+  const grupo=document.getElementById('zd-grupo');
+  const agente=document.getElementById('zd-agente');
+  try{
+    await zdFetch('/api/zendesk/reply',{method:'POST',body:JSON.stringify({
+      id:zdTicketAtual,
+      brand_id:marca?marca.value:undefined,
+      group_id:grupo?grupo.value:undefined,
+      assignee_id:agente&&agente.value?agente.value:null
+    })});
+    showToast('Atribuição atualizada!');
+    await window.zdAbrirTicket(zdTicketAtual);
+  }catch(e){
+    showToast('Erro ao atualizar atribuição: '+e.message);
   }
 };
 

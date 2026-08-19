@@ -14,19 +14,34 @@ module.exports = async function handler(req, res) {
     return;
   }
 
-  const { id, body, isPublic, status } = req.body || {};
+  const payload = req.body || {};
+  const { id } = payload;
   if (!id || !/^\d+$/.test(String(id))) { res.status(400).json({ error: 'id invalido' }); return; }
 
-  const temBody = body && String(body).trim();
-  const temStatus = status && VALID_STATUSES.has(status);
-  if (!temBody && !temStatus) { res.status(400).json({ error: 'nada para atualizar (resposta ou status)' }); return; }
+  const has = (k) => Object.prototype.hasOwnProperty.call(payload, k);
+  const temBody = payload.body && String(payload.body).trim();
+  const temStatus = payload.status && VALID_STATUSES.has(payload.status);
 
   const ticketPayload = {};
   if (temBody) {
-    ticketPayload.comment = { body: String(body), public: isPublic !== false };
+    ticketPayload.comment = { body: String(payload.body), public: payload.isPublic !== false };
   }
   if (temStatus) {
-    ticketPayload.status = status;
+    ticketPayload.status = payload.status;
+  }
+  if (has('brand_id') && payload.brand_id) {
+    ticketPayload.brand_id = Number(payload.brand_id);
+  }
+  if (has('group_id') && payload.group_id) {
+    ticketPayload.group_id = Number(payload.group_id);
+  }
+  if (has('assignee_id')) {
+    ticketPayload.assignee_id = payload.assignee_id ? Number(payload.assignee_id) : null;
+  }
+
+  if (Object.keys(ticketPayload).length === 0) {
+    res.status(400).json({ error: 'nada para atualizar' });
+    return;
   }
 
   try {
