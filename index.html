@@ -8817,8 +8817,7 @@ async function renderMinhaCobranca(mc){
     return `<span style="display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;background:${bg};color:${cor};">${status||'—'}</span>`;
   }
 
-  async function render(){
-    sheetData=await carregarDados();
+  function montarTela(){
     const filtrados=aplicarFiltros(sheetData);
     const kpis=calcularKPIs(filtrados);
     const statusList=[...new Set(sheetData.map(r=>r.status).filter(Boolean))];
@@ -8978,37 +8977,46 @@ async function renderMinhaCobranca(mc){
       const email=(document.getElementById('mc-email')?.value||'').trim();
       const codigo=(document.getElementById('mc-codigo')?.value||'').trim();
       const statusEl=document.getElementById('mc-registro-status');
-      const btn=document.getElementById('mc-registrar-btn');
       if(!email&&!codigo){if(statusEl)statusEl.innerHTML='<span style="color:#ef4444;">Preencha pelo menos um campo.</span>';return;}
       if(!scriptUrl){showToast('Configure a URL do Apps Script primeiro.');return;}
-      btn.disabled=true;btn.textContent='Registrando...';
-      if(statusEl)statusEl.innerHTML='<span style="color:var(--text-3);">Enviando...</span>';
+
+      // Atualizacao otimista: aparece na tela na hora, sem esperar a rede do Apps Script.
+      const now=new Date();
+      const novoReg={email,codigo,status:'Pendente',metodo:'',valor:'',dataPag:'',tentativas:'1',ultimaVerif:'',dataAtend:now.toLocaleDateString('pt-BR')};
+      sheetData=[novoReg,...sheetData];
+      document.getElementById('mc-email').value='';
+      document.getElementById('mc-codigo').value='';
+      montarTela();
+      const statusEl1=document.getElementById('mc-registro-status');
+      if(statusEl1)statusEl1.innerHTML='<span style="color:#22c55e;">✅ Registrado! Verificando em segundo plano...</span>';
+
+      // Envia de verdade e sincroniza em segundo plano — nao trava a tela esperando.
       try{
         // mode:'no-cors' pq o Apps Script nao responde a preflight de POST — mas o
         // fetch ainda espera o doPost terminar do lado do servidor (que ja verifica
         // a linha na hora), so nao conseguimos ler a resposta.
         await fetch(scriptUrl,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,codigo,mes:MC_MESES[mesAtivo]})});
         // Guarda tambem num cache local, como rede de seguranca caso a leitura ao vivo falhe
-        const now=new Date();
-        const novoReg={email,codigo,status:'Pendente',metodo:'',valor:'',dataPag:'',tentativas:'1',ultimaVerif:'',dataAtend:now.toLocaleDateString('pt-BR')};
         const cacheSnap=await getDoc(doc(db,'minha_cobranca_dados',uid));
         const regs=cacheSnap.exists()?cacheSnap.data().registros||[]:[];
         regs.unshift(novoReg);
         await setDoc(doc(db,'minha_cobranca_dados',uid),{registros:regs,updatedAt:Date.now()});
-        await render(); // busca os dados ao vivo da planilha — recria o formulario, entao a mensagem vai no elemento novo
+        await render(); // busca os dados ao vivo (ja com o status verificado) e substitui o registro otimista
         const statusElNovo=document.getElementById('mc-registro-status');
         if(statusElNovo){
-          statusElNovo.innerHTML='<span style="color:#22c55e;">✅ Registrado com sucesso!</span>';
-          setTimeout(()=>{if(statusElNovo)statusElNovo.innerHTML='';},4000);
+          statusElNovo.innerHTML='<span style="color:#22c55e;">✅ Sincronizado!</span>';
+          setTimeout(()=>{if(statusElNovo)statusElNovo.innerHTML='';},3000);
         }
       }catch(e){
         const statusElErro=document.getElementById('mc-registro-status');
-        if(statusElErro)statusElErro.innerHTML='<span style="color:#ef4444;">Erro ao enviar. Tente novamente.</span>';
-      }finally{
-        const btnNovo=document.getElementById('mc-registrar-btn');
-        if(btnNovo){btnNovo.disabled=false;btnNovo.textContent='Registrar';}
+        if(statusElErro)statusElErro.innerHTML='<span style="color:#ef4444;">Erro ao sincronizar com a planilha. Recarregue a pagina pra conferir.</span>';
       }
     };
+  }
+
+  async function render(){
+    sheetData=await carregarDados();
+    montarTela();
   }
 
   await render();
