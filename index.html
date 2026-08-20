@@ -8744,6 +8744,7 @@ async function renderMinhaCobranca(mc){
   let filtroStatus='';
   let filtroDe='';
   let filtroAte='';
+  let blurAtivo=false;
 
   try{
     const cfgSnap=await getDoc(doc(db,'minha_cobranca_config',uid));
@@ -8844,7 +8845,7 @@ async function renderMinhaCobranca(mc){
               <th style="padding:10px 12px;text-align:center;border-radius:0 8px 0 0;">Atendimento</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody style="${blurAtivo?'filter:blur(6px);user-select:none;transition:filter 0.15s;':'transition:filter 0.15s;'}">
             ${filtrados.map((r,i)=>`<tr style="background:${i%2===0?'transparent':'rgba(0,0,0,0.02)'};" onmouseover="this.style.background='rgba(26,92,42,0.06)'" onmouseout="this.style.background='${i%2===0?'transparent':'rgba(0,0,0,0.02)'}'">
               <td style="padding:9px 12px;color:var(--text);">${r.email||'—'}</td>
               <td style="padding:9px 12px;font-family:var(--font-mono);font-size:11px;color:var(--text-2);">${r.codigo||'—'}</td>
@@ -8897,6 +8898,7 @@ async function renderMinhaCobranca(mc){
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:1.25rem;flex-wrap:wrap;">
       <span style="font-size:12px;color:var(--text-2);font-weight:500;">Mês:</span>
       ${MC_MESES.map((m,i)=>`<button onclick="window._mcMes(${i})" style="padding:5px 14px;border-radius:20px;border:1.5px solid ${i===mesAtivo?'var(--primary)':'var(--border-md)'};background:${i===mesAtivo?'var(--primary)':'transparent'};color:${i===mesAtivo?'#fff':'var(--text-2)'};font-family:var(--font);font-size:12px;cursor:pointer;font-weight:${i===mesAtivo?'600':'400'};">${m.substring(0,3)}</button>`).join('')}
+      <button onclick="window._mcToggleBlur()" style="padding:5px 12px;background:${blurAtivo?'var(--primary)':'transparent'};border:1px solid ${blurAtivo?'var(--primary)':'var(--border-md)'};border-radius:20px;color:${blurAtivo?'#fff':'var(--text-3)'};font-family:var(--font);font-size:11px;cursor:pointer;">${blurAtivo?'🙈 Dados ocultos':'👁️ Ocultar dados'}</button>
       <button onclick="window._mcConfigurar()" style="margin-left:auto;padding:5px 12px;background:transparent;border:1px solid var(--border-md);border-radius:20px;color:var(--text-3);font-family:var(--font);font-size:11px;cursor:pointer;">⚙️ Reconfigurar URL</button>
     </div>
 
@@ -8943,6 +8945,7 @@ async function renderMinhaCobranca(mc){
       render();
     };
     window._mcLimparFiltros=function(){filtroStatus='';filtroDe='';filtroAte='';render();};
+    window._mcToggleBlur=function(){blurAtivo=!blurAtivo;render();};
     window._mcRegistrar=async function(){
       const email=(document.getElementById('mc-email')?.value||'').trim();
       const codigo=(document.getElementById('mc-codigo')?.value||'').trim();
