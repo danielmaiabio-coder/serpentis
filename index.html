@@ -8926,12 +8926,13 @@ async function renderMinhaCobranca(mc){
     <div class="panel" style="margin-bottom:1rem;">
       <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
         <div style="font-size:13px;font-weight:500;color:var(--text);">Filtros:</div>
-        <select id="mc-filtro-status" onchange="window._mcFiltrar()" style="padding:6px 10px;background:var(--surface);border:1px solid var(--border-md);border-radius:var(--radius);color:var(--text);font-family:var(--font);font-size:12px;">
+        <select id="mc-filtro-status" style="padding:6px 10px;background:var(--surface);border:1px solid var(--border-md);border-radius:var(--radius);color:var(--text);font-family:var(--font);font-size:12px;">
           <option value="">Todos os status</option>
           ${statusList.map(s=>`<option value="${s}" ${s===filtroStatus?'selected':''}>${s}</option>`).join('')}
         </select>
-        <label style="font-size:12px;color:var(--text-2);">De: <input type="date" id="mc-filtro-de" value="${filtroDe}" onchange="window._mcFiltrar()" style="padding:4px 8px;background:var(--surface);border:1px solid var(--border-md);border-radius:var(--radius);color:var(--text);font-size:12px;margin-left:4px;"></label>
-        <label style="font-size:12px;color:var(--text-2);">Até: <input type="date" id="mc-filtro-ate" value="${filtroAte}" onchange="window._mcFiltrar()" style="padding:4px 8px;background:var(--surface);border:1px solid var(--border-md);border-radius:var(--radius);color:var(--text);font-size:12px;margin-left:4px;"></label>
+        <label style="font-size:12px;color:var(--text-2);">De: <input type="date" id="mc-filtro-de" value="${filtroDe}" style="padding:4px 8px;background:var(--surface);border:1px solid var(--border-md);border-radius:var(--radius);color:var(--text);font-size:12px;margin-left:4px;"></label>
+        <label style="font-size:12px;color:var(--text-2);">Até: <input type="date" id="mc-filtro-ate" value="${filtroAte}" style="padding:4px 8px;background:var(--surface);border:1px solid var(--border-md);border-radius:var(--radius);color:var(--text);font-size:12px;margin-left:4px;"></label>
+        <button onclick="window._mcFiltrar()" style="padding:6px 14px;background:var(--primary);color:#fff;border:none;border-radius:20px;font-family:var(--font);font-size:11px;font-weight:500;cursor:pointer;">Aplicar filtros</button>
         ${filtroStatus||filtroDe||filtroAte?`<button onclick="window._mcLimparFiltros()" style="padding:5px 12px;background:transparent;border:1px solid var(--border-md);border-radius:20px;color:var(--text-3);font-size:11px;cursor:pointer;font-family:var(--font);">Limpar</button>`:''}
         <span style="margin-left:auto;font-size:11px;color:var(--text-3);">${filtrados.length} registro${filtrados.length!==1?'s':''}</span>
       </div>
@@ -8956,12 +8957,9 @@ async function renderMinhaCobranca(mc){
       filtroStatus=document.getElementById('mc-filtro-status')?.value||'';
       filtroDe=document.getElementById('mc-filtro-de')?.value||'';
       filtroAte=document.getElementById('mc-filtro-ate')?.value||'';
-      const filtrados=aplicarFiltros(sheetData);
-      const kpis=calcularKPIs(filtrados);
-      // Re-render just the dynamic parts without full page reload
-      render();
+      montarTela(); // usa os dados que ja estao carregados, sem rebuscar a planilha
     };
-    window._mcLimparFiltros=function(){filtroStatus='';filtroDe='';filtroAte='';render();};
+    window._mcLimparFiltros=function(){filtroStatus='';filtroDe='';filtroAte='';montarTela();};
     window._mcToggleBlur=function(){
       blurAtivo=!blurAtivo;
       const wrap=document.getElementById('mc-kpis-wrap');
