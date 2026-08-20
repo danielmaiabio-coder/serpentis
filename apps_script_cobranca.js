@@ -2,13 +2,13 @@
 // APPS SCRIPT — PLANILHA DE COBRANÇA INDIVIDUAL
 // Cole em: Extensões → Apps Script → Salvar → Implantar → Web App
 // Acesso: Qualquer pessoa (incluindo anônimos)
-// Requer aba única chamada "Página1" com cabeçalhos: EMAIL, CODIGO_TRANSACAO,
+// Usa sempre a PRIMEIRA aba da planilha (independente do nome dela — pode
+// ser "Página1", "Agosto/26" etc.) com cabeçalhos: EMAIL, CODIGO_TRANSACAO,
 // STATUS, TENTATIVAS, DATA_ATENDIMENTO, ULTIMA_VERIFICACAO, METODO_PAGAMENTO,
 // VALOR_PAGO, DATA_PAGAMENTO, PARCELA_DE_LINHA
 // ═══════════════════════════════════════════════════════════════
 
 /**** CONFIGURAÇÃO ****/
-const NOME_ABA = 'Página1'; // <-- confira se bate com o nome da sua aba
 const MAX_TENTATIVAS = 8;
 const STATUS_ATRASADO = 'Atrasado';
 const JANELA_MULTIPLAS_PARCELAS_HORAS = 48; // busca por e-mail: coleta TODAS as parcelas novas dentro dessa janela
@@ -36,7 +36,7 @@ function configurarGatilhos() {
 function handleEdit(e) {
   try {
     var sheet = e.range.getSheet();
-    if (sheet.getName() !== NOME_ABA) return;
+    if (sheet.getIndex() !== 1) return; // so reage a edicoes na primeira aba
     if (e.range.getRow() === 1) return;
 
     var headerMap = getHeaderMap_(sheet);
@@ -50,7 +50,7 @@ function handleEdit(e) {
 }
 
 function verificarTodasPendentes() {
-  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(NOME_ABA);
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
   var headerMap = getHeaderMap_(sheet);
   var lastRow = sheet.getLastRow();
   var inicio = Date.now();
@@ -291,7 +291,7 @@ function testarConexaoHotmart() {
 }
 
 function verificarLinhaSelecionada() {
-  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(NOME_ABA);
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
   var row = sheet.getActiveCell().getRow();
   var headerMap = getHeaderMap_(sheet);
   verificarLinha_(sheet, row, headerMap);
@@ -320,8 +320,7 @@ function doPost(e) {
     }
 
     var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var sheet = ss.getSheetByName(NOME_ABA);
-    if (!sheet) sheet = ss.getSheets()[0];
+    var sheet = ss.getSheets()[0];
 
     var headerMap = getHeaderMap_(sheet);
     var proximaLinha = sheet.getLastRow() + 1;
@@ -360,8 +359,7 @@ function doGet(e) {
 function listarRegistros_() {
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var sheet = ss.getSheetByName(NOME_ABA);
-    if (!sheet) sheet = ss.getSheets()[0];
+    var sheet = ss.getSheets()[0];
 
     var headerMap = getHeaderMap_(sheet);
     var lastRow = sheet.getLastRow();
