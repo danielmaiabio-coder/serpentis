@@ -4121,7 +4121,7 @@ async function zdCarregarMeta(){
   zdMeta=await zdFetch('/api/zendesk/meta');
   return zdMeta;
 }
-const ZD_STATUS_LABEL={new:'Novo',open:'Aberto',pending:'Pendente',hold:'Em espera',solved:'Resolvido'};
+const ZD_STATUS_LABEL={new:'Novo',open:'Aberto',pending:'Pendente',hold:'Em espera',solved:'Resolvido',closed:'Fechado'};
 const ZD_CANAL_LABEL={email:'📧 E-mail',whatsapp:'💬 WhatsApp',web:'🌐 Web',api:'⚙️ API',chat:'💬 Chat'};
 
 function zdEscapeHtml(s){
@@ -4363,6 +4363,10 @@ window.zdAbrirTicket=async function(id){
         '</div>'+
         '<button onclick="zdSalvarAtribuicao()" style="padding:7px 16px;background:transparent;border:1px solid var(--primary);color:var(--primary);border-radius:var(--radius);font-family:var(--font);font-size:12px;font-weight:500;cursor:pointer;">Salvar atribuição</button>'+
       '</div>'+
+      '<div class="panel" style="margin-bottom:1rem;">'+
+        '<label class="inp-label" style="margin-bottom:10px;display:block;">Histórico de interações</label>'+
+        '<div id="zd-historico"><div class="empty">Carregando histórico...</div></div>'+
+      '</div>'+
       zdRenderConversa(t,comments)+
       '<div class="panel" style="margin-bottom:1rem;">'+
         '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px;">'+
@@ -4382,6 +4386,7 @@ window.zdAbrirTicket=async function(id){
           '<button onclick="zdEnviarResposta()" class="btn-blue" style="margin-left:auto;">Enviar</button>'+
         '</div>'+
       '</div>';
+    zdCarregarHistoricoSolicitante(t.requester_id,t.id);
   }catch(e){
     wrap.innerHTML='<div class="panel"><div class="empty">Erro ao carregar ticket: '+e.message+'</div></div>';
   }
@@ -4412,6 +4417,32 @@ window.zdAtualizarStatus=async function(){
     await window.zdAbrirTicket(zdTicketAtual);
   }catch(e){
     showToast('Erro ao atualizar status: '+e.message);
+  }
+};
+
+window.zdCarregarHistoricoSolicitante=async function(requesterId,ticketId){
+  const box=document.getElementById('zd-historico');
+  if(!box) return;
+  if(!requesterId){ box.innerHTML='<div class="empty">Solicitante desconhecido.</div>'; return; }
+  try{
+    const data=await zdFetch('/api/zendesk/requester-history?requester_id='+requesterId+'&exclude_id='+ticketId);
+    const tickets=data.tickets||[];
+    if(tickets.length===0){ box.innerHTML='<div class="empty">Nenhuma outra conversa encontrada com este solicitante.</div>'; return; }
+    const corStatus={new:'#3b82f6',open:'#f59e0b',pending:'#8b5cf6',hold:'#6b7280',solved:'#22c55e',closed:'#6b7280'};
+    box.innerHTML=tickets.map(t2=>{
+      const dt=new Date(t2.updated_at);
+      const dataFmt=dt.toLocaleDateString('pt-BR')+' '+dt.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+      const cs=corStatus[t2.status]||'#6b7280';
+      return '<div onclick="zdAbrirTicket('+t2.id+')" style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:8px;border:1px solid var(--border-md);cursor:pointer;margin-bottom:6px;">'+
+        '<div style="width:7px;height:7px;border-radius:50%;background:'+cs+';flex-shrink:0;"></div>'+
+        '<div style="flex:1;min-width:0;">'+
+          '<div style="font-size:12px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+zdEscapeHtml(t2.subject||'(sem assunto)')+'</div>'+
+          '<div style="font-size:10px;color:var(--text-3);">#'+t2.id+' · '+dataFmt+' · '+(ZD_STATUS_LABEL[t2.status]||t2.status)+'</div>'+
+        '</div>'+
+      '</div>';
+    }).join('');
+  }catch(e){
+    box.innerHTML='<div class="empty">Erro ao carregar histórico: '+e.message+'</div>';
   }
 };
 
