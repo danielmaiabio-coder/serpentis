@@ -1353,7 +1353,8 @@ function getPerms(){
   const canVisaoEquipe = isCoord || hasSub('visao_equipe');
   const canExEquipe = isCoord || hasSub('ex_equipe');
   const canMinhaCobranca = isCoord || hasSub('cobranca_propria');
-  return {isCoord, canManageIA, canLancar, canRenegoc, canBanco, canHistEdit, canVisaoEquipe, canExEquipe, canMinhaCobranca};
+  const canZendesk = isCoord || hasSub('zendesk');
+  return {isCoord, canManageIA, canLancar, canRenegoc, canBanco, canHistEdit, canVisaoEquipe, canExEquipe, canMinhaCobranca, canZendesk};
 }
 
 // Retorna a data atual no formato YYYY-MM-DD usando o horario LOCAL do navegador
@@ -1463,7 +1464,7 @@ function updateSidebarUser(){
 }
 
 function buildNav(){
-  const {isCoord, canLancar, canVisaoEquipe, canExEquipe, canMinhaCobranca} = getPerms();
+  const {isCoord, canLancar, canVisaoEquipe, canExEquipe, canMinhaCobranca, canZendesk} = getPerms();
   const isViewer = userProfile.role==='viewer';
   const chev='<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>';
   function ddItem(id,label){return '<button class="nb-dd-item" id="nav-'+id+'" data-page="'+id+'" onclick="nbClose();navigate(this.dataset.page)">'+label+'<span class="nav-badge" id="badge-'+id+'" style="display:none;"></span></button>';}
@@ -1496,7 +1497,7 @@ function buildNav(){
   let socialItems=ddItem('feed','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780800099/foto_feed_zkeahk.png"/>Feed da Cobranca')+ddItem('perfis','👥 Perfis');
   html+=group('social','Social',socialItems);
   if(!isViewer){
-    let utilItems=ddItem('copys','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780800196/copy_b0dpnq.png"/>Banco de Copys')+ddItem('links','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780800378/links_wnwufb.jpg"/>Links de Reneg.')+ddItem('escala','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780800513/rotear_wgszyx.png"/>Escala de Roteamento')+ddItem('zendesk','<span class="nb-icon">🎫</span>Zendesk')+ddItem('calc','🧮 Calculadoras')+ddItem('infos','💡 Informacoes Uteis')+ddItem('codigosoferta','📊 Cod. de Oferta')+ddItem('formsplanilhas','📋 Forms/Planilhas')+ddItem('hashtube','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1782143284/hashtube2_zwqefx.png"/>Hashtube')+'<button class="nb-dd-item" onclick="nbClose();window.forcarAtualizacao()"><span class="nb-icon">🔄</span>Atualizar</button>';
+    let utilItems=ddItem('copys','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780800196/copy_b0dpnq.png"/>Banco de Copys')+ddItem('links','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780800378/links_wnwufb.jpg"/>Links de Reneg.')+ddItem('escala','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780800513/rotear_wgszyx.png"/>Escala de Roteamento')+(canZendesk?ddItem('zendesk','<span class="nb-icon">🎫</span>Zendesk'):'')+ddItem('calc','🧮 Calculadoras')+ddItem('infos','💡 Informacoes Uteis')+ddItem('codigosoferta','📊 Cod. de Oferta')+ddItem('formsplanilhas','📋 Forms/Planilhas')+ddItem('hashtube','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1782143284/hashtube2_zwqefx.png"/>Hashtube')+'<button class="nb-dd-item" onclick="nbClose();window.forcarAtualizacao()"><span class="nb-icon">🔄</span>Atualizar</button>';
     html+=group('utils','Utilidades',utilItems);
   }
   let contaItems=ddItem('perfil','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780845592/home_w6kzpw.png"/>Pagina Inicial')+ddItem('agenda','<span class="nb-icon">📅</span>Agenda')+ddItem('caderno','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780802371/historico_zbvzr3.png"/>Caderno')+ddItem('basilisco','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780873587/dark_snake_puyvhs.png"/>Basilisco')+ddItem('feriastime','<span class="nb-icon">🏖️</span>Ferias do Time')+ddItem('lembretes','<span class="nb-icon">⏰</span>Lembretes')+(canMinhaCobranca?ddItem('minha_cobranca','<span class="nb-icon">💳</span>Minha Cobrança'):'')+(!isViewer?ddItem('feedback','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780803681/chatting_xdxyho.png"/>Feedbacks'):'');
@@ -1732,7 +1733,10 @@ window.navigate=async function(page,historyMode){
   if(page==='editarperfil'){await renderEditarPerfil(mc);return;}
   if(page==='termometro'){await renderTermometroPagina(mc);return;}
   if(page==='basilisco'){await renderBasilisco(mc);return;}
-  if(page==='zendesk'){await renderZendesk(mc);return;}
+  if(page==='zendesk'){
+    if(getPerms().canZendesk){await renderZendesk(mc);return;}
+    else{mc.innerHTML=snakeHtml()+'<div class="empty">Sem permissao para esta area.</div>';return;}
+  }
   if(page==='perfis'){await renderPerfis(mc);return;}
   if(page==='caderno'){await renderCaderno(mc);return;}
   if(page==='perfil'){await renderPerfil(mc);return;}
@@ -4282,8 +4286,19 @@ function zdPillsHtml(){
 }
 
 async function renderZendesk(mc){
+  const {isCoord}=getPerms();
   mc.innerHTML=snakeHtml()+
     '<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;"><div class="page-eyebrow">🎫 Zendesk</div><div class="page-title">Tickets</div><div class="page-sub">Escolha uma visualização ou busque um ticket antigo</div></div>'+
+    (isCoord?
+      '<div class="panel" style="margin-bottom:1rem;">'+
+        '<label class="inp-label" style="margin-bottom:8px;display:block;">Liberar Zendesk para operador</label>'+
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">'+
+          '<select id="zd-liberar-select" class="inp" style="flex:1;min-width:200px;"><option value="">Carregando operadores...</option></select>'+
+          '<button onclick="zdLiberarAcesso()" style="padding:8px 16px;background:var(--primary);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:12px;font-weight:500;cursor:pointer;">Liberar</button>'+
+        '</div>'+
+        '<div id="zd-liberados-lista" style="margin-top:10px;"></div>'+
+      '</div>'
+      :'')+
     '<div style="display:flex;gap:8px;margin-bottom:1rem;">'+
       '<input id="zd-busca" type="text" class="inp" placeholder="Buscar por nome, e-mail, assunto ou número do ticket..." onkeydown="if(event.key===\'Enter\')zdBuscar()" style="flex:1;"/>'+
       '<button onclick="zdBuscar()" style="padding:9px 18px;background:var(--primary);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap;">🔍 Buscar</button>'+
@@ -4299,8 +4314,71 @@ async function renderZendesk(mc){
         '<div id="zd-resumo-conteudo"><div class="empty">Carregando...</div></div>'+
       '</div>'+
     '</div>';
+  if(isCoord) window.zdCarregarLiberados();
   await window.zdCarregarLista();
 }
+
+window.zdCarregarLiberados=async function(){
+  const select=document.getElementById('zd-liberar-select');
+  const lista=document.getElementById('zd-liberados-lista');
+  if(!select) return;
+  try{
+    const snap=await getDocs(collection(db,'usuarios'));
+    const todos=[];
+    const liberados=[];
+    snap.forEach(d=>{
+      const data=d.data();
+      if(data.role!=='op'||data.ativo===false) return;
+      const subs=Array.isArray(data.subrole)?data.subrole:(data.subrole?[data.subrole]:[]);
+      const temAcesso=subs.map(s=>s.trim()).includes('zendesk');
+      const item={uid:d.id,nome:data.nome||'(sem nome)'};
+      todos.push({...item,temAcesso});
+      if(temAcesso) liberados.push(item);
+    });
+    todos.sort((a,b)=>a.nome.localeCompare(b.nome));
+    liberados.sort((a,b)=>a.nome.localeCompare(b.nome));
+    select.innerHTML='<option value="">Selecionar operador...</option>'+
+      todos.filter(o=>!o.temAcesso).map(o=>'<option value="'+o.uid+'">'+zdEscapeHtml(o.nome)+'</option>').join('');
+    if(lista){
+      lista.innerHTML=liberados.length
+        ? liberados.map(o=>'<span style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;background:var(--bg);border-radius:20px;font-size:11px;margin:2px 4px 2px 0;">'+zdEscapeHtml(o.nome)+'<button onclick="zdRevogarAcesso(\''+o.uid+'\')" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:13px;line-height:1;">×</button></span>').join('')
+        : '<div style="font-size:11px;color:var(--text-3);">Só o coordenador tem acesso no momento.</div>';
+    }
+  }catch(e){
+    select.innerHTML='<option value="">Erro ao carregar operadores</option>';
+  }
+};
+
+window.zdLiberarAcesso=async function(){
+  const select=document.getElementById('zd-liberar-select');
+  const uid=select?select.value:'';
+  if(!uid){showToast('Selecione um operador.');return;}
+  try{
+    const uSnap=await getDoc(doc(db,'usuarios',uid));
+    const uData=uSnap.exists()?uSnap.data():{};
+    const subs=Array.isArray(uData.subrole)?uData.subrole.slice():(uData.subrole?[uData.subrole]:[]);
+    if(!subs.map(s=>s.trim()).includes('zendesk')) subs.push('zendesk');
+    await setDoc(doc(db,'usuarios',uid),{subrole:subs},{merge:true});
+    showToast('Acesso ao Zendesk liberado!');
+    await window.zdCarregarLiberados();
+  }catch(e){
+    showToast('Erro ao liberar acesso: '+e.message);
+  }
+};
+
+window.zdRevogarAcesso=async function(uid){
+  if(!confirm('Revogar o acesso ao Zendesk deste operador?')) return;
+  try{
+    const uSnap=await getDoc(doc(db,'usuarios',uid));
+    const uData=uSnap.exists()?uSnap.data():{};
+    const subs=(Array.isArray(uData.subrole)?uData.subrole:(uData.subrole?[uData.subrole]:[])).filter(s=>s.trim()!=='zendesk');
+    await setDoc(doc(db,'usuarios',uid),{subrole:subs},{merge:true});
+    showToast('Acesso revogado.');
+    await window.zdCarregarLiberados();
+  }catch(e){
+    showToast('Erro ao revogar: '+e.message);
+  }
+};
 
 window.zdSelecionarView=async function(viewId){
   zdViewAtual=viewId;
