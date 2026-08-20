@@ -4116,6 +4116,7 @@ let zdTicketObjAtual=null;
 let zdComentariosAtuais=[];
 let zdSugestaoAtual='';
 let zdMeta=null;
+let zdHistoricoListaAtual=[];
 async function zdCarregarMeta(){
   if(zdMeta) return zdMeta;
   zdMeta=await zdFetch('/api/zendesk/meta');
@@ -4259,7 +4260,16 @@ async function renderZendesk(mc){
       '<button onclick="zdBuscar()" style="padding:9px 18px;background:var(--primary);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap;">🔍 Buscar</button>'+
     '</div>'+
     '<div id="zd-pills" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1rem;">'+zdPillsHtml()+'</div>'+
-    '<div id="zd-conteudo"><div class="empty">Carregando tickets...</div></div>';
+    '<div id="zd-conteudo"><div class="empty">Carregando tickets...</div></div>'+
+    '<div id="zd-resumo-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:3000;align-items:center;justify-content:center;">'+
+      '<div style="background:var(--surface);border:1px solid var(--border-md);border-radius:14px;padding:24px;width:100%;max-width:600px;max-height:80vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.4);">'+
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">'+
+          '<div style="font-size:16px;font-weight:600;color:var(--text);">📋 Resumo do histórico</div>'+
+          '<button onclick="document.getElementById(\'zd-resumo-modal\').style.display=\'none\'" style="background:none;border:none;font-size:20px;color:var(--text-3);cursor:pointer;line-height:1;">×</button>'+
+        '</div>'+
+        '<div id="zd-resumo-conteudo"><div class="empty">Carregando...</div></div>'+
+      '</div>'+
+    '</div>';
   await window.zdCarregarLista();
 }
 
@@ -4364,7 +4374,10 @@ window.zdAbrirTicket=async function(id){
         '<button onclick="zdSalvarAtribuicao()" style="padding:7px 16px;background:transparent;border:1px solid var(--primary);color:var(--primary);border-radius:var(--radius);font-family:var(--font);font-size:12px;font-weight:500;cursor:pointer;">Salvar atribuição</button>'+
       '</div>'+
       '<div class="panel" style="margin-bottom:1rem;">'+
-        '<label class="inp-label" style="margin-bottom:10px;display:block;">Histórico de interações</label>'+
+        '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">'+
+          '<label class="inp-label" style="margin:0;">Histórico de interações</label>'+
+          '<button onclick="zdResumoHistorico()" style="padding:5px 12px;background:transparent;border:1px solid var(--border-md);color:var(--text-2);border-radius:var(--radius);font-family:var(--font);font-size:11px;cursor:pointer;">📋 Resumir histórico</button>'+
+        '</div>'+
         '<div id="zd-historico"><div class="empty">Carregando histórico...</div></div>'+
       '</div>'+
       zdRenderConversa(t,comments)+
@@ -4423,10 +4436,12 @@ window.zdAtualizarStatus=async function(){
 window.zdCarregarHistoricoSolicitante=async function(requesterId,ticketId){
   const box=document.getElementById('zd-historico');
   if(!box) return;
+  zdHistoricoListaAtual=[];
   if(!requesterId){ box.innerHTML='<div class="empty">Solicitante desconhecido.</div>'; return; }
   try{
     const data=await zdFetch('/api/zendesk/requester-history?requester_id='+requesterId+'&exclude_id='+ticketId);
     const tickets=data.tickets||[];
+    zdHistoricoListaAtual=tickets;
     if(tickets.length===0){ box.innerHTML='<div class="empty">Nenhuma outra conversa encontrada com este solicitante.</div>'; return; }
     const corStatus={new:'#3b82f6',open:'#f59e0b',pending:'#8b5cf6',hold:'#6b7280',solved:'#22c55e',closed:'#6b7280'};
     box.innerHTML=tickets.map(t2=>{
@@ -4535,6 +4550,50 @@ window.zdUsarSugestao=function(){
   const textarea=document.getElementById('zd-resposta');
   if(textarea) textarea.value=zdSugestaoAtual;
   showToast('Sugestão copiada — revise antes de enviar!');
+};
+
+window.zdResumoHistorico=async function(){
+  const modal=document.getElementById('zd-resumo-modal');
+  const box=document.getElementById('zd-resumo-conteudo');
+  if(!modal||!box) return;
+  modal.style.display='flex';
+  box.innerHTML='<div class="empty">🐍 Lendo o histórico...</div>';
+  if(!zdTicketObjAtual){ box.innerHTML='<div class="empty">Abra um ticket primeiro.</div>'; return; }
+  if(zdHistoricoListaAtual.length===0){ box.innerHTML='<div class="empty">Não há outras conversas registradas com este solicitante.</div>'; return; }
+  try{
+    const cfgSnap=await getDoc(doc(db,'config','basilisco'));
+    if(!cfgSnap.exists()||!cfgSnap.data().key){
+      box.innerHTML='<div class="empty">Basilisco ainda não está configurado (falta a chave da API). Configure na aba Basilisco.</div>';
+      return;
+    }
+    const key=cfgSnap.data().key;
+    const LIMITE=5;
+    const antigos=zdHistoricoListaAtual.slice(0,LIMITE);
+    const transcritos=await Promise.all(antigos.map(async tk=>{
+      try{
+        const d=await zdFetch('/api/zendesk/ticket?id='+tk.id);
+        return '=== Ticket #'+tk.id+' ("'+(d.ticket.subject||'')+'") - '+(ZD_STATUS_LABEL[tk.status]||tk.status)+' ===\n'+zdFormatarTranscript(d.ticket,d.comments||[]);
+      }catch(e){ return '=== Ticket #'+tk.id+' === (erro ao carregar este ticket)'; }
+    }));
+    const transcritoAtual='=== Ticket atual #'+zdTicketObjAtual.id+' ("'+(zdTicketObjAtual.subject||'')+'") ===\n'+zdFormatarTranscript(zdTicketObjAtual,zdComentariosAtuais);
+    const systemPrompt='Voce e o Basilisco, assistente interno da equipe de Contas a Receber da Hashtag Treinamentos.\n'+
+      'Resuma o historico de interacoes abaixo entre a equipe e este mesmo cliente, em portugues.\n'+
+      'Organize em topicos curtos: (1) quem e o cliente e contexto geral, (2) principais assuntos ja tratados em ordem cronologica, (3) pendencias ou promessas feitas que ainda nao foram resolvidas, (4) tom/sentimento geral do cliente.\n'+
+      'Seja direto e conciso, sem inventar informacoes que nao estao no texto.';
+    const geminiBody={
+      system_instruction:{parts:[{text:systemPrompt}]},
+      contents:[{role:'user',parts:[{text:transcritos.join('\n\n')+'\n\n'+transcritoAtual}]}],
+      generationConfig:{maxOutputTokens:1000,temperature:0.2}
+    };
+    const res=await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent',{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':key},body:JSON.stringify(geminiBody)});
+    const data=await res.json();
+    if(data.error){ box.innerHTML='<div class="empty">Erro: '+data.error.message+'</div>'; return; }
+    const resumo=data.candidates&&data.candidates[0]&&data.candidates[0].content&&data.candidates[0].content.parts&&data.candidates[0].content.parts[0]&&data.candidates[0].content.parts[0].text||'Não foi possível gerar um resumo.';
+    const nota=zdHistoricoListaAtual.length>LIMITE?'<div style="font-size:11px;color:var(--text-3);margin-top:12px;">Resumo baseado nos '+LIMITE+' tickets mais recentes de '+zdHistoricoListaAtual.length+' encontrados.</div>':'';
+    box.innerHTML='<div style="font-size:13px;color:var(--text);white-space:pre-wrap;line-height:1.6;">'+zdEscapeHtml(resumo)+'</div>'+nota;
+  }catch(e){
+    box.innerHTML='<div class="empty">Erro ao gerar resumo: '+e.message+'</div>';
+  }
 };
 
 let CURSOS=[];
