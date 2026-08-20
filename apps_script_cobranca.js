@@ -2,52 +2,343 @@
 // APPS SCRIPT — PLANILHA DE COBRANÇA INDIVIDUAL
 // Cole em: Extensões → Apps Script → Salvar → Implantar → Web App
 // Acesso: Qualquer pessoa (incluindo anônimos)
+// Requer aba única chamada "Página1" com cabeçalhos: EMAIL, CODIGO_TRANSACAO,
+// STATUS, TENTATIVAS, DATA_ATENDIMENTO, ULTIMA_VERIFICACAO, METODO_PAGAMENTO,
+// VALOR_PAGO, DATA_PAGAMENTO, PARCELA_DE_LINHA
 // ═══════════════════════════════════════════════════════════════
 
-const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+/**** CONFIGURAÇÃO ****/
+const NOME_ABA = 'Página1'; // <-- confira se bate com o nome da sua aba
+const MAX_TENTATIVAS = 8;
+const STATUS_ATRASADO = 'Atrasado';
+const JANELA_MULTIPLAS_PARCELAS_HORAS = 48; // busca por e-mail: coleta TODAS as parcelas novas dentro dessa janela
 
+// Status da Hotmart que ainda significam "aguardando", não é novidade
+const STATUS_PENDENTES_HOTMART = ['WAITING_PAYMENT', 'PRINTED_BILLET', 'PROCESSING_TRANSACTION', 'UNDER_ANALISYS', 'STARTED', 'PRE_ORDER'];
+
+// Status verificados na busca por e-mail (sem código de transação)
+const STATUS_BUSCA_EMAIL = ['WAITING_PAYMENT', 'PRINTED_BILLET', 'APPROVED', 'COMPLETE', 'REFUNDED', 'PARTIALLY_REFUNDED', 'CANCELLED', 'CHARGEBACK', 'EXPIRED'];
+
+/**** GATILHOS (rode configurarGatilhos() uma vez manualmente) ****/
+function configurarGatilhos() {
+  ScriptApp.getProjectTriggers().forEach(function (t) {
+    var f = t.getHandlerFunction();
+    if (f === 'handleEdit' || f === 'verificarTodasPendentes') {
+      ScriptApp.deleteTrigger(t);
+    }
+  });
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  ScriptApp.newTrigger('handleEdit').forSpreadsheet(ss).onEdit().create();
+  ScriptApp.newTrigger('verificarTodasPendentes').timeBased().everyHours(12).create();
+  Logger.log('Gatilhos criados: handleEdit (ao editar) e verificarTodasPendentes (a cada 12h).');
+}
+
+function handleEdit(e) {
+  try {
+    var sheet = e.range.getSheet();
+    if (sheet.getName() !== NOME_ABA) return;
+    if (e.range.getRow() === 1) return;
+
+    var headerMap = getHeaderMap_(sheet);
+    var col = e.range.getColumn();
+    if (col !== headerMap['EMAIL'] && col !== headerMap['CODIGO_TRANSACAO']) return;
+
+    verificarLinha_(sheet, e.range.getRow(), headerMap);
+  } catch (err) {
+    Logger.log('Erro no handleEdit: ' + err);
+  }
+}
+
+function verificarTodasPendentes() {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(NOME_ABA);
+  var headerMap = getHeaderMap_(sheet);
+  var lastRow = sheet.getLastRow();
+  var inicio = Date.now();
+  var LIMITE_MS = 5 * 60 * 1000; // margem de segurança (Apps Script corta em 6 min)
+
+  for (var row = 2; row <= lastRow; row++) {
+    if (Date.now() - inicio > LIMITE_MS) {
+      Logger.log('Perto do limite de execução, parando na linha ' + row + '. Continua no próximo gatilho.');
+      break;
+    }
+    verificarLinha_(sheet, row, headerMap);
+  }
+}
+
+/**** LÓGICA PRINCIPAL ****/
+function verificarLinha_(sheet, row, headerMap) {
+  function get(col) { return headerMap[col] ? sheet.getRange(row, headerMap[col]).getValue() : ''; }
+  function set(col, val) { if (headerMap[col]) sheet.getRange(row, headerMap[col]).setValue(val); }
+
+  var email = (get('EMAIL') || '').toString().trim();
+  var codigo = (get('CODIGO_TRANSACAO') || '').toString().trim();
+  if (!email && !codigo) return;
+
+  var statusAtual = (get('STATUS') || '').toString().trim();
+  if (statusAtual && statusAtual !== STATUS_ATRASADO) return; // já resolvido, não mexe mais
+
+  var tentativas = Number(get('TENTATIVAS')) || 0;
+  if (tentativas >= MAX_TENTATIVAS) return; // já bateu o limite
+
+  var dataAtendimento = get('DATA_ATENDIMENTO');
+  if (!dataAtendimento) {
+    dataAtendimento = new Date();
+    set('DATA_ATENDIMENTO', dataAtendimento);
+  }
+  var dataAtendimentoMs = new Date(dataAtendimento).getTime();
+
+  if (codigo) {
+    verificarPorCodigo_(row, get, set, codigo);
+  } else {
+    verificarPorEmail_(sheet, row, headerMap, get, set, email, dataAtendimentoMs, tentativas);
+  }
+}
+
+// Caminho com CODIGO_TRANSACAO: exato, sem ambiguidade, sem múltiplas parcelas.
+function verificarPorCodigo_(row, get, set, codigo) {
+  var item = null;
+  var novidade = false;
+
+  try {
+    item = buscarPorCodigo_(codigo);
+    if (item && STATUS_PENDENTES_HOTMART.indexOf(item.purchase.status) === -1) {
+      novidade = true;
+    }
+  } catch (err) {
+    Logger.log('Erro ao verificar linha ' + row + ' (código): ' + err);
+    return; // não consome tentativa em erro de rede/API
+  }
+
+  var tentativas = (Number(get('TENTATIVAS')) || 0) + 1;
+  set('TENTATIVAS', tentativas);
+  set('ULTIMA_VERIFICACAO', new Date());
+
+  if (novidade && item) {
+    var p = item.purchase;
+    set('STATUS', p.status);
+    set('METODO_PAGAMENTO', p.payment ? p.payment.method : '');
+    set('VALOR_PAGO', p.price ? p.price.value : '');
+    var dataPg = p.approved_date || p.order_date;
+    set('DATA_PAGAMENTO', dataPg ? new Date(dataPg) : '');
+  } else {
+    set('STATUS', STATUS_ATRASADO);
+  }
+}
+
+// Caminho só com EMAIL: coleta TODAS as parcelas novas dentro da janela de 48h,
+// cada uma vira uma linha nova no final da planilha (ver adicionarLinhaParcela_).
+function verificarPorEmail_(sheet, row, headerMap, get, set, email, dataAtendimentoMs, tentativas) {
+  var novasParcelas = [];
+
+  try {
+    novasParcelas = buscarTodasPorEmail_(email, dataAtendimentoMs);
+  } catch (err) {
+    Logger.log('Erro ao verificar linha ' + row + ' (email): ' + err);
+    return; // não consome tentativa em erro de rede/API
+  }
+
+  tentativas += 1;
+  set('TENTATIVAS', tentativas);
+  set('ULTIMA_VERIFICACAO', new Date());
+
+  var codigosExistentes = getTodosCodigosExistentes_(sheet, headerMap);
+  novasParcelas.forEach(function (item) {
+    var codTrans = item.purchase.transaction;
+    if (!codTrans || codigosExistentes.indexOf(codTrans) !== -1) return; // já registrada, pula
+    adicionarLinhaParcela_(sheet, headerMap, row, email, item);
+    codigosExistentes.push(codTrans);
+  });
+
+  var horasDesdeAtendimento = (Date.now() - dataAtendimentoMs) / (1000 * 60 * 60);
+  var totalParcelas = contarParcelasDaLinha_(sheet, headerMap, row);
+
+  if (horasDesdeAtendimento >= JANELA_MULTIPLAS_PARCELAS_HORAS && totalParcelas > 0) {
+    set('STATUS', 'Concluído - ' + totalParcelas + ' parcela(s) encontrada(s)');
+    set('TENTATIVAS', MAX_TENTATIVAS); // trava, não reprocessa mais
+  } else {
+    set('STATUS', STATUS_ATRASADO); // ainda dentro da janela, ou nada encontrado ainda
+  }
+}
+
+/**** INTEGRAÇÃO HOTMART ****/
+function getHotmartToken_() {
+  var cache = CacheService.getScriptCache();
+  var cached = cache.get('hotmart_token');
+  if (cached) return cached;
+
+  var props = PropertiesService.getScriptProperties();
+  var clientId = props.getProperty('HOTMART_CLIENT_ID');
+  var clientSecret = props.getProperty('HOTMART_CLIENT_SECRET');
+  var basic = props.getProperty('HOTMART_BASIC');
+
+  if (!clientId || !clientSecret || !basic) {
+    throw new Error('Credenciais da Hotmart não configuradas em Script Properties (HOTMART_CLIENT_ID, HOTMART_CLIENT_SECRET, HOTMART_BASIC).');
+  }
+
+  var url = 'https://api-sec-vlc.hotmart.com/security/oauth/token' +
+    '?grant_type=client_credentials&client_id=' + encodeURIComponent(clientId) +
+    '&client_secret=' + encodeURIComponent(clientSecret);
+
+  var resp = UrlFetchApp.fetch(url, {
+    method: 'post',
+    headers: { 'Authorization': 'Basic ' + basic },
+    muteHttpExceptions: true
+  });
+
+  if (resp.getResponseCode() !== 200) {
+    throw new Error('Falha ao autenticar na Hotmart (' + resp.getResponseCode() + '): ' + resp.getContentText());
+  }
+
+  var data = JSON.parse(resp.getContentText());
+  cache.put('hotmart_token', data.access_token, Math.max(60, data.expires_in - 60));
+  return data.access_token;
+}
+
+function chamarSalesHistory_(params) {
+  var token = getHotmartToken_();
+  var query = Object.keys(params).map(function (k) {
+    return k + '=' + encodeURIComponent(params[k]);
+  }).join('&');
+  var url = 'https://developers.hotmart.com/payments/api/v1/sales/history?' + query;
+
+  var resp = UrlFetchApp.fetch(url, {
+    method: 'get',
+    headers: { 'Authorization': 'Bearer ' + token },
+    muteHttpExceptions: true
+  });
+
+  if (resp.getResponseCode() !== 200) {
+    Logger.log('Erro Hotmart (' + resp.getResponseCode() + '): ' + resp.getContentText());
+    return [];
+  }
+
+  var data = JSON.parse(resp.getContentText());
+  return data.items || [];
+}
+
+function buscarPorCodigo_(codigo) {
+  var items = chamarSalesHistory_({ transaction: codigo });
+  return items.length ? items[0] : null;
+}
+
+// Retorna TODAS as transações novas (não só a melhor), deduplicadas por código,
+// para permitir capturar múltiplas parcelas de um mesmo e-mail.
+function buscarTodasPorEmail_(email, dataAtendimentoMs) {
+  var vistos = {};
+  var resultado = [];
+
+  for (var i = 0; i < STATUS_BUSCA_EMAIL.length; i++) {
+    var status = STATUS_BUSCA_EMAIL[i];
+    var items = chamarSalesHistory_({ buyer_email: email, transaction_status: status, max_results: 10 });
+
+    for (var j = 0; j < items.length; j++) {
+      var p = items[j].purchase;
+      var dataEvento = p.approved_date || p.order_date || 0;
+      if (dataEvento > dataAtendimentoMs && p.transaction && !vistos[p.transaction]) {
+        vistos[p.transaction] = true;
+        resultado.push(items[j]);
+      }
+    }
+    Utilities.sleep(150);
+  }
+  return resultado;
+}
+
+// Todos os códigos de transação já presentes na planilha (evita duplicar parcela já registrada)
+function getTodosCodigosExistentes_(sheet, headerMap) {
+  var col = headerMap['CODIGO_TRANSACAO'];
+  if (!col) return [];
+  var lastRow = sheet.getLastRow();
+  if (lastRow < 2) return [];
+  var valores = sheet.getRange(2, col, lastRow - 1, 1).getValues();
+  return valores.map(function (r) { return (r[0] || '').toString().trim(); }).filter(function (v) { return v; });
+}
+
+// Adiciona uma linha nova no final da planilha para uma parcela encontrada via busca por e-mail
+function adicionarLinhaParcela_(sheet, headerMap, linhaOrigem, email, item) {
+  var novaLinha = sheet.getLastRow() + 1;
+  var p = item.purchase;
+  function set(col, val) { if (headerMap[col]) sheet.getRange(novaLinha, headerMap[col]).setValue(val); }
+
+  set('EMAIL', email);
+  set('CODIGO_TRANSACAO', p.transaction);
+  set('STATUS', p.status);
+  set('METODO_PAGAMENTO', p.payment ? p.payment.method : '');
+  set('VALOR_PAGO', p.price ? p.price.value : '');
+  var dataPg = p.approved_date || p.order_date;
+  set('DATA_PAGAMENTO', dataPg ? new Date(dataPg) : '');
+  set('TENTATIVAS', MAX_TENTATIVAS); // já resolvida, nunca mais reprocessa
+  set('ULTIMA_VERIFICACAO', new Date());
+  set('PARCELA_DE_LINHA', linhaOrigem);
+}
+
+// Conta quantas parcelas já foram registradas (linhas novas) para uma linha de origem
+function contarParcelasDaLinha_(sheet, headerMap, linhaOrigem) {
+  var col = headerMap['PARCELA_DE_LINHA'];
+  if (!col) return 0;
+  var lastRow = sheet.getLastRow();
+  if (lastRow < 2) return 0;
+  var valores = sheet.getRange(2, col, lastRow - 1, 1).getValues();
+  var count = 0;
+  valores.forEach(function (r) { if (Number(r[0]) === linhaOrigem) count++; });
+  return count;
+}
+
+/**** UTILITÁRIOS DE TESTE (rode manualmente pelo editor) ****/
+function testarConexaoHotmart() {
+  var token = getHotmartToken_();
+  Logger.log('Conectado com sucesso! Token começa com: ' + token.substring(0, 12) + '...');
+}
+
+function verificarLinhaSelecionada() {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(NOME_ABA);
+  var row = sheet.getActiveCell().getRow();
+  var headerMap = getHeaderMap_(sheet);
+  verificarLinha_(sheet, row, headerMap);
+  Logger.log('Linha ' + row + ' verificada. Confira as colunas STATUS, TENTATIVAS etc.');
+}
+
+/**** AUXILIAR ****/
+function getHeaderMap_(sheet) {
+  var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  var map = {};
+  headers.forEach(function (h, i) {
+    if (h) map[h.toString().trim()] = i + 1;
+  });
+  return map;
+}
+
+/**** WEB APP — recebe o "Novo Registro" enviado pelo portal Chocalho ****/
 function doPost(e) {
   try {
-    const params = JSON.parse(e.postData.contents);
-    const email = (params.email || '').trim();
-    const codigo = (params.codigo || '').trim();
+    var params = JSON.parse(e.postData.contents);
+    var email = (params.email || '').trim();
+    var codigo = (params.codigo || '').trim();
 
     if (!email && !codigo) {
       return resposta({ ok: false, erro: 'Email ou código obrigatório.' });
     }
 
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    
-    // Abre a aba do mês atual (primeira aba à esquerda = índice 0)
-    const mesAtual = MESES[new Date().getMonth()];
-    let sheet = ss.getSheetByName(mesAtual);
-    
-    // Se não existir aba com o nome do mês, usa a primeira aba
-    if (!sheet) {
-      sheet = ss.getSheets()[0];
-    }
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName(NOME_ABA);
+    if (!sheet) sheet = ss.getSheets()[0];
 
-    // Encontra próxima linha vazia (coluna A = EMAIL)
-    const ultimaLinha = sheet.getLastRow();
-    const proximaLinha = ultimaLinha + 1;
+    var headerMap = getHeaderMap_(sheet);
+    var proximaLinha = sheet.getLastRow() + 1;
 
-    // Preenche Email (col A) e Código de Transação (col B)
-    sheet.getRange(proximaLinha, 1).setValue(email);   // EMAIL
-    sheet.getRange(proximaLinha, 2).setValue(codigo);  // CODIGO_TRANSACAO
-
-    // Registra data de atendimento automaticamente (col J)
-    const hoje = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'dd/MM/yyyy');
-    sheet.getRange(proximaLinha, 10).setValue(hoje);  // DATA_ATENDIMENTO
+    if (headerMap['EMAIL']) sheet.getRange(proximaLinha, headerMap['EMAIL']).setValue(email);
+    if (headerMap['CODIGO_TRANSACAO']) sheet.getRange(proximaLinha, headerMap['CODIGO_TRANSACAO']).setValue(codigo);
+    if (headerMap['DATA_ATENDIMENTO']) sheet.getRange(proximaLinha, headerMap['DATA_ATENDIMENTO']).setValue(new Date());
 
     return resposta({ ok: true, linha: proximaLinha, aba: sheet.getName() });
 
-  } catch(err) {
+  } catch (err) {
     return resposta({ ok: false, erro: err.message });
   }
 }
 
 function doGet(e) {
-  // Endpoint de teste — acesse a URL no browser para verificar se está funcionando
+  // Endpoint de teste — acesse a URL no navegador para verificar se está funcionando
   return resposta({ ok: true, status: 'Apps Script ativo e funcionando!' });
 }
 
