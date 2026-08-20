@@ -4206,7 +4206,15 @@ function zdParseWhatsApp(t,comments){
 
 function zdRenderConversaWhatsApp(t,comments){
   const msgs=zdParseWhatsApp(t,comments);
-  if(msgs.length===0) return zdRenderConversaGenerica(comments);
+  const wallpaper=localStorage.getItem('zd_wallpaper')||'';
+  const bgStyle=wallpaper
+    ? "background-image:url('"+wallpaper.replace(/'/g,'%27')+"');background-size:cover;background-position:center;"
+    : 'background:#e5ddd5;';
+  const toolbar='<div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:6px;">'+
+    '<label style="padding:5px 12px;background:var(--surface);border:1px solid var(--border-md);color:var(--text-2);border-radius:20px;font-size:11px;cursor:pointer;">🖼️ Capa<input type="file" accept="image/*" style="display:none;" onchange="zdDefinirCapa(event)"/></label>'+
+    (wallpaper?'<button onclick="zdRemoverCapa()" style="padding:5px 12px;background:var(--surface);border:1px solid var(--border-md);color:var(--text-2);border-radius:20px;font-size:11px;cursor:pointer;">Remover capa</button>':'')+
+  '</div>';
+  if(msgs.length===0) return toolbar+zdRenderConversaGenerica(comments);
   const bolhas=msgs.map(m=>{
     if(m.nota){
       return '<div style="align-self:center;max-width:80%;background:#fef9c3;border:1px solid #fde68a;border-radius:8px;padding:6px 12px;font-size:11px;color:#92400e;margin:4px 0;">🔒 '+zdEscapeHtml(m.texto)+'</div>';
@@ -4216,13 +4224,13 @@ function zdRenderConversaWhatsApp(t,comments){
       ? '<a href="'+zdEscapeHtml(m.anexoUrl)+'" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:8px;color:inherit;text-decoration:none;"><span style="font-size:20px;">📎</span><span style="font-size:12px;color:#2563eb;text-decoration:underline;word-break:break-all;">'+zdEscapeHtml(m.texto)+'</span></a>'
       : '<div style="font-size:13px;color:#111827;white-space:pre-wrap;line-height:1.4;">'+zdEscapeHtml(m.texto)+'</div>';
     return '<div style="align-self:'+(dele?'flex-end':'flex-start')+';max-width:75%;display:flex;flex-direction:column;">'+
-      '<div style="background:'+(dele?'#d9fdd3':'#fff')+';border-radius:'+(dele?'12px 12px 2px 12px':'12px 12px 12px 2px')+';padding:8px 12px;box-shadow:0 1px 1px rgba(0,0,0,.08);">'+
+      '<div style="background:'+(dele?'#d9fdd3':'rgb(255,255,255)')+';border-radius:'+(dele?'12px 12px 2px 12px':'12px 12px 12px 2px')+';padding:8px 12px;box-shadow:0 1px 1px rgba(0,0,0,.08);">'+
         conteudo+
         '<div style="font-size:10px;color:#667781;text-align:right;margin-top:2px;">'+m.hora+'</div>'+
       '</div>'+
     '</div>';
   }).join('');
-  return '<div style="display:flex;flex-direction:column;gap:6px;padding:16px;background:#e5ddd5;border-radius:12px;margin-bottom:1rem;">'+bolhas+'</div>';
+  return toolbar+'<div style="display:flex;flex-direction:column;gap:6px;padding:16px;'+bgStyle+'border-radius:12px;margin-bottom:1rem;">'+bolhas+'</div>';
 }
 
 function zdRenderConversa(t,comments){
@@ -4230,6 +4238,27 @@ function zdRenderConversa(t,comments){
   if(t.channel==='email') return zdRenderConversaEmail(t,comments);
   return zdRenderConversaGenerica(comments);
 }
+
+window.zdDefinirCapa=async function(e){
+  const file=e.target.files[0];
+  if(!file) return;
+  showToast('Enviando capa...');
+  try{
+    const url=await uploadToCloudinary(file);
+    if(!url) throw new Error('upload falhou');
+    localStorage.setItem('zd_wallpaper',url);
+    showToast('Capa definida!');
+    if(zdTicketAtual) await window.zdAbrirTicket(zdTicketAtual);
+  }catch(err){
+    showToast('Erro ao enviar capa.');
+  }
+};
+
+window.zdRemoverCapa=async function(){
+  localStorage.removeItem('zd_wallpaper');
+  showToast('Capa removida.');
+  if(zdTicketAtual) await window.zdAbrirTicket(zdTicketAtual);
+};
 
 // Transcript em texto puro (so trocas publicas com o cliente) pra usar como
 // contexto do Gemini ou como exemplo salvo no Basilisco.
