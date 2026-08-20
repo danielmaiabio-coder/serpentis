@@ -8877,6 +8877,15 @@ async function renderMinhaCobranca(mc){
       <div style="font-size:13px;color:rgba(255,255,255,0.7);">${userProfile.nome||'Operador'} — ${MC_MESES[mesAtivo]} ${new Date().getFullYear()}</div>
     </div>
 
+    ${getPerms().isCoord?`<div class="panel" style="margin-bottom:1.5rem;">
+      <label class="inp-label" style="margin-bottom:8px;display:block;">Liberar Minha Cobrança para operador</label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <select id="mc-liberar-select" class="inp" style="flex:1;min-width:200px;"><option value="">Carregando operadores...</option></select>
+        <button onclick="window._mcLiberarAcesso()" style="padding:8px 16px;background:var(--primary);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:12px;font-weight:500;cursor:pointer;">Liberar</button>
+      </div>
+      <div id="mc-liberados-lista" style="margin-top:10px;"></div>
+    </div>`:''}
+
     ${!scriptUrl?`<div class="panel" style="border:2px dashed var(--primary);background:var(--primary-light);">
       <div style="font-size:14px;font-weight:600;color:var(--primary);margin-bottom:8px;">⚙️ Configure sua planilha</div>
       <div style="font-size:13px;color:var(--text-2);margin-bottom:12px;">Cole a URL do Apps Script da sua planilha para começar.</div>
@@ -9014,12 +9023,75 @@ async function renderMinhaCobranca(mc){
     };
   }
 
+  window._mcCarregarLiberados=async function(){
+    const select=document.getElementById('mc-liberar-select');
+    const lista=document.getElementById('mc-liberados-lista');
+    if(!select) return;
+    try{
+      const snap=await getDocs(collection(db,'usuarios'));
+      const todos=[];
+      const liberados=[];
+      snap.forEach(d=>{
+        const data=d.data();
+        if(data.role!=='op'||data.ativo===false) return;
+        const subs=Array.isArray(data.subrole)?data.subrole:(data.subrole?[data.subrole]:[]);
+        const temAcesso=subs.map(s=>s.trim()).includes('cobranca_propria');
+        const item={uid:d.id,nome:data.nome||'(sem nome)'};
+        todos.push({...item,temAcesso});
+        if(temAcesso) liberados.push(item);
+      });
+      todos.sort((a,b)=>a.nome.localeCompare(b.nome));
+      liberados.sort((a,b)=>a.nome.localeCompare(b.nome));
+      select.innerHTML='<option value="">Selecionar operador...</option>'+
+        todos.filter(o=>!o.temAcesso).map(o=>'<option value="'+o.uid+'">'+o.nome.replace(/</g,'&lt;')+'</option>').join('');
+      if(lista){
+        lista.innerHTML=liberados.length
+          ? liberados.map(o=>'<span style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;background:var(--bg);border-radius:20px;font-size:11px;margin:2px 4px 2px 0;">'+o.nome.replace(/</g,'&lt;')+'<button onclick="window._mcRevogarAcesso(\''+o.uid+'\')" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:13px;line-height:1;">×</button></span>').join('')
+          : '<div style="font-size:11px;color:var(--text-3);">Só o coordenador tem acesso no momento.</div>';
+      }
+    }catch(e){
+      select.innerHTML='<option value="">Erro ao carregar operadores</option>';
+    }
+  };
+
+  window._mcLiberarAcesso=async function(){
+    const select=document.getElementById('mc-liberar-select');
+    const uidAlvo=select?select.value:'';
+    if(!uidAlvo){showToast('Selecione um operador.');return;}
+    try{
+      const uSnap=await getDoc(doc(db,'usuarios',uidAlvo));
+      const uData=uSnap.exists()?uSnap.data():{};
+      const subs=Array.isArray(uData.subrole)?uData.subrole.slice():(uData.subrole?[uData.subrole]:[]);
+      if(!subs.map(s=>s.trim()).includes('cobranca_propria')) subs.push('cobranca_propria');
+      await setDoc(doc(db,'usuarios',uidAlvo),{subrole:subs},{merge:true});
+      showToast('Acesso à Minha Cobrança liberado!');
+      await window._mcCarregarLiberados();
+    }catch(e){
+      showToast('Erro ao liberar acesso: '+e.message);
+    }
+  };
+
+  window._mcRevogarAcesso=async function(uidAlvo){
+    if(!confirm('Revogar o acesso à Minha Cobrança deste operador?')) return;
+    try{
+      const uSnap=await getDoc(doc(db,'usuarios',uidAlvo));
+      const uData=uSnap.exists()?uSnap.data():{};
+      const subs=(Array.isArray(uData.subrole)?uData.subrole:(uData.subrole?[uData.subrole]:[])).filter(s=>s.trim()!=='cobranca_propria');
+      await setDoc(doc(db,'usuarios',uidAlvo),{subrole:subs},{merge:true});
+      showToast('Acesso revogado.');
+      await window._mcCarregarLiberados();
+    }catch(e){
+      showToast('Erro ao revogar: '+e.message);
+    }
+  };
+
   async function render(){
     sheetData=await carregarDados();
     montarTela();
   }
 
   await render();
+  if(getPerms().isCoord) window._mcCarregarLiberados();
 }
 
 async function renderLembretes(mc){
