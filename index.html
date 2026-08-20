@@ -4168,15 +4168,32 @@ function zdParseWhatsApp(t,comments){
   const reqNome=(t.requester_name||'').trim().toLowerCase();
   comments.forEach(c=>{
     if(c.channel==='chat_transcript'){
-      const linhas=(c.body||'').split('\n').map(l=>l.trim()).filter(Boolean);
-      linhas.forEach(linha=>{
+      const linhas=(c.body||'').split('\n').map(l=>l.trim());
+      for(let i=0;i<linhas.length;i++){
+        const linha=linhas[i];
+        if(!linha) continue;
+        // Linha de anexo: "(21:41:49) Gessica carregou: arquivo.pdf" — o "nome" antes
+        // dos dois-pontos vem com um verbo junto, por isso usa startsWith, nao igualdade.
+        const mUp=linha.match(/^\((\d{1,2}:\d{2}(?::\d{2})?)\)\s*(.+?)\s+carregou:\s*(.+)$/i);
+        if(mUp){
+          const hora=mUp[1].slice(0,5), nome=(mUp[2]||'').trim(), arquivo=(mUp[3]||'').trim();
+          let url='';
+          for(let j=i+1;j<Math.min(i+4,linhas.length);j++){
+            if(/^\(\d{1,2}:\d{2}/.test(linhas[j])) break;
+            const mUrl=linhas[j].match(/^URL:\s*(\S+)/i);
+            if(mUrl){ url=mUrl[1]; break; }
+          }
+          const deCliente=!!nome&&reqNome!==''&&nome.toLowerCase().startsWith(reqNome);
+          msgs.push({hora,nome:nome||(deCliente?t.requester_name:'Equipe'),texto:arquivo,anexoUrl:url,deCliente});
+          continue;
+        }
         const m=linha.match(/^\((\d{1,2}:\d{2}(?::\d{2})?)\)\s*([^:]*):\s*(.*)$/);
-        if(!m) return;
+        if(!m) continue;
         const hora=m[1].slice(0,5), nome=(m[2]||'').trim(), texto=(m[3]||'').trim();
-        if(!texto) return;
-        const deCliente=!!nome&&reqNome!==''&&nome.toLowerCase()===reqNome;
+        if(!texto) continue;
+        const deCliente=!!nome&&reqNome!==''&&nome.toLowerCase().startsWith(reqNome);
         msgs.push({hora,nome:nome||(deCliente?t.requester_name:'Equipe'),texto,deCliente});
-      });
+      }
     } else {
       const dt=new Date(c.created_at);
       const hora=dt.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
@@ -4190,14 +4207,16 @@ function zdRenderConversaWhatsApp(t,comments){
   const msgs=zdParseWhatsApp(t,comments);
   if(msgs.length===0) return zdRenderConversaGenerica(comments);
   const bolhas=msgs.map(m=>{
-    const corpo=zdEscapeHtml(m.texto);
     if(m.nota){
-      return '<div style="align-self:center;max-width:80%;background:#fef9c3;border:1px solid #fde68a;border-radius:8px;padding:6px 12px;font-size:11px;color:#92400e;margin:4px 0;">🔒 '+corpo+'</div>';
+      return '<div style="align-self:center;max-width:80%;background:#fef9c3;border:1px solid #fde68a;border-radius:8px;padding:6px 12px;font-size:11px;color:#92400e;margin:4px 0;">🔒 '+zdEscapeHtml(m.texto)+'</div>';
     }
     const dele=!m.deCliente;
+    const conteudo=m.anexoUrl
+      ? '<a href="'+zdEscapeHtml(m.anexoUrl)+'" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:8px;color:inherit;text-decoration:none;"><span style="font-size:20px;">📎</span><span style="font-size:12px;color:#2563eb;text-decoration:underline;word-break:break-all;">'+zdEscapeHtml(m.texto)+'</span></a>'
+      : '<div style="font-size:13px;color:#111827;white-space:pre-wrap;line-height:1.4;">'+zdEscapeHtml(m.texto)+'</div>';
     return '<div style="align-self:'+(dele?'flex-end':'flex-start')+';max-width:75%;display:flex;flex-direction:column;">'+
       '<div style="background:'+(dele?'#d9fdd3':'#fff')+';border-radius:'+(dele?'12px 12px 2px 12px':'12px 12px 12px 2px')+';padding:8px 12px;box-shadow:0 1px 1px rgba(0,0,0,.08);">'+
-        '<div style="font-size:13px;color:#111827;white-space:pre-wrap;line-height:1.4;">'+corpo+'</div>'+
+        conteudo+
         '<div style="font-size:10px;color:#667781;text-align:right;margin-top:2px;">'+m.hora+'</div>'+
       '</div>'+
     '</div>';
@@ -4234,7 +4253,11 @@ function zdPillsHtml(){
 
 async function renderZendesk(mc){
   mc.innerHTML=snakeHtml()+
-    '<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;"><div class="page-eyebrow">🎫 Zendesk</div><div class="page-title">Tickets</div><div class="page-sub">Escolha uma visualização</div></div>'+
+    '<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;"><div class="page-eyebrow">🎫 Zendesk</div><div class="page-title">Tickets</div><div class="page-sub">Escolha uma visualização ou busque um ticket antigo</div></div>'+
+    '<div style="display:flex;gap:8px;margin-bottom:1rem;">'+
+      '<input id="zd-busca" type="text" class="inp" placeholder="Buscar por nome, e-mail, assunto ou número do ticket..." onkeydown="if(event.key===\'Enter\')zdBuscar()" style="flex:1;"/>'+
+      '<button onclick="zdBuscar()" style="padding:9px 18px;background:var(--primary);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap;">🔍 Buscar</button>'+
+    '</div>'+
     '<div id="zd-pills" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1rem;">'+zdPillsHtml()+'</div>'+
     '<div id="zd-conteudo"><div class="empty">Carregando tickets...</div></div>';
   await window.zdCarregarLista();
@@ -4242,10 +4265,52 @@ async function renderZendesk(mc){
 
 window.zdSelecionarView=async function(viewId){
   zdViewAtual=viewId;
+  const busca=document.getElementById('zd-busca');
+  if(busca) busca.value='';
   const pillsWrap=document.getElementById('zd-pills');
   if(pillsWrap) pillsWrap.innerHTML=zdPillsHtml();
   await window.zdCarregarLista();
 };
+
+window.zdBuscar=async function(){
+  const input=document.getElementById('zd-busca');
+  const q=input?input.value.trim():'';
+  if(!q){showToast('Digite algo para buscar.');return;}
+  const wrap=document.getElementById('zd-conteudo');
+  if(!wrap) return;
+  wrap.innerHTML='<div class="empty">Buscando...</div>';
+  try{
+    const data=await zdFetch('/api/zendesk/search?q='+encodeURIComponent(q));
+    zdRenderListaTickets(data.tickets||[],'Nenhum ticket encontrado para "'+q+'".');
+  }catch(e){
+    wrap.innerHTML='<div class="panel"><div class="empty">Erro na busca: '+e.message+'</div></div>';
+  }
+};
+
+function zdRenderListaTickets(tickets,mensagemVazio){
+  const wrap=document.getElementById('zd-conteudo');
+  if(!wrap) return;
+  if(tickets.length===0){ wrap.innerHTML='<div class="panel"><div class="empty">'+(mensagemVazio||'Nenhum ticket.')+'</div></div>'; return; }
+  const corStatus={new:'#3b82f6',open:'#f59e0b',pending:'#8b5cf6',hold:'#6b7280',solved:'#22c55e',closed:'#6b7280'};
+  const corPrioridade={urgent:'#ef4444',high:'#f97316',normal:'#6b7280',low:'#9ca3af'};
+  wrap.innerHTML='<div style="display:flex;flex-direction:column;gap:8px;">'+
+    tickets.map(t=>{
+      const dt=new Date(t.updated_at);
+      const dataFmt=dt.toLocaleDateString('pt-BR')+' '+dt.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+      const cs=corStatus[t.status]||'#6b7280';
+      const cp=corPrioridade[t.priority]||'#6b7280';
+      return '<div onclick="zdAbrirTicket('+t.id+')" style="display:flex;align-items:center;gap:12px;padding:14px 18px;background:var(--surface);border-radius:12px;border:1px solid var(--border-md);cursor:pointer;">'+
+        '<div style="width:8px;height:8px;border-radius:50%;background:'+cs+';flex-shrink:0;"></div>'+
+        '<div style="flex:1;min-width:0;">'+
+          '<div style="font-size:14px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+(t.subject||'(sem assunto)')+'</div>'+
+          '<div style="font-size:11px;color:var(--text-3);">#'+t.id+' · '+dataFmt+'</div>'+
+        '</div>'+
+        '<span style="font-size:10px;font-weight:600;padding:3px 10px;border-radius:20px;background:'+cp+'22;color:'+cp+';text-transform:uppercase;">'+(t.priority||'-')+'</span>'+
+        '<span style="font-size:10px;font-weight:600;padding:3px 10px;border-radius:20px;background:'+cs+'22;color:'+cs+';text-transform:uppercase;">'+t.status+'</span>'+
+      '</div>';
+    }).join('')+
+  '</div>';
+}
 
 window.zdCarregarLista=async function(){
   const wrap=document.getElementById('zd-conteudo');
@@ -4254,27 +4319,7 @@ window.zdCarregarLista=async function(){
   try{
     const path=zdViewAtual?('/api/zendesk/view-tickets?view_id='+zdViewAtual):'/api/zendesk/tickets';
     const data=await zdFetch(path);
-    const tickets=data.tickets||[];
-    if(tickets.length===0){ wrap.innerHTML='<div class="panel"><div class="empty">Nenhum ticket nessa visualização. 🎉</div></div>'; return; }
-    const corStatus={new:'#3b82f6',open:'#f59e0b',pending:'#8b5cf6',hold:'#6b7280'};
-    const corPrioridade={urgent:'#ef4444',high:'#f97316',normal:'#6b7280',low:'#9ca3af'};
-    wrap.innerHTML='<div style="display:flex;flex-direction:column;gap:8px;">'+
-      tickets.map(t=>{
-        const dt=new Date(t.updated_at);
-        const dataFmt=dt.toLocaleDateString('pt-BR')+' '+dt.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-        const cs=corStatus[t.status]||'#6b7280';
-        const cp=corPrioridade[t.priority]||'#6b7280';
-        return '<div onclick="zdAbrirTicket('+t.id+')" style="display:flex;align-items:center;gap:12px;padding:14px 18px;background:var(--surface);border-radius:12px;border:1px solid var(--border-md);cursor:pointer;">'+
-          '<div style="width:8px;height:8px;border-radius:50%;background:'+cs+';flex-shrink:0;"></div>'+
-          '<div style="flex:1;min-width:0;">'+
-            '<div style="font-size:14px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+(t.subject||'(sem assunto)')+'</div>'+
-            '<div style="font-size:11px;color:var(--text-3);">#'+t.id+' · '+dataFmt+'</div>'+
-          '</div>'+
-          '<span style="font-size:10px;font-weight:600;padding:3px 10px;border-radius:20px;background:'+cp+'22;color:'+cp+';text-transform:uppercase;">'+(t.priority||'-')+'</span>'+
-          '<span style="font-size:10px;font-weight:600;padding:3px 10px;border-radius:20px;background:'+cs+'22;color:'+cs+';text-transform:uppercase;">'+t.status+'</span>'+
-        '</div>';
-      }).join('')+
-    '</div>';
+    zdRenderListaTickets(data.tickets||[],'Nenhum ticket nessa visualização. 🎉');
   }catch(e){
     wrap.innerHTML='<div class="panel"><div class="empty">Erro ao carregar tickets: '+e.message+'</div></div>';
   }
