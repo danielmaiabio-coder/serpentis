@@ -330,6 +330,15 @@ function doPost(e) {
     if (headerMap['CODIGO_TRANSACAO']) sheet.getRange(proximaLinha, headerMap['CODIGO_TRANSACAO']).setValue(codigo);
     if (headerMap['DATA_ATENDIMENTO']) sheet.getRange(proximaLinha, headerMap['DATA_ATENDIMENTO']).setValue(new Date());
 
+    // Verifica na hora, em vez de depender só do gatilho onEdit — gatilhos onEdit
+    // instalados nem sempre disparam para edicoes feitas via API (como este doPost),
+    // entao sem isso a linha ficava parada ate a varredura periodica de 12h.
+    try {
+      verificarLinha_(sheet, proximaLinha, getHeaderMap_(sheet));
+    } catch (verErr) {
+      Logger.log('Erro ao verificar linha recem-criada: ' + verErr);
+    }
+
     return resposta({ ok: true, linha: proximaLinha, aba: sheet.getName() });
 
   } catch (err) {
@@ -338,8 +347,60 @@ function doPost(e) {
 }
 
 function doGet(e) {
+  var action = e && e.parameter && e.parameter.action;
+  if (action === 'listar') {
+    return listarRegistros_();
+  }
   // Endpoint de teste — acesse a URL no navegador para verificar se está funcionando
   return resposta({ ok: true, status: 'Apps Script ativo e funcionando!' });
+}
+
+// Devolve todas as linhas da aba em JSON, para o portal Chocalho ler ao vivo
+// (antes disso nao existia — o portal so lia um cache do Firestore que nunca era atualizado).
+function listarRegistros_() {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName(NOME_ABA);
+    if (!sheet) sheet = ss.getSheets()[0];
+
+    var headerMap = getHeaderMap_(sheet);
+    var lastRow = sheet.getLastRow();
+    if (lastRow < 2) return resposta({ ok: true, registros: [] });
+
+    var lastCol = sheet.getLastColumn();
+    var valores = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
+
+    function col(row, nome) {
+      var idx = headerMap[nome];
+      return idx ? row[idx - 1] : '';
+    }
+    function fmtData(v) {
+      if (!v) return '';
+      if (Object.prototype.toString.call(v) === '[object Date]') {
+        return Utilities.formatDate(v, Session.getScriptTimeZone(), 'dd/MM/yyyy');
+      }
+      return v.toString();
+    }
+
+    var registros = valores
+      .filter(function (row) { return col(row, 'EMAIL') || col(row, 'CODIGO_TRANSACAO'); })
+      .map(function (row) {
+        return {
+          email: col(row, 'EMAIL').toString(),
+          codigo: col(row, 'CODIGO_TRANSACAO').toString(),
+          status: col(row, 'STATUS').toString(),
+          metodo: col(row, 'METODO_PAGAMENTO').toString(),
+          valor: col(row, 'VALOR_PAGO').toString(),
+          dataPag: fmtData(col(row, 'DATA_PAGAMENTO')),
+          tentativas: col(row, 'TENTATIVAS').toString(),
+          dataAtend: fmtData(col(row, 'DATA_ATENDIMENTO')),
+        };
+      });
+
+    return resposta({ ok: true, registros: registros });
+  } catch (err) {
+    return resposta({ ok: false, erro: err.message });
+  }
 }
 
 function resposta(obj) {

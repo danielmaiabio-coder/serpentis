@@ -8753,13 +8753,17 @@ async function renderMinhaCobranca(mc){
   async function carregarDados(){
     if(!scriptUrl) return [];
     try{
-      const url=scriptUrl+'?action=read&mes='+encodeURIComponent(MC_MESES[mesAtivo]);
-      const res=await fetch(url,{mode:'no-cors'});
-      // no-cors won't return data — need to use a different approach
-      // We'll read from Firestore cache instead
-      const cacheSnap=await getDoc(doc(db,'minha_cobranca_dados',uid));
-      return cacheSnap.exists()?cacheSnap.data().registros||[]:[];
-    }catch(e){return [];}
+      const res=await fetch(scriptUrl+'?action=listar');
+      const data=await res.json();
+      if(!data||!data.ok) throw new Error((data&&data.erro)||'resposta invalida do Apps Script');
+      return data.registros||[];
+    }catch(e){
+      console.error('Erro ao buscar dados ao vivo da planilha, usando cache local:',e);
+      try{
+        const cacheSnap=await getDoc(doc(db,'minha_cobranca_dados',uid));
+        return cacheSnap.exists()?cacheSnap.data().registros||[]:[];
+      }catch(e2){return [];}
+    }
   }
 
   function aplicarFiltros(dados){
@@ -8773,9 +8777,10 @@ async function renderMinhaCobranca(mc){
 
   function calcularKPIs(dados){
     const total=dados.length;
-    const aprovados=dados.filter(r=>r.status==='APPROVED').length;
+    const aprovadosArr=dados.filter(r=>r.status==='APPROVED');
+    const aprovados=aprovadosArr.length;
     const atrasados=dados.filter(r=>r.status==='Atrasado').length;
-    const valorTotal=dados.reduce((s,r)=>s+(parseFloat(String(r.valor||0).replace(',','.'))||0),0);
+    const valorTotal=aprovadosArr.reduce((s,r)=>s+(parseFloat(String(r.valor||0).replace(',','.'))||0),0);
     const taxaAprov=total?Math.round(aprovados/total*100):0;
     return {total,aprovados,atrasados,valorTotal,taxaAprov};
   }
@@ -8937,27 +8942,29 @@ async function renderMinhaCobranca(mc){
       btn.disabled=true;btn.textContent='Registrando...';
       if(statusEl)statusEl.innerHTML='<span style="color:var(--text-3);">Enviando...</span>';
       try{
+        // mode:'no-cors' pq o Apps Script nao responde a preflight de POST — mas o
+        // fetch ainda espera o doPost terminar do lado do servidor (que ja verifica
+        // a linha na hora), so nao conseguimos ler a resposta.
         await fetch(scriptUrl,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,codigo,mes:MC_MESES[mesAtivo]})});
-        // Save to Firestore cache too for reading
+        // Guarda tambem num cache local, como rede de seguranca caso a leitura ao vivo falhe
         const now=new Date();
         const novoReg={email,codigo,status:'Pendente',metodo:'',valor:'',dataPag:'',tentativas:'1',ultimaVerif:'',dataAtend:now.toLocaleDateString('pt-BR')};
         const cacheSnap=await getDoc(doc(db,'minha_cobranca_dados',uid));
         const regs=cacheSnap.exists()?cacheSnap.data().registros||[]:[];
         regs.unshift(novoReg);
         await setDoc(doc(db,'minha_cobranca_dados',uid),{registros:regs,updatedAt:Date.now()});
-        if(statusEl)statusEl.innerHTML='<span style="color:#22c55e;">✅ Registrado com sucesso!</span>';
-        document.getElementById('mc-email').value='';
-        document.getElementById('mc-codigo').value='';
-        document.getElementById('mc-email').focus();
-        sheetData=regs;
-        // Update KPIs
-        const filtrados=aplicarFiltros(sheetData);
-        const kpis=calcularKPIs(filtrados);
-        setTimeout(()=>{if(statusEl)statusEl.innerHTML='';},4000);
+        await render(); // busca os dados ao vivo da planilha — recria o formulario, entao a mensagem vai no elemento novo
+        const statusElNovo=document.getElementById('mc-registro-status');
+        if(statusElNovo){
+          statusElNovo.innerHTML='<span style="color:#22c55e;">✅ Registrado com sucesso!</span>';
+          setTimeout(()=>{if(statusElNovo)statusElNovo.innerHTML='';},4000);
+        }
       }catch(e){
-        if(statusEl)statusEl.innerHTML='<span style="color:#ef4444;">Erro ao enviar. Tente novamente.</span>';
+        const statusElErro=document.getElementById('mc-registro-status');
+        if(statusElErro)statusElErro.innerHTML='<span style="color:#ef4444;">Erro ao enviar. Tente novamente.</span>';
       }finally{
-        btn.disabled=false;btn.textContent='Registrar';
+        const btnNovo=document.getElementById('mc-registrar-btn');
+        if(btnNovo){btnNovo.disabled=false;btnNovo.textContent='Registrar';}
       }
     };
   }
