@@ -8770,9 +8770,14 @@ async function renderMinhaCobranca(mc){
 
   // Converte dd/MM/aaaa (formato que vem do Apps Script) para aaaa-MM-dd (formato
   // do <input type="date">), pra dar pra comparar como texto corretamente.
+  // Aceita dia/mes com 1 ou 2 digitos, e ja repassa se vier em formato ISO.
   function mcDataParaISO(dataBR){
-    const m=(dataBR||'').match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-    return m?(m[3]+'-'+m[2]+'-'+m[1]):'';
+    const s=String(dataBR||'').trim();
+    if(!s) return '';
+    if(/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0,10);
+    const m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if(!m) return '';
+    return m[3]+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0');
   }
 
   function aplicarFiltros(dados){
