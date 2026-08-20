@@ -8766,11 +8766,22 @@ async function renderMinhaCobranca(mc){
     }
   }
 
+  // Converte dd/MM/aaaa (formato que vem do Apps Script) para aaaa-MM-dd (formato
+  // do <input type="date">), pra dar pra comparar como texto corretamente.
+  function mcDataParaISO(dataBR){
+    const m=(dataBR||'').match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    return m?(m[3]+'-'+m[2]+'-'+m[1]):'';
+  }
+
   function aplicarFiltros(dados){
     return dados.filter(r=>{
       if(filtroStatus&&r.status!==filtroStatus) return false;
-      if(filtroDe&&r.dataPag&&r.dataPag<filtroDe) return false;
-      if(filtroAte&&r.dataPag&&r.dataPag>filtroAte) return false;
+      // Filtra pela data de atendimento (existe em todo registro), nao pela de
+      // pagamento (so existe em Aprovados — antes disso fazia Atrasado sempre
+      // escapar do filtro de data).
+      const dataIso=mcDataParaISO(r.dataAtend);
+      if(filtroDe&&dataIso&&dataIso<filtroDe) return false;
+      if(filtroAte&&dataIso&&dataIso>filtroAte) return false;
       return true;
     });
   }
