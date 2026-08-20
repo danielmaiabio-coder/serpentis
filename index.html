@@ -8823,23 +8823,24 @@ async function renderMinhaCobranca(mc){
     const kpis=calcularKPIs(filtrados);
     const statusList=[...new Set(sheetData.map(r=>r.status).filter(Boolean))];
 
-    const kpisHtml=`<div style="display:flex;flex-wrap:wrap;gap:14px;margin-bottom:1.5rem;${blurAtivo?'filter:blur(8px);user-select:none;':''}transition:filter 0.15s;">
+    const kpisHtml=`<div id="mc-kpis-wrap" style="display:flex;flex-wrap:wrap;gap:14px;margin-bottom:1.5rem;${blurAtivo?'filter:blur(8px);user-select:none;':''}">
       ${kpiCard('Total de Registros',kpis.total,'var(--primary)')}
       ${kpiCard('Aprovados',kpis.aprovados,'#22c55e',`${kpis.taxaAprov}% do total`)}
       ${kpiCard('Atrasados',kpis.atrasados,'#ef4444')}
       ${kpiCard('Valor Total Aprovado','R$ '+kpis.valorTotal.toLocaleString('pt-BR',{minimumFractionDigits:2}),'#3b82f6')}
     </div>`;
 
-    const tabelaToggleBtn=`<button onclick="window._mcToggleTabela()" style="padding:5px 12px;background:transparent;border:1px solid var(--border-md);border-radius:20px;color:var(--text-3);font-family:var(--font);font-size:11px;cursor:pointer;white-space:nowrap;">${tabelaMinimizada?'🔼 Maximizar':'🔽 Minimizar'}</button>`;
+    const tabelaToggleBtn=`<button id="mc-tabela-toggle-btn" onclick="window._mcToggleTabela()" style="padding:5px 12px;background:transparent;border:1px solid var(--border-md);border-radius:20px;color:var(--text-3);font-family:var(--font);font-size:11px;cursor:pointer;white-space:nowrap;">${tabelaMinimizada?'🔼 Maximizar':'🔽 Minimizar'}</button>`;
 
     const tabelaHtml=filtrados.length===0
       ?`<div class="panel"><div class="empty">Nenhum registro encontrado${filtroStatus||filtroDe?' com os filtros aplicados':''}.</div></div>`
       :`<div class="panel" style="overflow-x:auto;">
-        <div style="display:flex;justify-content:space-between;align-items:center;${tabelaMinimizada?'':'margin-bottom:10px;'}">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
           <div style="font-size:13px;font-weight:600;color:var(--text);">📋 Registros (${filtrados.length})</div>
           ${tabelaToggleBtn}
         </div>
-        ${tabelaMinimizada?'':`<table style="width:100%;border-collapse:collapse;font-size:12px;">
+        <div id="mc-tabela-body-wrap" style="display:${tabelaMinimizada?'none':'block'};">
+        <table style="width:100%;border-collapse:collapse;font-size:12px;">
           <thead>
             <tr style="background:var(--primary);color:#fff;">
               <th style="padding:10px 12px;text-align:left;border-radius:8px 0 0 0;">Email</th>
@@ -8864,7 +8865,8 @@ async function renderMinhaCobranca(mc){
               <td style="padding:9px 12px;text-align:center;color:var(--text-2);">${r.dataAtend||'—'}</td>
             </tr>`).join('')}
           </tbody>
-        </table>`}
+        </table>
+        </div>
       </div>`;
 
     mc.innerHTML=`
@@ -8905,7 +8907,7 @@ async function renderMinhaCobranca(mc){
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:1.25rem;flex-wrap:wrap;">
       <span style="font-size:12px;color:var(--text-2);font-weight:500;">Mês:</span>
       ${MC_MESES.map((m,i)=>`<button onclick="window._mcMes(${i})" style="padding:5px 14px;border-radius:20px;border:1.5px solid ${i===mesAtivo?'var(--primary)':'var(--border-md)'};background:${i===mesAtivo?'var(--primary)':'transparent'};color:${i===mesAtivo?'#fff':'var(--text-2)'};font-family:var(--font);font-size:12px;cursor:pointer;font-weight:${i===mesAtivo?'600':'400'};">${m.substring(0,3)}</button>`).join('')}
-      <button onclick="window._mcToggleBlur()" style="padding:5px 12px;background:${blurAtivo?'var(--primary)':'transparent'};border:1px solid ${blurAtivo?'var(--primary)':'var(--border-md)'};border-radius:20px;color:${blurAtivo?'#fff':'var(--text-3)'};font-family:var(--font);font-size:11px;cursor:pointer;">${blurAtivo?'🙈 Dados ocultos':'👁️ Ocultar dados'}</button>
+      <button id="mc-blur-btn" onclick="window._mcToggleBlur()" style="padding:5px 12px;background:${blurAtivo?'var(--primary)':'transparent'};border:1px solid ${blurAtivo?'var(--primary)':'var(--border-md)'};border-radius:20px;color:${blurAtivo?'#fff':'var(--text-3)'};font-family:var(--font);font-size:11px;cursor:pointer;">${blurAtivo?'🙈 Dados ocultos':'👁️ Ocultar dados'}</button>
       <button onclick="window._mcConfigurar()" style="margin-left:auto;padding:5px 12px;background:transparent;border:1px solid var(--border-md);border-radius:20px;color:var(--text-3);font-family:var(--font);font-size:11px;cursor:pointer;">⚙️ Reconfigurar URL</button>
     </div>
 
@@ -8952,8 +8954,26 @@ async function renderMinhaCobranca(mc){
       render();
     };
     window._mcLimparFiltros=function(){filtroStatus='';filtroDe='';filtroAte='';render();};
-    window._mcToggleBlur=function(){blurAtivo=!blurAtivo;render();};
-    window._mcToggleTabela=function(){tabelaMinimizada=!tabelaMinimizada;render();};
+    window._mcToggleBlur=function(){
+      blurAtivo=!blurAtivo;
+      const wrap=document.getElementById('mc-kpis-wrap');
+      if(wrap) wrap.style.filter=blurAtivo?'blur(8px)':'';
+      if(wrap) wrap.style.userSelect=blurAtivo?'none':'';
+      const btn=document.getElementById('mc-blur-btn');
+      if(btn){
+        btn.textContent=blurAtivo?'🙈 Dados ocultos':'👁️ Ocultar dados';
+        btn.style.background=blurAtivo?'var(--primary)':'transparent';
+        btn.style.borderColor=blurAtivo?'var(--primary)':'var(--border-md)';
+        btn.style.color=blurAtivo?'#fff':'var(--text-3)';
+      }
+    };
+    window._mcToggleTabela=function(){
+      tabelaMinimizada=!tabelaMinimizada;
+      const wrap=document.getElementById('mc-tabela-body-wrap');
+      if(wrap) wrap.style.display=tabelaMinimizada?'none':'block';
+      const btn=document.getElementById('mc-tabela-toggle-btn');
+      if(btn) btn.textContent=tabelaMinimizada?'🔼 Maximizar':'🔽 Minimizar';
+    };
     window._mcRegistrar=async function(){
       const email=(document.getElementById('mc-email')?.value||'').trim();
       const codigo=(document.getElementById('mc-codigo')?.value||'').trim();
