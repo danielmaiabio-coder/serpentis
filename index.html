@@ -327,6 +327,8 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
 .nb-btn-single>img,.nb-btn-single .nb-icon,.nb-btn-single>span.nb-icon{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;flex-shrink:0;font-size:13px;object-fit:contain;}
 .update-banner{display:none;text-align:center;padding:8px 12px;background:#ff4d4d;color:#fff;font-family:var(--font);font-weight:600;font-size:13px;cursor:pointer;transition:background 0.15s;}
 .update-banner:hover{background:#e63939;}
+.lembrete-banner{display:none;text-align:center;padding:8px 12px;background:#f59e0b;color:#fff;font-family:var(--font);font-weight:600;font-size:13px;cursor:pointer;transition:background 0.15s;}
+.lembrete-banner:hover{background:#d97706;}
 .nb-btn-single:hover,.nb-btn-single.active{background:var(--primary-mid);color:#fff;}
 .nb-dropdown{position:absolute;top:100%;left:0;padding-top:8px;background:transparent;display:none;z-index:600;}
 .nb-dropdown-inner{background:#0d2e14;border:1px solid rgba(255,255,255,0.12);border-radius:10px;min-width:200px;padding:6px;box-shadow:0 8px 32px rgba(0,0,0,0.4);}
@@ -882,6 +884,7 @@ body.dark-mode select{background:#22263a;color:#e8eaf0;border-color:rgba(255,255
     </div>
   </nav>
   <div id="updateBanner" class="update-banner" onclick="window.forcarAtualizacao()">🔄 Atualize! Uma nova versão do Chocalho está disponível — clique aqui para atualizar.</div>
+  <div id="lembreteBanner" class="lembrete-banner" onclick="navigate('lembretes')"></div>
   <div class="main" id="mainContent">
   </div>
 </div>
@@ -1248,6 +1251,8 @@ window.forcarAtualizacao=async function(){
 window.doLogout=async function(){
   await signOut(auth);currentUser=null;userProfile=null;viewingOp=null;
   history.replaceState(null,'',location.pathname+location.search);
+  if(window._lembreteInterval) clearInterval(window._lembreteInterval);
+  const lb=document.getElementById('lembreteBanner');if(lb)lb.style.display='none';
   hide('appShell');showLogin();
 };
 
@@ -1442,6 +1447,9 @@ function setupApp(){
   initQfqBarra();
   if(window._termometroInterval) clearInterval(window._termometroInterval);
   window._termometroInterval=setInterval(updateLedTermometro, 60000); // atualiza a cada minuto
+  updateLembreteNotifDot();
+  if(window._lembreteInterval) clearInterval(window._lembreteInterval);
+  window._lembreteInterval=setInterval(updateLembreteNotifDot, 60000); // checa lembretes pendentes a cada minuto
   if(userProfile.bgColor) aplicarBg(userProfile.bgColor);
   // Request notification permission and setup badges
   if('Notification' in window && Notification.permission==='default'){
@@ -9211,10 +9219,11 @@ window.toggleLembreteFeito=async function(id,feito){
   }catch(e){showToast('Erro: '+e.message);}
 };
 
-// ── Atualiza o ponto de notificacao na pagina inicial ──
+// ── Atualiza o ponto de notificacao na pagina inicial + a faixa de aviso global ──
 async function updateLembreteNotifDot(){
   const dot=document.getElementById('lembrete-notif-dot');
-  if(!dot||!currentUser)return;
+  const banner=document.getElementById('lembreteBanner');
+  if(!currentUser){if(banner)banner.style.display='none';return;}
   try{
     const hoje=dataLocalStr();
     const agora=new Date();
@@ -9222,17 +9231,29 @@ async function updateLembreteNotifDot(){
     const q=query(collection(db,'usuarios',currentUser.uid,'lembretes'),where('data','==',hoje));
     const snap=await getDocs(q);
     let pendente=false;
+    const pendentesDesc=[];
     snap.forEach(d=>{
       const it=d.data();
       if(it.feito)return;
       // Sem horario definido -> considera pendente o dia todo
-      if(!it.hora){pendente=true;return;}
+      if(!it.hora){pendente=true;pendentesDesc.push(it.descricao||'Lembrete');return;}
       const [h,m]=it.hora.split(':').map(Number);
       const minutosLembrete=h*60+m;
-      if(minutosAgora>=minutosLembrete) pendente=true;
+      if(minutosAgora>=minutosLembrete){pendente=true;pendentesDesc.push(it.descricao||'Lembrete');}
     });
-    dot.style.background=pendente?'#e53e3e':'transparent';
-    dot.style.boxShadow=pendente?'0 0 8px rgba(229,62,62,0.7)':'none';
+    if(dot){
+      dot.style.background=pendente?'#e53e3e':'transparent';
+      dot.style.boxShadow=pendente?'0 0 8px rgba(229,62,62,0.7)':'none';
+    }
+    if(banner){
+      if(pendente){
+        const texto=pendentesDesc.length===1?pendentesDesc[0]:pendentesDesc.length+' lembretes pendentes';
+        banner.textContent='⏰ Lembrete: '+texto+' — clique para ver.';
+        banner.style.display='block';
+      } else {
+        banner.style.display='none';
+      }
+    }
   }catch(e){/* silencioso */}
 }
 window.updateLembreteNotifDot=updateLembreteNotifDot;
