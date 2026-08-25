@@ -4296,7 +4296,7 @@ function zdPillsHtml(){
 async function renderZendesk(mc){
   const {isCoord}=getPerms();
   mc.innerHTML=snakeHtml()+
-    '<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;"><div class="page-eyebrow">🎫 Zendesk</div><div class="page-title">Tickets</div><div class="page-sub">Escolha uma visualização ou busque um ticket antigo</div></div>'+
+    '<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;"><div class="page-eyebrow">🎫 Zendesk</div><div class="page-title">Tickets</div><div class="page-sub">Escolha uma visualização, busque um ticket antigo, ou consulte a Hotmart</div></div>'+
     (isCoord?
       '<div class="panel" style="margin-bottom:1rem;">'+
         '<label class="inp-label" style="margin-bottom:8px;display:block;">Liberar Zendesk para operador</label>'+
@@ -4308,11 +4308,32 @@ async function renderZendesk(mc){
       '</div>'
       :'')+
     '<div style="display:flex;gap:8px;margin-bottom:1rem;">'+
-      '<input id="zd-busca" type="text" class="inp" placeholder="Buscar por nome, e-mail, assunto ou número do ticket..." onkeydown="if(event.key===\'Enter\')zdBuscar()" style="flex:1;"/>'+
-      '<button onclick="zdBuscar()" style="padding:9px 18px;background:var(--primary);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap;">🔍 Buscar</button>'+
+      '<button id="zd-aba-tickets-btn" onclick="zdMudarAba(\'tickets\')" style="padding:8px 16px;background:var(--primary);color:#fff;border:none;border-radius:20px;font-family:var(--font);font-size:12px;font-weight:600;cursor:pointer;">🎫 Tickets</button>'+
+      '<button id="zd-aba-hotmart-btn" onclick="zdMudarAba(\'hotmart\')" style="padding:8px 16px;background:transparent;border:1px solid var(--border-md);color:var(--text-2);border-radius:20px;font-family:var(--font);font-size:12px;font-weight:600;cursor:pointer;">🛒 Hotmart</button>'+
     '</div>'+
-    '<div id="zd-pills" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1rem;">'+zdPillsHtml()+'</div>'+
-    '<div id="zd-conteudo"><div class="empty">Carregando tickets...</div></div>'+
+    '<div id="zd-aba-tickets">'+
+      '<div style="display:flex;gap:8px;margin-bottom:1rem;">'+
+        '<input id="zd-busca" type="text" class="inp" placeholder="Buscar por nome, e-mail, assunto ou número do ticket..." onkeydown="if(event.key===\'Enter\')zdBuscar()" style="flex:1;"/>'+
+        '<button onclick="zdBuscar()" style="padding:9px 18px;background:var(--primary);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap;">🔍 Buscar</button>'+
+      '</div>'+
+      '<div id="zd-pills" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1rem;">'+zdPillsHtml()+'</div>'+
+      '<div id="zd-conteudo"><div class="empty">Carregando tickets...</div></div>'+
+    '</div>'+
+    '<div id="zd-aba-hotmart" style="display:none;">'+
+      '<div class="panel" style="margin-bottom:1rem;">'+
+        '<label class="inp-label" style="margin-bottom:8px;display:block;">Buscar aluno na Hotmart</label>'+
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;">'+
+          '<select id="zd-hm-tipo" class="inp" style="width:auto;">'+
+            '<option value="email">E-mail</option>'+
+            '<option value="name">Nome</option>'+
+            '<option value="transaction">Código de transação</option>'+
+          '</select>'+
+          '<input id="zd-hm-busca" type="text" class="inp" placeholder="Digite o valor a buscar..." onkeydown="if(event.key===\'Enter\')zdHotmartBuscar()" style="flex:1;min-width:200px;"/>'+
+          '<button onclick="zdHotmartBuscar()" style="padding:9px 18px;background:var(--primary);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap;">🔍 Buscar</button>'+
+        '</div>'+
+      '</div>'+
+      '<div id="zd-hm-resultados"></div>'+
+    '</div>'+
     '<div id="zd-resumo-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:3000;align-items:center;justify-content:center;">'+
       '<div style="background:var(--surface);border:1px solid var(--border-md);border-radius:14px;padding:24px;width:100%;max-width:600px;max-height:80vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.4);">'+
         '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">'+
@@ -4325,6 +4346,58 @@ async function renderZendesk(mc){
   if(isCoord) window.zdCarregarLiberados();
   await window.zdCarregarLista();
 }
+
+window.zdMudarAba=function(aba){
+  const tickets=document.getElementById('zd-aba-tickets');
+  const hotmart=document.getElementById('zd-aba-hotmart');
+  const btnT=document.getElementById('zd-aba-tickets-btn');
+  const btnH=document.getElementById('zd-aba-hotmart-btn');
+  if(tickets) tickets.style.display=aba==='tickets'?'block':'none';
+  if(hotmart) hotmart.style.display=aba==='hotmart'?'block':'none';
+  if(btnT){btnT.style.background=aba==='tickets'?'var(--primary)':'transparent';btnT.style.color=aba==='tickets'?'#fff':'var(--text-2)';btnT.style.border=aba==='tickets'?'none':'1px solid var(--border-md)';}
+  if(btnH){btnH.style.background=aba==='hotmart'?'var(--primary)':'transparent';btnH.style.color=aba==='hotmart'?'#fff':'var(--text-2)';btnH.style.border=aba==='hotmart'?'none':'1px solid var(--border-md)';}
+};
+
+window.zdHotmartBuscar=async function(){
+  const tipo=document.getElementById('zd-hm-tipo').value;
+  const valor=(document.getElementById('zd-hm-busca').value||'').trim();
+  const box=document.getElementById('zd-hm-resultados');
+  if(!box) return;
+  if(!valor){showToast('Digite algo para buscar.');return;}
+  box.innerHTML='<div class="empty">Buscando na Hotmart...</div>';
+  try{
+    const data=await zdFetch('/api/hotmart/search?'+tipo+'='+encodeURIComponent(valor));
+    const items=data.items||[];
+    if(items.length===0){box.innerHTML='<div class="panel"><div class="empty">Nenhum resultado encontrado na Hotmart.</div></div>';return;}
+    const corStatus={APPROVED:'#22c55e',COMPLETE:'#22c55e',WAITING_PAYMENT:'#f59e0b',PRINTED_BILLET:'#f59e0b',PROCESSING_TRANSACTION:'#3b82f6',UNDER_ANALISYS:'#3b82f6',STARTED:'#3b82f6',PRE_ORDER:'#3b82f6',PARTIALLY_REFUNDED:'#f97316',REFUNDED:'#ef4444',CANCELLED:'#ef4444',CHARGEBACK:'#ef4444',EXPIRED:'#6b7280'};
+    box.innerHTML='<div style="font-size:11px;color:var(--text-3);margin-bottom:8px;">'+items.length+' resultado(s)'+(data.total>items.length?' de '+data.total+' no total — refine a busca se precisar':'')+'</div>'+
+      '<div style="display:flex;flex-direction:column;gap:8px;">'+
+      items.map(it=>{
+        const cs=corStatus[it.status]||'#6b7280';
+        const dataCompra=it.dataCompra?new Date(it.dataCompra).toLocaleDateString('pt-BR'):'—';
+        const valorFmt=it.valor!=null?(it.moeda||'')+' '+Number(it.valor).toLocaleString('pt-BR',{minimumFractionDigits:2}):'—';
+        return '<div style="padding:14px 18px;background:var(--surface);border-radius:12px;border:1px solid var(--border-md);">'+
+          '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;">'+
+            '<div>'+
+              '<div style="font-size:13px;font-weight:600;color:var(--text);">'+zdEscapeHtml((it.produto&&it.produto.nome)||'(produto desconhecido)')+'</div>'+
+              '<div style="font-size:11px;color:var(--text-3);">'+zdEscapeHtml((it.comprador&&it.comprador.nome)||'')+' · '+zdEscapeHtml((it.comprador&&it.comprador.email)||'')+'</div>'+
+            '</div>'+
+            '<span style="font-size:10px;font-weight:600;padding:3px 10px;border-radius:20px;background:'+cs+'22;color:'+cs+';text-transform:uppercase;white-space:nowrap;">'+(it.status||'-')+'</span>'+
+          '</div>'+
+          '<div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:8px;font-size:11px;color:var(--text-2);">'+
+            '<span>💰 '+valorFmt+'</span>'+
+            '<span>💳 '+(it.metodo||'—')+'</span>'+
+            '<span>📅 '+dataCompra+'</span>'+
+            '<span>🔖 '+(it.transaction||'—')+'</span>'+
+            (it.assinatura?'<span>🔁 Assinatura</span>':'')+
+          '</div>'+
+        '</div>';
+      }).join('')+
+    '</div>';
+  }catch(e){
+    box.innerHTML='<div class="panel"><div class="empty">Erro na busca: '+e.message+'</div></div>';
+  }
+};
 
 window.zdCarregarLiberados=async function(){
   const select=document.getElementById('zd-liberar-select');
