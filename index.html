@@ -4110,7 +4110,11 @@ async function zdFetch(path,opts){
     headers:Object.assign({'Authorization':'Bearer '+token,'Content-Type':'application/json'},(opts&&opts.headers)||{})
   }));
   const data=await res.json().catch(()=>({}));
-  if(!res.ok) throw new Error(data.error||'Erro na requisicao');
+  if(!res.ok){
+    let msg=data.error||'Erro na requisicao';
+    if(data.detail) msg+=': '+String(data.detail).slice(0,200);
+    throw new Error(msg);
+  }
   return data;
 }
 
