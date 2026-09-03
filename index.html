@@ -1502,7 +1502,7 @@ function buildNav(){
   } else if(canLancar){
     html+=singleItem('lancar','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780883836/results_eysruv.png"/>Lancar Resultados');
   }
-  let socialItems=ddItem('feed','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780800099/foto_feed_zkeahk.png"/>Feed da Cobranca')+ddItem('perfis','👥 Perfis');
+  let socialItems=ddItem('feed','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780800099/foto_feed_zkeahk.png"/>Feed da Cobranca')+ddItem('perfis','👥 Perfis')+ddItem('quiz','🎯 Quiz Semanal');
   html+=group('social','Social',socialItems);
   if(!isViewer){
     let utilItems=ddItem('copys','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780800196/copy_b0dpnq.png"/>Banco de Copys')+ddItem('links','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780800378/links_wnwufb.jpg"/>Links de Reneg.')+ddItem('escala','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780800513/rotear_wgszyx.png"/>Escala de Roteamento')+(canZendesk?ddItem('zendesk','<span class="nb-icon">🎫</span>Zendesk'):'')+ddItem('calc','🧮 Calculadoras')+ddItem('infos','💡 Informacoes Uteis')+ddItem('codigosoferta','📊 Cod. de Oferta')+ddItem('formsplanilhas','📋 Forms/Planilhas')+ddItem('hashtube','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1782143284/hashtube2_zwqefx.png"/>Hashtube')+'<button class="nb-dd-item" onclick="nbClose();window.forcarAtualizacao()"><span class="nb-icon">🔄</span>Atualizar</button>';
@@ -1560,6 +1560,7 @@ const QUICK_SEARCH_PAGES=[
   {page:'hashtube',label:'Hashtube',icon:'▶️'},
   {page:'termometro',label:'Termometro de Demanda',icon:'🌡️'},
   {page:'perfis',label:'Perfis da Equipe',icon:'👤'},
+  {page:'quiz',label:'Quiz Semanal',icon:'🎯'},
 ];
 
 let _qsSelectedIdx=0;
@@ -1671,7 +1672,7 @@ document.addEventListener('keydown',function(e){
 });
 
 // ── URLs por pagina (fase 1: telas principais da navbar; fase 2: sub-telas por operador) ──
-const HASH_PAGES=['equipe','escritorio','lancar','copys','links','escala','calc','calcquit','calcreneg','relatorio_disparos','infos','agenda','codigosoferta','formsplanilhas','hashtube','feriastime','minha_cobranca','lembretes','editarperfil','termometro','basilisco','perfis','caderno','perfil','feed','resultado_unificado','ex_equipe','zendesk'];
+const HASH_PAGES=['equipe','escritorio','lancar','copys','links','escala','calc','calcquit','calcreneg','relatorio_disparos','infos','agenda','codigosoferta','formsplanilhas','hashtube','feriastime','minha_cobranca','lembretes','editarperfil','termometro','basilisco','perfis','caderno','perfil','feed','resultado_unificado','ex_equipe','zendesk','quiz'];
 const HASH_OP_PAGES=['resultado','historico','notas','dashboard','feedback'];
 function parseHash(){
   const parts=(location.hash||'').replace(/^#\/?/,'').split('/').filter(Boolean);
@@ -1746,6 +1747,7 @@ window.navigate=async function(page,historyMode){
     else{mc.innerHTML=snakeHtml()+'<div class="empty">Sem permissao para esta area.</div>';return;}
   }
   if(page==='perfis'){await renderPerfis(mc);return;}
+  if(page==='quiz'){await renderQuizSemanal(mc);return;}
   if(page==='caderno'){await renderCaderno(mc);return;}
   if(page==='perfil'){await renderPerfil(mc);return;}
 
@@ -1776,6 +1778,492 @@ window.navigate=async function(page,historyMode){
 };
 
 function snakeHtml(){return '';}
+
+// ══════════════════════════════════════════
+// QUIZ SEMANAL
+// ══════════════════════════════════════════
+function qzEscapeHtml(s){
+  return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+let qzAba='meuquiz'; // meuquiz | banco | criar | resultados
+let qzBancoCache=[];
+let qzSemanasCache=[];
+let qzSelecionadas={perguntas:{},participantes:{}};
+let qzRespondendoAtual=null; // {semana, respostas:{perguntaId:valor}}
+
+window.renderQuizSemanal=async function(mc){
+  const {isCoord} = getPerms();
+  mc.innerHTML=
+    '<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;">'+
+      '<div class="page-eyebrow">🎯 Social</div>'+
+      '<div class="page-title">Quiz Semanal</div>'+
+      '<div class="page-sub">Inspirado no Perguntados — teste seus conhecimentos toda semana</div>'+
+    '</div>'+
+    (isCoord?(
+      '<div style="display:flex;gap:8px;margin-bottom:1.25rem;flex-wrap:wrap;">'+
+        '<button id="qz-tab-meuquiz" class="btn-blue" onclick="qzMudarAba(\'meuquiz\')" style="padding:8px 16px;">Meu Quiz</button>'+
+        '<button id="qz-tab-banco" onclick="qzMudarAba(\'banco\')" style="padding:8px 16px;background:transparent;border:1px solid var(--border-md);color:var(--text-2);border-radius:var(--radius);font-family:var(--font);font-size:13px;cursor:pointer;">Banco de Perguntas</button>'+
+        '<button id="qz-tab-criar" onclick="qzMudarAba(\'criar\')" style="padding:8px 16px;background:transparent;border:1px solid var(--border-md);color:var(--text-2);border-radius:var(--radius);font-family:var(--font);font-size:13px;cursor:pointer;">Criar Quiz da Semana</button>'+
+        '<button id="qz-tab-resultados" onclick="qzMudarAba(\'resultados\')" style="padding:8px 16px;background:transparent;border:1px solid var(--border-md);color:var(--text-2);border-radius:var(--radius);font-family:var(--font);font-size:13px;cursor:pointer;">Resultados</button>'+
+      '</div>'
+    ):'')+
+    '<div id="qz-conteudo"><div class="empty">Carregando...</div></div>';
+  qzAba='meuquiz';
+  await qzRenderAbaAtual();
+};
+
+window.qzMudarAba=async function(aba){
+  qzAba=aba;
+  ['meuquiz','banco','criar','resultados'].forEach(a=>{
+    const btn=document.getElementById('qz-tab-'+a);
+    if(!btn) return;
+    if(a===aba){btn.className='btn-blue';btn.style.cssText='padding:8px 16px;';}
+    else{btn.className='';btn.style.cssText='padding:8px 16px;background:transparent;border:1px solid var(--border-md);color:var(--text-2);border-radius:var(--radius);font-family:var(--font);font-size:13px;cursor:pointer;';}
+  });
+  await qzRenderAbaAtual();
+};
+
+async function qzRenderAbaAtual(){
+  const box=document.getElementById('qz-conteudo');
+  if(!box) return;
+  box.innerHTML='<div class="empty">Carregando...</div>';
+  if(qzAba==='meuquiz') await qzRenderMeuQuiz(box);
+  else if(qzAba==='banco') await qzRenderBanco(box);
+  else if(qzAba==='criar') await qzRenderCriar(box);
+  else if(qzAba==='resultados') await qzRenderResultados(box);
+}
+
+// ── MEU QUIZ (visao do operador — tambem usada pelo coord se ele quiser participar) ──
+async function qzRenderMeuQuiz(box){
+  const uid=currentUser.uid;
+  let semanas=[];
+  try{
+    const snap=await getDocs(query(collection(db,'quiz_semanas'),where('participantes','array-contains',uid)));
+    snap.forEach(d=>semanas.push({id:d.id,...d.data()}));
+  }catch(e){
+    box.innerHTML='<div class="empty">Erro ao carregar: '+e.message+'</div>';
+    return;
+  }
+  semanas.sort((a,b)=>(b.criadoEm||0)-(a.criadoEm||0));
+  if(semanas.length===0){
+    box.innerHTML='<div class="empty">🎯 Nenhum quiz liberado pra você ainda. Quando o coordenador te incluir num quiz semanal, ele aparece aqui.</div>';
+    return;
+  }
+  const ativo=semanas.find(s=>s.status==='ativo');
+  let html='';
+  if(ativo){
+    const respSnap=await getDoc(doc(db,'quiz_semanas',ativo.id,'respostas',uid));
+    if(respSnap.exists()){
+      html+=qzRenderCardResultadoProprio(ativo,respSnap.data());
+    } else {
+      html+='<div style="background:var(--surface);border:1px solid var(--border-md);border-radius:14px;padding:1.5rem;margin-bottom:1.25rem;">'+
+        '<div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:4px;">🎯 '+qzEscapeHtml(ativo.titulo)+'</div>'+
+        '<div style="font-size:13px;color:var(--text-3);margin-bottom:14px;">'+ativo.perguntas.length+' pergunta(s) — responda com atenção, boa sorte!</div>'+
+        '<button class="btn-blue" onclick="qzIniciarQuiz(\''+ativo.id+'\')">Fazer o quiz agora</button>'+
+      '</div>';
+    }
+  }
+  const antigas=semanas.filter(s=>s.id!==(ativo&&ativo.id));
+  if(antigas.length){
+    html+='<div style="font-size:13px;font-weight:700;color:var(--text-3);margin:1.25rem 0 10px;">QUIZZES ANTERIORES</div>';
+    for(const s of antigas){
+      const rSnap=await getDoc(doc(db,'quiz_semanas',s.id,'respostas',uid));
+      html+=rSnap.exists()?qzRenderCardResultadoProprio(s,rSnap.data()):
+        '<div style="background:var(--surface);border:1px solid var(--border-md);border-radius:12px;padding:14px 16px;margin-bottom:10px;color:var(--text-3);font-size:13px;">'+qzEscapeHtml(s.titulo)+' — você não respondeu este quiz.</div>';
+    }
+  }
+  box.innerHTML=html||'<div class="empty">Nada por aqui ainda.</div>';
+}
+
+function qzRenderCardResultadoProprio(semana,resp){
+  const pendente=resp.status==='corrigindo';
+  const pct=resp.pontosMax?Math.round((resp.notaTotal/resp.pontosMax)*100):0;
+  return '<div style="background:var(--surface);border:1px solid var(--border-md);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:10px;">'+
+    '<div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px;">'+qzEscapeHtml(semana.titulo)+'</div>'+
+    (pendente?'<div style="font-size:13px;color:var(--text-3);">🐍 Corrigindo as respostas dissertativas...</div>':
+      '<div style="font-size:22px;font-weight:800;color:var(--primary);">'+resp.notaTotal+' / '+resp.pontosMax+' pontos <span style="font-size:13px;font-weight:600;color:var(--text-3);">('+pct+'%)</span></div>')+
+  '</div>';
+}
+
+// ── FAZER O QUIZ ──
+window.qzIniciarQuiz=async function(semanaId){
+  const box=document.getElementById('qz-conteudo');
+  const snap=await getDoc(doc(db,'quiz_semanas',semanaId));
+  if(!snap.exists()){showToast('Quiz não encontrado.');return;}
+  qzRespondendoAtual={semana:{id:snap.id,...snap.data()},respostas:{}};
+  qzRenderPerguntaAtual(0);
+};
+
+function qzRenderPerguntaAtual(idx){
+  const box=document.getElementById('qz-conteudo');
+  const st=qzRespondendoAtual;
+  const perguntas=st.semana.perguntas;
+  if(idx>=perguntas.length){qzRenderRevisao();return;}
+  qzIdxAtual=idx;
+  const p=perguntas[idx];
+  const valorAtual=st.respostas[p.perguntaId];
+  let campoHtml='';
+  if(p.tipo==='objetiva'){
+    campoHtml=(p.alternativas||[]).map((alt,i)=>
+      '<label style="display:flex;align-items:center;gap:10px;padding:12px 14px;border:1px solid var(--border-md);border-radius:10px;margin-bottom:8px;cursor:pointer;background:'+(valorAtual===i?'var(--primary)':'var(--bg)')+';color:'+(valorAtual===i?'#fff':'var(--text)')+';">'+
+        '<input type="radio" name="qz-alt" style="accent-color:#fff;" '+(valorAtual===i?'checked':'')+' onchange="qzSelecionarAlternativa('+i+')"/>'+
+        '<span style="font-size:14px;">'+qzEscapeHtml(alt)+'</span>'+
+      '</label>'
+    ).join('');
+  } else {
+    campoHtml='<textarea id="qz-resposta-texto" rows="5" placeholder="Digite sua resposta..." style="width:100%;padding:12px;border:1px solid var(--border-md);border-radius:10px;font-family:var(--font);font-size:14px;background:var(--bg);color:var(--text);resize:vertical;" oninput="qzSalvarTexto(this.value)">'+qzEscapeHtml(valorAtual||'')+'</textarea>';
+  }
+  box.innerHTML='<div style="background:var(--surface);border:1px solid var(--border-md);border-radius:14px;padding:1.5rem;max-width:640px;">'+
+    '<div style="font-size:12px;font-weight:700;color:var(--text-3);margin-bottom:10px;">PERGUNTA '+(idx+1)+' DE '+perguntas.length+' — '+(p.tipo==='objetiva'?'MÚLTIPLA ESCOLHA':'DISSERTATIVA')+' ('+p.pontos+' pts)</div>'+
+    '<div style="font-size:16px;font-weight:600;color:var(--text);margin-bottom:16px;">'+qzEscapeHtml(p.enunciado)+'</div>'+
+    campoHtml+
+    '<div style="display:flex;justify-content:space-between;margin-top:18px;">'+
+      (idx>0?'<button onclick="qzRenderPerguntaAtual('+(idx-1)+')" style="padding:9px 18px;background:transparent;border:1px solid var(--border-md);color:var(--text-2);border-radius:var(--radius);font-family:var(--font);font-size:13px;cursor:pointer;">← Voltar</button>':'<span></span>')+
+      '<button class="btn-blue" onclick="qzRenderPerguntaAtual('+(idx+1)+')">'+(idx===perguntas.length-1?'Revisar e enviar':'Próxima →')+'</button>'+
+    '</div>'+
+  '</div>';
+}
+
+let qzIdxAtual=0;
+
+window.qzSelecionarAlternativa=function(i){
+  const st=qzRespondendoAtual;
+  st.respostas[st.semana.perguntas[qzIdxAtual].perguntaId]=i;
+  qzRenderPerguntaAtual(qzIdxAtual);
+};
+
+window.qzSalvarTexto=function(v){
+  const st=qzRespondendoAtual;
+  st.respostas[st.semana.perguntas[qzIdxAtual].perguntaId]=v;
+};
+
+function qzRenderRevisao(){
+  const box=document.getElementById('qz-conteudo');
+  const st=qzRespondendoAtual;
+  const naoRespondidas=st.semana.perguntas.filter(p=>st.respostas[p.perguntaId]===undefined||st.respostas[p.perguntaId]==='').length;
+  box.innerHTML='<div style="background:var(--surface);border:1px solid var(--border-md);border-radius:14px;padding:1.5rem;max-width:640px;">'+
+    '<div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:10px;">Revisar antes de enviar</div>'+
+    '<div style="font-size:13px;color:var(--text-3);margin-bottom:16px;">'+st.semana.perguntas.length+' pergunta(s)'+(naoRespondidas?' — <span style="color:#e85d5d;">'+naoRespondidas+' ainda em branco</span>':' — tudo respondido!')+'</div>'+
+    '<div style="display:flex;gap:8px;">'+
+      '<button onclick="qzRenderPerguntaAtual(0)" style="padding:9px 18px;background:transparent;border:1px solid var(--border-md);color:var(--text-2);border-radius:var(--radius);font-family:var(--font);font-size:13px;cursor:pointer;">← Revisar respostas</button>'+
+      '<button class="btn-blue" onclick="qzEnviarRespostas()">Enviar quiz</button>'+
+    '</div>'+
+  '</div>';
+}
+
+window.qzEnviarRespostas=async function(){
+  const box=document.getElementById('qz-conteudo');
+  const st=qzRespondendoAtual;
+  const uid=currentUser.uid;
+  box.innerHTML='<div class="empty">🐍 Corrigindo suas respostas...</div>';
+  const respostasDetalhe=[];
+  let notaObjetivas=0, pontosMax=0;
+  const dissertativas=[];
+  for(const p of st.semana.perguntas){
+    pontosMax+=p.pontos||0;
+    const valor=st.respostas[p.perguntaId];
+    if(p.tipo==='objetiva'){
+      const correta=valor===p.respostaCorreta;
+      const pontosGanhos=correta?(p.pontos||0):0;
+      notaObjetivas+=pontosGanhos;
+      respostasDetalhe.push({perguntaId:p.perguntaId,tipo:'objetiva',enunciado:p.enunciado,respostaDada:(valor!==undefined?p.alternativas[valor]:'(em branco)'),correta,pontosGanhos,pontosMax:p.pontos});
+    } else {
+      dissertativas.push({p,valor:valor||''});
+      respostasDetalhe.push({perguntaId:p.perguntaId,tipo:'dissertativa',enunciado:p.enunciado,respostaDada:valor||'(em branco)',pontosGanhos:0,pontosMax:p.pontos,feedbackIA:null});
+    }
+  }
+  // Salva um estado inicial "corrigindo" pra o operador ja ver que enviou
+  await setDoc(doc(db,'quiz_semanas',st.semana.id,'respostas',uid),{
+    respostas:respostasDetalhe,notaTotal:notaObjetivas,pontosMax,status:dissertativas.length?'corrigindo':'concluido',enviadoEm:Date.now()
+  });
+  if(dissertativas.length===0){
+    qzRespondendoAtual=null;
+    qzAba='meuquiz';
+    await qzRenderAbaAtual();
+    showToast('Quiz enviado! Confira sua nota.');
+    return;
+  }
+  // Corrige dissertativas via Gemini em paralelo
+  try{
+    const cfgSnap=await getDoc(doc(db,'config','basilisco'));
+    const key=cfgSnap.exists()?cfgSnap.data().key:'';
+    if(!key) throw new Error('Chave do Gemini não configurada (aba Basilisco).');
+    await Promise.all(dissertativas.map(async ({p,valor})=>{
+      const item=respostasDetalhe.find(r=>r.perguntaId===p.perguntaId);
+      if(!valor.trim()){item.pontosGanhos=0;item.feedbackIA='Resposta em branco.';return;}
+      try{
+        const nota=await qzCorrigirDissertativaIA(key,p,valor);
+        item.pontosGanhos=nota.pontos;
+        item.feedbackIA=nota.feedback;
+      }catch(e){
+        item.pontosGanhos=0;
+        item.feedbackIA='Erro ao corrigir automaticamente: '+e.message;
+      }
+    }));
+  }catch(e){
+    dissertativas.forEach(({p})=>{
+      const item=respostasDetalhe.find(r=>r.perguntaId===p.perguntaId);
+      item.feedbackIA='Erro ao corrigir automaticamente: '+e.message;
+    });
+  }
+  const notaTotal=respostasDetalhe.reduce((acc,r)=>acc+(r.pontosGanhos||0),0);
+  await setDoc(doc(db,'quiz_semanas',st.semana.id,'respostas',uid),{
+    respostas:respostasDetalhe,notaTotal,pontosMax,status:'concluido',enviadoEm:Date.now()
+  });
+  qzRespondendoAtual=null;
+  qzAba='meuquiz';
+  await qzRenderAbaAtual();
+  showToast('Quiz corrigido! Confira sua nota.');
+};
+
+async function qzCorrigirDissertativaIA(key,pergunta,respostaOperador){
+  const prompt='Voce e um corretor de quiz interno de uma empresa. Avalie a resposta do funcionario com base no gabarito/criterio de correcao abaixo.\n\n'+
+    'PERGUNTA: '+pergunta.enunciado+'\n\n'+
+    'GABARITO/CRITERIO DE CORRECAO: '+pergunta.gabarito+'\n\n'+
+    'RESPOSTA DO FUNCIONARIO: '+respostaOperador+'\n\n'+
+    'PONTUACAO MAXIMA DESTA PERGUNTA: '+pergunta.pontos+' pontos.\n\n'+
+    'De uma nota de 0 a '+pergunta.pontos+' (pode ser numero quebrado, mas prefira inteiro) proporcional a qualidade e correcao da resposta comparada ao gabarito, e um feedback curto (1-2 frases, em portugues) explicando a nota.';
+  const geminiBody={
+    contents:[{role:'user',parts:[{text:prompt}]}],
+    generationConfig:{
+      temperature:0.2,maxOutputTokens:300,responseMimeType:'application/json',
+      responseSchema:{type:'OBJECT',properties:{pontos:{type:'NUMBER'},feedback:{type:'STRING'}},required:['pontos','feedback']}
+    }
+  };
+  const res=await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent',{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':key},body:JSON.stringify(geminiBody)});
+  const data=await res.json();
+  if(data.error) throw new Error(data.error.message);
+  const texto=data.candidates&&data.candidates[0]&&data.candidates[0].content&&data.candidates[0].content.parts&&data.candidates[0].content.parts[0]&&data.candidates[0].content.parts[0].text;
+  if(!texto) throw new Error('Resposta vazia da IA.');
+  const parsed=JSON.parse(texto);
+  let pontos=Number(parsed.pontos)||0;
+  pontos=Math.max(0,Math.min(pergunta.pontos,pontos));
+  return {pontos,feedback:parsed.feedback||''};
+}
+
+// ── BANCO DE PERGUNTAS (coord) ──
+async function qzRenderBanco(box){
+  try{
+    const snap=await getDocs(collection(db,'quiz_perguntas'));
+    qzBancoCache=[];
+    snap.forEach(d=>qzBancoCache.push({id:d.id,...d.data()}));
+    qzBancoCache.sort((a,b)=>(b.criadoEm||0)-(a.criadoEm||0));
+  }catch(e){
+    box.innerHTML='<div class="empty">Erro ao carregar banco: '+e.message+'</div>';
+    return;
+  }
+  box.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">'+
+      '<div style="font-size:13px;color:var(--text-3);">'+qzBancoCache.length+' pergunta(s) no banco</div>'+
+      '<button class="btn-blue" onclick="qzAbrirFormPergunta()">+ Nova pergunta</button>'+
+    '</div>'+
+    '<div id="qz-form-pergunta"></div>'+
+    '<div id="qz-lista-banco">'+qzRenderListaBanco()+'</div>';
+}
+
+function qzRenderListaBanco(){
+  if(qzBancoCache.length===0) return '<div class="empty">Nenhuma pergunta cadastrada ainda.</div>';
+  return qzBancoCache.map(p=>
+    '<div style="background:var(--surface);border:1px solid var(--border-md);border-radius:12px;padding:14px 16px;margin-bottom:10px;">'+
+      '<div style="display:flex;justify-content:space-between;gap:10px;">'+
+        '<div style="flex:1;">'+
+          '<span style="font-size:11px;font-weight:700;color:var(--primary);text-transform:uppercase;">'+(p.tipo==='objetiva'?'Múltipla escolha':'Dissertativa')+' · '+p.pontos+' pts</span>'+
+          '<div style="font-size:14px;color:var(--text);margin-top:4px;">'+qzEscapeHtml(p.enunciado)+'</div>'+
+        '</div>'+
+        '<div style="display:flex;gap:6px;flex-shrink:0;">'+
+          '<button onclick="qzExcluirPergunta(\''+p.id+'\')" style="padding:6px 10px;background:transparent;border:1px solid var(--border-md);color:#e85d5d;border-radius:8px;font-size:12px;cursor:pointer;">Excluir</button>'+
+        '</div>'+
+      '</div>'+
+    '</div>'
+  ).join('');
+}
+
+window.qzAbrirFormPergunta=function(){
+  const box=document.getElementById('qz-form-pergunta');
+  box.innerHTML='<div style="background:var(--surface);border:1px solid var(--border-md);border-radius:12px;padding:1.25rem;margin-bottom:14px;">'+
+    '<div style="display:flex;gap:16px;margin-bottom:12px;">'+
+      '<label style="font-size:13px;color:var(--text);display:flex;align-items:center;gap:6px;"><input type="radio" name="qz-tipo-nova" value="objetiva" checked onchange="qzToggleTipoForm()"/> Múltipla escolha</label>'+
+      '<label style="font-size:13px;color:var(--text);display:flex;align-items:center;gap:6px;"><input type="radio" name="qz-tipo-nova" value="dissertativa" onchange="qzToggleTipoForm()"/> Dissertativa</label>'+
+    '</div>'+
+    '<textarea id="qz-novo-enunciado" placeholder="Enunciado da pergunta" rows="2" style="width:100%;padding:10px;border:1px solid var(--border-md);border-radius:8px;font-family:var(--font);font-size:13px;background:var(--bg);color:var(--text);margin-bottom:10px;"></textarea>'+
+    '<div id="qz-campos-tipo">'+qzCamposObjetiva()+'</div>'+
+    '<div style="display:flex;align-items:center;gap:10px;margin-top:10px;">'+
+      '<label style="font-size:13px;color:var(--text-3);">Pontos:</label>'+
+      '<input id="qz-novo-pontos" type="number" value="10" min="1" style="width:70px;padding:8px;border:1px solid var(--border-md);border-radius:8px;font-family:var(--font);font-size:13px;background:var(--bg);color:var(--text);"/>'+
+    '</div>'+
+    '<div style="display:flex;gap:8px;margin-top:14px;">'+
+      '<button class="btn-blue" onclick="qzSalvarPergunta()">Salvar pergunta</button>'+
+      '<button onclick="document.getElementById(\'qz-form-pergunta\').innerHTML=\'\'" style="padding:9px 18px;background:transparent;border:1px solid var(--border-md);color:var(--text-2);border-radius:var(--radius);font-family:var(--font);font-size:13px;cursor:pointer;">Cancelar</button>'+
+    '</div>'+
+  '</div>';
+};
+
+function qzCamposObjetiva(){
+  return '<div style="font-size:12px;color:var(--text-3);margin-bottom:6px;">Alternativas (marque a correta):</div>'+
+    [0,1,2,3].map(i=>
+      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">'+
+        '<input type="radio" name="qz-alt-correta" value="'+i+'" '+(i===0?'checked':'')+'/>'+
+        '<input type="text" class="qz-alt-input" placeholder="Alternativa '+(i+1)+'" style="flex:1;padding:8px 10px;border:1px solid var(--border-md);border-radius:8px;font-family:var(--font);font-size:13px;background:var(--bg);color:var(--text);"/>'+
+      '</div>'
+    ).join('');
+}
+
+function qzCamposDissertativa(){
+  return '<textarea id="qz-novo-gabarito" placeholder="Gabarito / critério de correção (a IA usa isso pra corrigir)" rows="3" style="width:100%;padding:10px;border:1px solid var(--border-md);border-radius:8px;font-family:var(--font);font-size:13px;background:var(--bg);color:var(--text);"></textarea>';
+}
+
+window.qzToggleTipoForm=function(){
+  const tipo=document.querySelector('[name="qz-tipo-nova"]:checked').value;
+  document.getElementById('qz-campos-tipo').innerHTML=tipo==='objetiva'?qzCamposObjetiva():qzCamposDissertativa();
+};
+
+window.qzSalvarPergunta=async function(){
+  const tipo=document.querySelector('[name="qz-tipo-nova"]:checked').value;
+  const enunciado=document.getElementById('qz-novo-enunciado').value.trim();
+  const pontos=Number(document.getElementById('qz-novo-pontos').value)||10;
+  if(!enunciado){showToast('Escreva o enunciado da pergunta.');return;}
+  const dados={tipo,enunciado,pontos,criadoEm:Date.now(),criadoPor:currentUser.uid};
+  if(tipo==='objetiva'){
+    const alts=Array.from(document.querySelectorAll('.qz-alt-input')).map(i=>i.value.trim());
+    if(alts.some(a=>!a)){showToast('Preencha as 4 alternativas.');return;}
+    dados.alternativas=alts;
+    dados.respostaCorreta=Number(document.querySelector('[name="qz-alt-correta"]:checked').value);
+  } else {
+    const gabarito=document.getElementById('qz-novo-gabarito').value.trim();
+    if(!gabarito){showToast('Escreva o gabarito/critério de correção.');return;}
+    dados.gabarito=gabarito;
+  }
+  try{
+    await addDoc(collection(db,'quiz_perguntas'),dados);
+    showToast('Pergunta salva!');
+    document.getElementById('qz-form-pergunta').innerHTML='';
+    await qzRenderBanco(document.getElementById('qz-conteudo'));
+  }catch(e){
+    showToast('Erro ao salvar: '+e.message);
+  }
+};
+
+window.qzExcluirPergunta=async function(id){
+  if(!confirm('Excluir esta pergunta do banco?'))return;
+  try{
+    await deleteDoc(doc(db,'quiz_perguntas',id));
+    showToast('Pergunta excluída.');
+    await qzRenderBanco(document.getElementById('qz-conteudo'));
+  }catch(e){
+    showToast('Erro: '+e.message);
+  }
+};
+
+// ── CRIAR QUIZ DA SEMANA (coord) ──
+async function qzRenderCriar(box){
+  try{
+    const [bancoSnap,opsSnap]=await Promise.all([
+      getDocs(collection(db,'quiz_perguntas')),
+      getDocs(collection(db,'usuarios'))
+    ]);
+    qzBancoCache=[];bancoSnap.forEach(d=>qzBancoCache.push({id:d.id,...d.data()}));
+    const ops=[];opsSnap.forEach(d=>{const data=d.data();if(data.role==='op'&&data.ativo!==false)ops.push({uid:d.id,...data});});
+    ops.sort((a,b)=>(a.nome||'').localeCompare(b.nome||''));
+    qzSelecionadas={perguntas:{},participantes:{}};
+    const hoje=new Date();
+    const tituloSugerido='Quiz Semanal — '+hoje.toLocaleDateString('pt-BR');
+    box.innerHTML='<div style="max-width:720px;">'+
+      '<label style="font-size:12px;color:var(--text-3);">Título do quiz</label>'+
+      '<input id="qz-criar-titulo" type="text" value="'+qzEscapeHtml(tituloSugerido)+'" style="width:100%;padding:10px;border:1px solid var(--border-md);border-radius:8px;font-family:var(--font);font-size:14px;background:var(--bg);color:var(--text);margin:6px 0 18px;"/>'+
+      '<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:8px;">Selecione as perguntas ('+qzBancoCache.length+' no banco)</div>'+
+      '<div style="max-height:280px;overflow-y:auto;border:1px solid var(--border-md);border-radius:10px;padding:10px;margin-bottom:20px;">'+
+        (qzBancoCache.length?qzBancoCache.map(p=>
+          '<label style="display:flex;align-items:flex-start;gap:8px;padding:8px 4px;cursor:pointer;">'+
+            '<input type="checkbox" onchange="qzToggleSelPergunta(\''+p.id+'\',this.checked)" style="margin-top:3px;"/>'+
+            '<span style="font-size:13px;color:var(--text);"><b>['+(p.tipo==='objetiva'?'Objetiva':'Dissertativa')+' · '+p.pontos+'pts]</b> '+qzEscapeHtml(p.enunciado)+'</span>'+
+          '</label>'
+        ).join(''):'<div class="empty">Cadastre perguntas no Banco de Perguntas primeiro.</div>')+
+      '</div>'+
+      '<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:8px;">Quem vai participar dessa semana?</div>'+
+      '<div style="max-height:220px;overflow-y:auto;border:1px solid var(--border-md);border-radius:10px;padding:10px;margin-bottom:20px;">'+
+        (ops.length?ops.map(o=>
+          '<label style="display:flex;align-items:center;gap:8px;padding:6px 4px;cursor:pointer;">'+
+            '<input type="checkbox" onchange="qzToggleSelParticipante(\''+o.uid+'\',this.checked)"/>'+
+            '<span style="font-size:13px;color:var(--text);">'+qzEscapeHtml(o.nome||o.uid)+'</span>'+
+          '</label>'
+        ).join(''):'<div class="empty">Nenhum operador ativo.</div>')+
+      '</div>'+
+      '<button class="btn-blue" onclick="qzPublicarQuiz()">Publicar quiz da semana</button>'+
+    '</div>';
+  }catch(e){
+    box.innerHTML='<div class="empty">Erro: '+e.message+'</div>';
+  }
+}
+
+window.qzToggleSelPergunta=function(id,checked){
+  if(checked) qzSelecionadas.perguntas[id]=true; else delete qzSelecionadas.perguntas[id];
+};
+window.qzToggleSelParticipante=function(uid,checked){
+  if(checked) qzSelecionadas.participantes[uid]=true; else delete qzSelecionadas.participantes[uid];
+};
+
+window.qzPublicarQuiz=async function(){
+  const titulo=document.getElementById('qz-criar-titulo').value.trim();
+  const perguntaIds=Object.keys(qzSelecionadas.perguntas);
+  const participantes=Object.keys(qzSelecionadas.participantes);
+  if(!titulo){showToast('Dê um título ao quiz.');return;}
+  if(perguntaIds.length===0){showToast('Selecione ao menos uma pergunta.');return;}
+  if(participantes.length===0){showToast('Selecione ao menos um participante.');return;}
+  const perguntas=qzBancoCache.filter(p=>perguntaIds.includes(p.id)).map(p=>{
+    const {id,...resto}=p;
+    return {perguntaId:id,...resto};
+  });
+  try{
+    await addDoc(collection(db,'quiz_semanas'),{
+      titulo,perguntas,participantes,status:'ativo',criadoEm:Date.now(),criadoPor:currentUser.uid
+    });
+    showToast('Quiz publicado! Já apareceu pros participantes selecionados.');
+    await qzMudarAba('meuquiz');
+  }catch(e){
+    showToast('Erro ao publicar: '+e.message);
+  }
+};
+
+// ── RESULTADOS (coord) ──
+async function qzRenderResultados(box){
+  try{
+    const snap=await getDocs(collection(db,'quiz_semanas'));
+    qzSemanasCache=[];snap.forEach(d=>qzSemanasCache.push({id:d.id,...d.data()}));
+    qzSemanasCache.sort((a,b)=>(b.criadoEm||0)-(a.criadoEm||0));
+  }catch(e){
+    box.innerHTML='<div class="empty">Erro: '+e.message+'</div>';
+    return;
+  }
+  if(qzSemanasCache.length===0){box.innerHTML='<div class="empty">Nenhum quiz criado ainda.</div>';return;}
+  box.innerHTML='<select id="qz-resultados-select" onchange="qzCarregarResultadoSemana(this.value)" style="padding:10px;border:1px solid var(--border-md);border-radius:8px;font-family:var(--font);font-size:13px;background:var(--bg);color:var(--text);margin-bottom:16px;">'+
+    qzSemanasCache.map(s=>'<option value="'+s.id+'">'+qzEscapeHtml(s.titulo)+'</option>').join('')+
+  '</select><div id="qz-resultados-lista"><div class="empty">Carregando...</div></div>';
+  await qzCarregarResultadoSemana(qzSemanasCache[0].id);
+}
+
+window.qzCarregarResultadoSemana=async function(semanaId){
+  const lista=document.getElementById('qz-resultados-lista');
+  const semana=qzSemanasCache.find(s=>s.id===semanaId);
+  if(!semana||!lista) return;
+  lista.innerHTML='<div class="empty">Carregando...</div>';
+  const opsSnap=await getDocs(collection(db,'usuarios'));
+  const nomes={};opsSnap.forEach(d=>nomes[d.id]=d.data().nome||d.id);
+  const linhas=await Promise.all(semana.participantes.map(async uid=>{
+    const rSnap=await getDoc(doc(db,'quiz_semanas',semanaId,'respostas',uid));
+    if(!rSnap.exists()) return {uid,nome:nomes[uid]||uid,status:'nao_respondeu'};
+    const r=rSnap.data();
+    return {uid,nome:nomes[uid]||uid,status:r.status,notaTotal:r.notaTotal,pontosMax:r.pontosMax};
+  }));
+  linhas.sort((a,b)=>(b.notaTotal||-1)-(a.notaTotal||-1));
+  lista.innerHTML='<div style="display:flex;flex-direction:column;gap:8px;">'+linhas.map(l=>
+    '<div style="display:flex;justify-content:space-between;align-items:center;background:var(--surface);border:1px solid var(--border-md);border-radius:10px;padding:12px 16px;">'+
+      '<span style="font-size:14px;color:var(--text);">'+qzEscapeHtml(l.nome)+'</span>'+
+      '<span style="font-size:14px;font-weight:700;color:'+(l.status==='concluido'?'var(--primary)':'var(--text-3)')+';">'+
+        (l.status==='concluido'?l.notaTotal+' / '+l.pontosMax+' pts':l.status==='corrigindo'?'Corrigindo...':'Não respondeu')+
+      '</span>'+
+    '</div>'
+  ).join('')+'</div>';
+};
 
 window.selectOp=async function(uid){
   viewingOp=uid;document.getElementById('sbSub').textContent='Vendo: '+(opsCache[uid]||'operador');
