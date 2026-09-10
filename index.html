@@ -1866,6 +1866,12 @@ async function qzRenderMeuQuiz(box){
       const resp=respSnap.data();
       html+=qzRenderCardResultadoProprio(ativo,resp);
       qzMarcarVisto(ativo.id,uid,resp);
+    } else if(ativo.disponivelEm&&ativo.disponivelEm>Date.now()){
+      const dataFmt=new Date(ativo.disponivelEm).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+      html+='<div style="background:var(--surface);border:1px solid var(--border-md);border-radius:14px;padding:1.5rem;margin-bottom:1.25rem;">'+
+        '<div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:4px;">🔒 '+qzEscapeHtml(ativo.titulo)+'</div>'+
+        '<div style="font-size:13px;color:var(--text-3);">Disponível a partir de '+dataFmt+'.</div>'+
+      '</div>';
     } else {
       html+='<div style="background:var(--surface);border:1px solid var(--border-md);border-radius:14px;padding:1.5rem;margin-bottom:1.25rem;">'+
         '<div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:4px;">🎯 '+qzEscapeHtml(ativo.titulo)+'</div>'+
@@ -1944,7 +1950,9 @@ window.qzIniciarQuiz=async function(semanaId){
   const box=document.getElementById('qz-conteudo');
   const snap=await getDoc(doc(db,'quiz_semanas',semanaId));
   if(!snap.exists()){showToast('Quiz não encontrado.');return;}
-  qzRespondendoAtual={semana:{id:snap.id,...snap.data()},respostas:{}};
+  const semana=snap.data();
+  if(semana.disponivelEm&&semana.disponivelEm>Date.now()){showToast('Esse quiz ainda não está liberado.');return;}
+  qzRespondendoAtual={semana:{id:snap.id,...semana},respostas:{}};
   qzRenderPerguntaAtual(0);
 };
 
@@ -2262,6 +2270,9 @@ async function qzRenderCriar(box){
     box.innerHTML='<div style="max-width:720px;">'+
       '<label style="font-size:12px;color:var(--text-3);">Título do quiz</label>'+
       '<input id="qz-criar-titulo" type="text" value="'+qzEscapeHtml(tituloSugerido)+'" style="width:100%;padding:10px;border:1px solid var(--border-md);border-radius:8px;font-family:var(--font);font-size:14px;background:var(--bg);color:var(--text);margin:6px 0 18px;"/>'+
+      '<label style="font-size:12px;color:var(--text-3);">Disponibilizar para os participantes em</label>'+
+      '<input id="qz-criar-disponivel" type="datetime-local" value="'+qzDatetimeLocalAgora()+'" style="width:100%;padding:10px;border:1px solid var(--border-md);border-radius:8px;font-family:var(--font);font-size:14px;background:var(--bg);color:var(--text);margin:6px 0 4px;"/>'+
+      '<div style="font-size:12px;color:var(--text-3);margin-bottom:18px;">Deixe como está para liberar assim que publicar, ou escolha uma data/hora futura.</div>'+
       '<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:8px;">Selecione as perguntas ('+qzBancoCache.length+' no banco)</div>'+
       '<div style="max-height:280px;overflow-y:auto;border:1px solid var(--border-md);border-radius:10px;padding:10px;margin-bottom:20px;">'+
         (qzBancoCache.length?qzBancoCache.map(p=>
@@ -2294,22 +2305,30 @@ window.qzToggleSelParticipante=function(uid,checked){
   if(checked) qzSelecionadas.participantes[uid]=true; else delete qzSelecionadas.participantes[uid];
 };
 
+function qzDatetimeLocalAgora(){
+  const d=new Date();
+  const pad=n=>String(n).padStart(2,'0');
+  return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+'T'+pad(d.getHours())+':'+pad(d.getMinutes());
+}
+
 window.qzPublicarQuiz=async function(){
   const titulo=document.getElementById('qz-criar-titulo').value.trim();
+  const disponivelStr=document.getElementById('qz-criar-disponivel').value;
   const perguntaIds=Object.keys(qzSelecionadas.perguntas);
   const participantes=Object.keys(qzSelecionadas.participantes);
   if(!titulo){showToast('Dê um título ao quiz.');return;}
   if(perguntaIds.length===0){showToast('Selecione ao menos uma pergunta.');return;}
   if(participantes.length===0){showToast('Selecione ao menos um participante.');return;}
+  const disponivelEm=disponivelStr?new Date(disponivelStr).getTime():Date.now();
   const perguntas=qzBancoCache.filter(p=>perguntaIds.includes(p.id)).map(p=>{
     const {id,...resto}=p;
     return {perguntaId:id,...resto};
   });
   try{
     await addDoc(collection(db,'quiz_semanas'),{
-      titulo,perguntas,participantes,status:'ativo',criadoEm:Date.now(),criadoPor:currentUser.uid
+      titulo,perguntas,participantes,status:'ativo',disponivelEm,criadoEm:Date.now(),criadoPor:currentUser.uid
     });
-    showToast('Quiz publicado! Já apareceu pros participantes selecionados.');
+    showToast(disponivelEm>Date.now()?'Quiz publicado! Vai liberar automaticamente na data escolhida.':'Quiz publicado! Já apareceu pros participantes selecionados.');
     await qzMudarAba('meuquiz');
   }catch(e){
     showToast('Erro ao publicar: '+e.message);
