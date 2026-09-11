@@ -1956,7 +1956,7 @@ window.qzIniciarQuiz=async function(semanaId){
   qzRenderPerguntaAtual(0);
 };
 
-function qzRenderPerguntaAtual(idx){
+window.qzRenderPerguntaAtual=function(idx){
   const box=document.getElementById('qz-conteudo');
   const st=qzRespondendoAtual;
   const perguntas=st.semana.perguntas;
@@ -1984,7 +1984,7 @@ function qzRenderPerguntaAtual(idx){
       '<button class="btn-blue" onclick="qzRenderPerguntaAtual('+(idx+1)+')">'+(idx===perguntas.length-1?'Revisar e enviar':'Próxima →')+'</button>'+
     '</div>'+
   '</div>';
-}
+};
 
 let qzIdxAtual=0;
 
