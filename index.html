@@ -3518,14 +3518,18 @@ async function renderHistorico(mc,op){
 // ══════════════════════════════════════════
 // ANALISE DE CHAT (WATI) — 7 criterios 0-10
 // ══════════════════════════════════════════
+// Criterios do relatorio WATI (formato atual, a partir de set/2026 — o WATI trocou o
+// template do relatorio: sumiram Acolhimento/Taxa de Seriedade/Calma e entraram
+// Frieza/Ironia/Impaciencia no lugar. As colunas na planilha usam esses labels
+// acentuados exatamente — o parser (processarRelatorioWati) casa por eles.
 const CHAT_CRITERIOS=[
-  {key:'Educacao',label:'Educacao',cor:'#22c55e'},
+  {key:'Educacao',label:'Educação',cor:'#22c55e'},
   {key:'Simpatia',label:'Simpatia',cor:'#3b82f6'},
-  {key:'Acolhimento',label:'Acolhimento',cor:'#64748b'},
-  {key:'Paciencia',label:'Paciencia',cor:'#14b8a6'},
-  {key:'Taxa de Seriedade',label:'Taxa de Seriedade',cor:'#f97316'},
-  {key:'Calma',label:'Calma',cor:'#a855f7'},
-  {key:'Esclarece',label:'Esclarece de forma completa',cor:'#ef4444'},
+  {key:'Paciencia',label:'Paciência',cor:'#14b8a6'},
+  {key:'Esclarece',label:'Esclarece',cor:'#ef4444'},
+  {key:'Frieza',label:'Frieza',cor:'#a855f7'},
+  {key:'Ironia',label:'Ironia',cor:'#f97316'},
+  {key:'Impaciencia',label:'Impaciência',cor:'#64748b'},
 ];
 
 async function renderNotas(mc,op,activeTab){
@@ -3847,12 +3851,7 @@ async function renderAnaliseChatContent(op,dados){
   // ── Cards de resumo geral ──
   const cardsHtml=
     '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:1.5rem;">'+
-      statCard('Total de Chats',resumo.totalChats??'\u2014')+
-      statCard('Resolvidos',resumo.resolvidos??'\u2014')+
-      statCard('Taxa de Resolucao',resumo.taxaResolucao??'\u2014')+
-      statCard('IA: Resolvidos',resumo.iaResolvidos??'\u2014')+
-      statCard('T. Medio Atrelamento',resumo.tempoAtrelamento??'\u2014')+
-      statCard('T. Medio 1\u00aa Resposta',resumo.tempo1aResposta??'\u2014')+
+      statCard('Conversas Avaliadas',resumo.conversasAvaliadas??'\u2014')+
     '</div>';
 
   // ── Cards dos 7 criterios (media + barra de progresso) — ultimo importado ──
@@ -3914,7 +3913,7 @@ async function renderAnaliseChatContent(op,dados){
 
   const chatsNotaveis=chatsFiltrados.filter(ch=>{
     const n=ch.notas||{};
-    return n['Educacao']===10||(n['Acolhimento']!=null&&n['Acolhimento']<=5)||(n['Taxa de Seriedade']!=null&&n['Taxa de Seriedade']<=5)||(n['Calma']!=null&&n['Calma']<=5);
+    return n['Educacao']===10||(n['Frieza']!=null&&n['Frieza']<=5)||(n['Ironia']!=null&&n['Ironia']<=5)||(n['Impaciencia']!=null&&n['Impaciencia']<=5);
   });
 
   const chatsHtml=chatsNotaveis.length===0
@@ -3925,10 +3924,10 @@ async function renderAnaliseChatContent(op,dados){
         chatsNotaveis.map(ch=>{
           const n=ch.notas||{};
           const tags=[];
-          if(n.educacao===10) tags.push('<span style="background:#22c55e22;color:#22c55e;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;">Educacao 10/10</span>');
-          if(n['Acolhimento']!=null&&n['Acolhimento']<=5) tags.push('<span style="background:#ef444422;color:#ef4444;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;">Acolhimento '+n['Acolhimento']+'/10</span>');
-          if(n['Taxa de Seriedade']!=null&&n['Taxa de Seriedade']<=5) tags.push('<span style="background:#ef444422;color:#ef4444;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;">Taxa de Seriedade '+n['Taxa de Seriedade']+'/10</span>');
-          if(n['Calma']!=null&&n['Calma']<=5) tags.push('<span style="background:#ef444422;color:#ef4444;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;">Calma '+n['Calma']+'/10</span>');
+          if(n['Educacao']===10) tags.push('<span style="background:#22c55e22;color:#22c55e;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;">Educacao 10/10</span>');
+          if(n['Frieza']!=null&&n['Frieza']<=5) tags.push('<span style="background:#ef444422;color:#ef4444;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;">Frieza '+n['Frieza']+'/10</span>');
+          if(n['Ironia']!=null&&n['Ironia']<=5) tags.push('<span style="background:#ef444422;color:#ef4444;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;">Ironia '+n['Ironia']+'/10</span>');
+          if(n['Impaciencia']!=null&&n['Impaciencia']<=5) tags.push('<span style="background:#ef444422;color:#ef4444;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;">Impaciencia '+n['Impaciencia']+'/10</span>');
           const notasHtml=CHAT_CRITERIOS.map(c=>{
             const v=n[c.key];
             return '<div style="display:flex;flex-direction:column;align-items:center;gap:2px;min-width:64px;">'+
@@ -3974,28 +3973,28 @@ async function carregarMediaGeralHistorico(op){
       return;
     }
 
-    // Soma ponderada: cada criterio multiplicado pelo total de chats daquele relatorio
+    // Soma ponderada: cada criterio multiplicado pela quantidade de conversas avaliadas
+    // daquele relatorio. resumo.totalChats e o nome de campo do formato antigo do WATI
+    // (antes de set/2026); resumo.conversasAvaliadas e o formato atual \u2014 aceita os dois
+    // pra nao perder o peso de relatorios importados antes da mudanca de layout.
     const somas={};const pesos={};
     CHAT_CRITERIOS.forEach(c=>{somas[c.key]=0;pesos[c.key]=0;});
-    let totalChatsGeral=0,totalResolvidosGeral=0;
+    let totalConversasGeral=0;
 
     relatorios.forEach(r=>{
       const resumo=r.resumo||{};
-      const peso=resumo.totalChats||0;
-      totalChatsGeral+=resumo.totalChats||0;
-      totalResolvidosGeral+=resumo.resolvidos||0;
+      const peso=resumo.conversasAvaliadas??resumo.totalChats??0;
+      totalConversasGeral+=peso;
       CHAT_CRITERIOS.forEach(c=>{
         const media=resumo.medias?(resumo.medias[c.key]??0):0;
         if(peso>0){somas[c.key]+=media*peso;pesos[c.key]+=peso;}
       });
     });
 
-    const taxaGeral=totalChatsGeral>0?Math.round(totalResolvidosGeral/totalChatsGeral*100)+'%':'0%';
-
     painel.innerHTML=
       '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:14px;">'+
         '<div style="font-size:14px;font-weight:600;color:var(--text);">\ud83d\udcc8 Media Geral do Historico</div>'+
-        '<div style="font-size:11px;color:var(--text-3);">'+relatorios.length+' importa\u00e7\u00f5es \u2022 '+totalChatsGeral+' chats \u2022 taxa geral: '+taxaGeral+'</div>'+
+        '<div style="font-size:11px;color:var(--text-3);">'+relatorios.length+' importa\u00e7\u00f5es \u2022 '+totalConversasGeral+' conversas avaliadas</div>'+
       '</div>'+
       '<div style="display:flex;flex-direction:column;gap:12px;">'+
       CHAT_CRITERIOS.map(c=>{
@@ -4070,7 +4069,7 @@ window.buscarAnaliseChatHistorico=async function(){
       return '<div style="display:flex;align-items:center;gap:14px;padding:14px 16px;background:var(--surface);border-radius:12px;border:1px solid var(--border-md);">'+
         '<div style="flex:1;min-width:0;">'+
           '<div style="font-size:14px;font-weight:600;color:var(--text);">'+(it.geradoEm||'Relatorio')+'</div>'+
-          '<div style="font-size:12px;color:var(--text-2);">'+(resumo.totalChats??0)+' chats \u2022 '+(resumo.resolvidos??0)+' resolvidos \u2022 Taxa: '+(resumo.taxaResolucao||'0%')+'</div>'+
+          '<div style="font-size:12px;color:var(--text-2);">'+(resumo.conversasAvaliadas??resumo.totalChats??0)+' conversas avaliadas</div>'+
         '</div>'+
         '<button onclick="visualizarAnaliseChatHistorico(\''+it.id+'\')" style="padding:7px 14px;background:transparent;color:var(--primary);border:1px solid var(--primary);border-radius:var(--radius);font-family:var(--font);font-size:12px;font-weight:500;cursor:pointer;">Visualizar</button>'+
         '<button onclick="excluirAnaliseChatHistorico(\''+it.id+'\')" title="Excluir" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:16px;padding:4px;">\u2715</button>'+
@@ -4098,9 +4097,7 @@ window.visualizarAnaliseChatHistorico=async function(id){
     const resumo=dados.resumo||{};
     const chats=dados.chats||[];
     html+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:1rem;">'+
-      statCard('Total de Chats',resumo.totalChats??'\u2014')+
-      statCard('Resolvidos',resumo.resolvidos??'\u2014')+
-      statCard('Taxa Resolucao',resumo.taxaResolucao??'\u2014')+
+      statCard('Conversas Avaliadas',resumo.conversasAvaliadas??resumo.totalChats??'\u2014')+
     '</div>';
     html+='<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:1rem;">'+
       CHAT_CRITERIOS.map(c=>{
@@ -4157,32 +4154,32 @@ window.processarRelatorioWati=async function(e){
     if(!resumoWs){showToast('Aba "Resumo Geral" nao encontrada.');return;}
     const resumoRows=XLSX.utils.sheet_to_json(resumoWs,{header:1,defval:null});
 
-    // Cabecalho na linha 2 (index 1)
-    const header=resumoRows[1];
+    // Formato atual do WATI (a partir de set/2026): cabecalho na 1a linha (index 0),
+    // sem linha de titulo antes dele. O formato antigo tinha uma linha de titulo com
+    // data (ex: "Relatorio WATI 24h — 15/06/2026") e cabecalho na linha 2 — se um dia
+    // o WATI voltar a mandar assim, essa deteccao abaixo ainda funciona.
+    const pareceHeaderNaLinha0=resumoRows[0]&&resumoRows[0].includes('Operador');
+    const header=pareceHeaderNaLinha0?resumoRows[0]:resumoRows[1];
+    const primeiraLinhaDados=pareceHeaderNaLinha0?1:2;
     const idxOperador=header.indexOf('Operador');
-    const idxTotal=header.indexOf('Total Chats');
-    const idxResolvidos=header.indexOf('Resolvidos');
-    const idxIaResolvidos=header.indexOf('IA: Resolvidos');
-    const idxTaxa=header.indexOf('Taxa Resolucao');
-    const idxTAtrel=header.indexOf('T. Medio Atrelamento');
-    const idxT1aResp=header.indexOf('T. Medio 1a Resposta');
+    const idxConversas=(()=>{let i=header.indexOf('Conversas avaliadas');if(i<0)i=header.indexOf('Total Chats');return i;})();
     const idxMedias={};
     CHAT_CRITERIOS.forEach(c=>{
-      // Try "Label (media)" first, then "Key (media)", then label alone
-      const colName1=c.label+' (media)';
-      const colName2=c.key+' (media)';
-      const colName3=(c.key==='Esclarece'?'Esclarece de forma completa':c.label)+' (media)';
-      let idx=header.indexOf(colName1);
-      if(idx<0) idx=header.indexOf(colName2);
-      if(idx<0) idx=header.indexOf(colName3);
+      let idx=header.indexOf(c.label);
+      if(idx<0) idx=header.indexOf(c.label+' (media)');
+      if(idx<0) idx=header.indexOf(c.key+' (media)');
+      if(idx<0) idx=header.indexOf(c.key);
       idxMedias[c.key]=idx;
     });
 
-    // Geracao - extrai do titulo da linha 0 (ex: "Relatorio WATI 24h — 15/06/2026 00:29")
-    let geradoEm='';
-    const titulo=resumoRows[0]?resumoRows[0][0]:'';
-    const m=String(titulo).match(/(\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2})/);
-    if(m)geradoEm=m[1];
+    // Geracao: o formato atual nao traz mais data no titulo, entao usamos o momento
+    // da importacao. Se ainda tiver a linha de titulo antiga com data, usa ela.
+    let geradoEm=new Date().toLocaleString('pt-BR');
+    if(!pareceHeaderNaLinha0){
+      const titulo=resumoRows[0]?resumoRows[0][0]:'';
+      const m=String(titulo).match(/(\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2})/);
+      if(m)geradoEm=m[1];
+    }
 
     // Carrega lista de usuarios para fazer o match nome -> uid
     const usuariosSnap=await getDocs(collection(db,'usuarios'));
@@ -4205,7 +4202,7 @@ window.processarRelatorioWati=async function(e){
     let totalProcessados=0;
     let naoEncontrados=[];
 
-    for(let i=2;i<resumoRows.length;i++){
+    for(let i=primeiraLinhaDados;i<resumoRows.length;i++){
       const row=resumoRows[i];
       if(!row||!row[idxOperador]||row[idxOperador]==='TOTAL')continue;
       const nomeOperador=String(row[idxOperador]).trim();
@@ -4218,31 +4215,33 @@ window.processarRelatorioWati=async function(e){
       if(!usuario){naoEncontrados.push(nomeOperador);continue;}
 
       const resumo={
-        totalChats:row[idxTotal]??0,
-        resolvidos:row[idxResolvidos]??0,
-        iaResolvidos:row[idxIaResolvidos]??0,
-        taxaResolucao:row[idxTaxa]??'0%',
-        tempoAtrelamento:row[idxTAtrel]??'N/A',
-        tempo1aResposta:row[idxT1aResp]??'N/A',
+        conversasAvaliadas:row[idxConversas]??0,
         medias:{}
       };
       CHAT_CRITERIOS.forEach(c=>{resumo.medias[c.key]=parseMedia(row[idxMedias[c.key]]);});
 
-      // ── Le a aba individual do operador (lista de chats resolvidos) ──
+      // ── Le a aba individual do operador (lista de conversas avaliadas) ──
       const chats=[];
       const sheetName=wb.SheetNames.find(s=>nomeOperador.toLowerCase().startsWith(s.toLowerCase())||s.toLowerCase()===nomeBase);
       if(sheetName){
         const ws=wb.Sheets[sheetName];
         const opRows=XLSX.utils.sheet_to_json(ws,{header:1,defval:null});
-        // Encontra a linha de cabecalho da tabela de chats (comeca com '#')
+        // Formato atual: cabecalho ja na 1a linha (Ticket, Cliente, Status, Conversa, criterios..., Resumo).
+        // Formato antigo: cabecalho comecava com '#' em alguma linha mais abaixo — mantido como fallback.
         let headerIdx=-1;
-        for(let r=0;r<opRows.length;r++){
-          if(opRows[r] && opRows[r][0]==='#'){headerIdx=r;break;}
+        if(opRows[0]&&(opRows[0].includes('Ticket')||opRows[0].includes('Cliente'))){
+          headerIdx=0;
+        } else {
+          for(let r=0;r<opRows.length;r++){
+            if(opRows[r] && opRows[r][0]==='#'){headerIdx=r;break;}
+          }
         }
         if(headerIdx>=0){
           const opHeader=opRows[headerIdx];
           const ci=name=>opHeader.indexOf(name);
-          const cCliente=ci('Cliente'),cProblema=ci('Problema Resumido'),cUrl=ci('URL Conversa');
+          const cCliente=ci('Cliente');
+          let cProblema=ci('Resumo');if(cProblema<0)cProblema=ci('Problema Resumido');
+          let cUrl=ci('Conversa');if(cUrl<0)cUrl=ci('URL Conversa');
           const cNotas={};
           CHAT_CRITERIOS.forEach(c=>{
             // Try exact label match first, then key, then first word
@@ -4253,17 +4252,24 @@ window.processarRelatorioWati=async function(e){
           });
           for(let r=headerIdx+1;r<opRows.length;r++){
             const row2=opRows[r];
-            if(!row2||row2[0]==null)break; // termina quando acabar a tabela
-            if(typeof row2[0]!=='number')break;
+            if(!row2||row2[0]==null||row2[0]==='')break; // termina quando acabar a tabela
             const notas={};
             CHAT_CRITERIOS.forEach(c=>{
               const idx=cNotas[c.key];
               notas[c.key]=idx>=0?parseNota(row2[idx]):null;
             });
+            // A coluna "Conversa" no formato atual e um link ("Abrir no WATI") em vez da
+            // URL crua — o valor de texto nao serve, tem que ler o hyperlink da celula.
+            let url=cUrl>=0?(row2[cUrl]||''):'';
+            if(cUrl>=0&&url&&!/^https?:\/\//i.test(url)){
+              const addr=XLSX.utils.encode_cell({r,c:cUrl});
+              const cell=ws[addr];
+              url=(cell&&cell.l&&cell.l.Target)||'';
+            }
             chats.push({
               cliente:row2[cCliente]||'',
               problema:row2[cProblema]||'',
-              url:row2[cUrl]||'',
+              url,
               notas
             });
           }
