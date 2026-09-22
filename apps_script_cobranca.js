@@ -317,9 +317,12 @@ function doPost(e) {
     var params = JSON.parse(e.postData.contents);
     var email = (params.email || '').trim();
     var codigo = (params.codigo || '').trim();
+    var origem = (params.origem || '').trim();
 
-    if (!email && !codigo) {
-      return resposta({ ok: false, erro: 'Email ou código obrigatório.' });
+    // Precisa de pelo menos 2 dos 3 campos (email, codigo, origem) preenchidos.
+    var preenchidos = (email ? 1 : 0) + (codigo ? 1 : 0) + (origem ? 1 : 0);
+    if (preenchidos < 2) {
+      return resposta({ ok: false, erro: 'Preencha pelo menos 2 dos 3 campos (email, código, origem).' });
     }
 
     var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -330,6 +333,7 @@ function doPost(e) {
 
     if (headerMap['EMAIL']) sheet.getRange(proximaLinha, headerMap['EMAIL']).setValue(email);
     if (headerMap['CODIGO_TRANSACAO']) sheet.getRange(proximaLinha, headerMap['CODIGO_TRANSACAO']).setValue(codigo);
+    if (headerMap['ORIGEM']) sheet.getRange(proximaLinha, headerMap['ORIGEM']).setValue(origem);
     if (headerMap['DATA_ATENDIMENTO']) sheet.getRange(proximaLinha, headerMap['DATA_ATENDIMENTO']).setValue(new Date());
 
     // Verifica na hora, em vez de depender só do gatilho onEdit — gatilhos onEdit

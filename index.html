@@ -9549,6 +9549,7 @@ async function renderAgenda(mc){
 
 // ── MINHA COBRANÇA ───────────────────────────────────────────────────────────
 const MC_MESES=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const MC_ORIGENS=['API','FW1','FW2','FW3','FW4','FW5','Exceção','Zendesk'];
 const MC_COLS={email:0,codigo:1,status:3,metodo:4,valor:5,dataPag:6,tentativas:7,ultimaVerif:8,dataAtend:9};
 
 async function renderMinhaCobranca(mc){
@@ -9751,8 +9752,16 @@ async function renderMinhaCobranca(mc){
           <label style="font-size:11px;font-weight:600;color:var(--text-2);text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:5px;">Código de Transação</label>
           <input id="mc-codigo" type="text" placeholder="HP0000000000" style="width:100%;padding:11px 14px;background:var(--bg);border:1.5px solid var(--border-md);border-radius:var(--radius);color:var(--text);font-family:var(--font-mono);font-size:14px;transition:border 0.15s;" onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='var(--border-md)'">
         </div>
+        <div style="flex:1;min-width:150px;">
+          <label style="font-size:11px;font-weight:600;color:var(--text-2);text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:5px;">Origem</label>
+          <select id="mc-origem" style="width:100%;padding:11px 14px;background:var(--bg);border:1.5px solid var(--border-md);border-radius:var(--radius);color:var(--text);font-family:var(--font);font-size:14px;height:44px;">
+            <option value="">Selecione...</option>
+            ${MC_ORIGENS.map(o=>`<option value="${o}">${o}</option>`).join('')}
+          </select>
+        </div>
         <button id="mc-registrar-btn" onclick="window._mcRegistrar()" style="padding:11px 24px;background:var(--primary);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:14px;font-weight:700;cursor:pointer;height:44px;white-space:nowrap;transition:background 0.15s;box-shadow:0 2px 8px rgba(26,92,42,0.3);">Registrar</button>
       </div>
+      <div style="font-size:11px;color:var(--text-3);margin-top:8px;">Preencha pelo menos 2 dos 3 campos (email, código, origem) para registrar.</div>
       <div id="mc-registro-status" style="margin-top:10px;font-size:12px;min-height:18px;"></div>
     </div>
 
@@ -9833,16 +9842,19 @@ async function renderMinhaCobranca(mc){
     window._mcRegistrar=async function(){
       const email=(document.getElementById('mc-email')?.value||'').trim();
       const codigo=(document.getElementById('mc-codigo')?.value||'').trim();
+      const origem=(document.getElementById('mc-origem')?.value||'').trim();
       const statusEl=document.getElementById('mc-registro-status');
-      if(!email&&!codigo){if(statusEl)statusEl.innerHTML='<span style="color:#ef4444;">Preencha pelo menos um campo.</span>';return;}
+      const preenchidos=(email?1:0)+(codigo?1:0)+(origem?1:0);
+      if(preenchidos<2){if(statusEl)statusEl.innerHTML='<span style="color:#ef4444;">Preencha pelo menos 2 dos 3 campos (email, código, origem).</span>';return;}
       if(!scriptUrl){showToast('Configure a URL do Apps Script primeiro.');return;}
 
       // Atualizacao otimista: aparece na tela na hora, sem esperar a rede do Apps Script.
       const now=new Date();
-      const novoReg={email,codigo,status:'Pendente',metodo:'',valor:'',dataPag:'',tentativas:'1',ultimaVerif:'',dataAtend:now.toLocaleDateString('pt-BR')};
+      const novoReg={email,codigo,origem,status:'Pendente',metodo:'',valor:'',dataPag:'',tentativas:'1',ultimaVerif:'',dataAtend:now.toLocaleDateString('pt-BR')};
       sheetData=[novoReg,...sheetData];
       document.getElementById('mc-email').value='';
       document.getElementById('mc-codigo').value='';
+      document.getElementById('mc-origem').value='';
       montarTela();
       const statusEl1=document.getElementById('mc-registro-status');
       if(statusEl1)statusEl1.innerHTML='<span style="color:#22c55e;">✅ Registrado! Verificando em segundo plano...</span>';
@@ -9852,7 +9864,7 @@ async function renderMinhaCobranca(mc){
         // mode:'no-cors' pq o Apps Script nao responde a preflight de POST — mas o
         // fetch ainda espera o doPost terminar do lado do servidor (que ja verifica
         // a linha na hora), so nao conseguimos ler a resposta.
-        await fetch(scriptUrl,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,codigo,mes:MC_MESES[mesAtivo]})});
+        await fetch(scriptUrl,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,codigo,origem,mes:MC_MESES[mesAtivo]})});
         // Guarda tambem num cache local, como rede de seguranca caso a leitura ao vivo falhe
         const cacheSnap=await getDoc(doc(db,'minha_cobranca_dados',uid));
         const regs=cacheSnap.exists()?cacheSnap.data().registros||[]:[];
