@@ -9558,6 +9558,7 @@ async function renderMinhaCobranca(mc){
   let sheetData=[];
   let mesAtivo=new Date().getMonth(); // 0-based
   let filtroStatus='';
+  let filtroOrigem='';
   let filtroDe='';
   let filtroAte='';
   let blurAtivo=false;
@@ -9599,6 +9600,7 @@ async function renderMinhaCobranca(mc){
   function aplicarFiltros(dados){
     return dados.filter(r=>{
       if(filtroStatus&&r.status!==filtroStatus) return false;
+      if(filtroOrigem&&r.origem!==filtroOrigem) return false;
       // Filtra pela data de atendimento (existe em todo registro), nao pela de
       // pagamento (so existe em Aprovados — antes disso fazia Atrasado sempre
       // escapar do filtro de data).
@@ -9638,10 +9640,30 @@ async function renderMinhaCobranca(mc){
     return `<span style="display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;background:${bg};color:${cor};">${status||'—'}</span>`;
   }
 
+  // Mesmas cores/nomes usados na coluna ORIGEM das planilhas de cobranca (chips
+  // do Google Sheets). API/FW2/FW4 sao chip solido (fundo escuro, texto branco);
+  // os demais sao chip claro (fundo pastel, texto colorido) — igual na planilha.
+  function origemBadge(origem){
+    if(!origem) return '<span style="color:var(--text-3);">—</span>';
+    const map={
+      'API':['#fff','#1c4587'],
+      'FW1':['#1155cc','#cfe2f3'],
+      'FW2':['#fff','#274e13'],
+      'FW3':['#38761d','#d9ead3'],
+      'FW4':['#fff','#990000'],
+      'FW5':['#cc0000','#f4cccc'],
+      'Exceção':['#666666','#efefef'],
+      'Zendesk':['#b45f06','#fff2cc'],
+    };
+    const [cor,bg]=map[origem]||['#64748b','#f1f5f9'];
+    return `<span style="display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;background:${bg};color:${cor};">${origem}</span>`;
+  }
+
   function montarTela(){
     const filtrados=aplicarFiltros(sheetData);
     const kpis=calcularKPIs(filtrados);
     const statusList=[...new Set(sheetData.map(r=>r.status).filter(Boolean))];
+    const origemList=[...new Set(sheetData.map(r=>r.origem).filter(Boolean))];
 
     const kpisHtml=`<div id="mc-kpis-wrap" style="display:flex;flex-wrap:wrap;gap:14px;margin-bottom:1.5rem;${blurAtivo?'filter:blur(8px);user-select:none;':''}">
       ${kpiCard('Total de Registros',kpis.total,'var(--primary)')}
@@ -9653,7 +9675,7 @@ async function renderMinhaCobranca(mc){
     const tabelaToggleBtn=`<button id="mc-tabela-toggle-btn" onclick="window._mcToggleTabela()" style="padding:5px 12px;background:transparent;border:1px solid var(--border-md);border-radius:20px;color:var(--text-3);font-family:var(--font);font-size:11px;cursor:pointer;white-space:nowrap;">${tabelaMinimizada?'🔼 Maximizar':'🔽 Minimizar'}</button>`;
 
     const tabelaHtml=filtrados.length===0
-      ?`<div class="panel"><div class="empty">Nenhum registro encontrado${filtroStatus||filtroDe?' com os filtros aplicados':''}.</div></div>`
+      ?`<div class="panel"><div class="empty">Nenhum registro encontrado${filtroStatus||filtroOrigem||filtroDe?' com os filtros aplicados':''}.</div></div>`
       :`<div class="panel" style="overflow-x:auto;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
           <div style="font-size:13px;font-weight:600;color:var(--text);">📋 Registros (${filtrados.length})</div>
@@ -9665,6 +9687,7 @@ async function renderMinhaCobranca(mc){
             <tr style="background:var(--primary);color:#fff;">
               <th style="padding:10px 12px;text-align:left;border-radius:8px 0 0 0;">Email</th>
               <th style="padding:10px 12px;text-align:left;">Código</th>
+              <th style="padding:10px 12px;text-align:center;">Origem</th>
               <th style="padding:10px 12px;text-align:center;">Status</th>
               <th style="padding:10px 12px;text-align:left;">Método</th>
               <th style="padding:10px 12px;text-align:right;">Valor</th>
@@ -9677,6 +9700,7 @@ async function renderMinhaCobranca(mc){
             ${filtrados.map((r,i)=>`<tr style="background:${i%2===0?'transparent':'rgba(0,0,0,0.02)'};" onmouseover="this.style.background='rgba(26,92,42,0.06)'" onmouseout="this.style.background='${i%2===0?'transparent':'rgba(0,0,0,0.02)'}'">
               <td style="padding:9px 12px;color:var(--text);">${r.email||'—'}</td>
               <td style="padding:9px 12px;font-family:var(--font-mono);font-size:11px;color:var(--text-2);">${r.codigo||'—'}</td>
+              <td style="padding:9px 12px;text-align:center;">${origemBadge(r.origem)}</td>
               <td style="padding:9px 12px;text-align:center;">${statusBadge(r.status)}</td>
               <td style="padding:9px 12px;color:var(--text-2);">${r.metodo||'—'}</td>
               <td style="padding:9px 12px;text-align:right;font-weight:600;color:${r.status==='APPROVED'?'#22c55e':'var(--text)'};">${r.valor?'R$ '+parseFloat(String(r.valor).replace(',','.')).toLocaleString('pt-BR',{minimumFractionDigits:2}):'—'}</td>
@@ -9751,10 +9775,14 @@ async function renderMinhaCobranca(mc){
           <option value="">Todos os status</option>
           ${statusList.map(s=>`<option value="${s}" ${s===filtroStatus?'selected':''}>${s}</option>`).join('')}
         </select>
+        <select id="mc-filtro-origem" style="padding:6px 10px;background:var(--surface);border:1px solid var(--border-md);border-radius:var(--radius);color:var(--text);font-family:var(--font);font-size:12px;">
+          <option value="">Todas as origens</option>
+          ${origemList.map(o=>`<option value="${o}" ${o===filtroOrigem?'selected':''}>${o}</option>`).join('')}
+        </select>
         <label style="font-size:12px;color:var(--text-2);">De: <input type="date" id="mc-filtro-de" value="${filtroDe}" style="padding:4px 8px;background:var(--surface);border:1px solid var(--border-md);border-radius:var(--radius);color:var(--text);font-size:12px;margin-left:4px;"></label>
         <label style="font-size:12px;color:var(--text-2);">Até: <input type="date" id="mc-filtro-ate" value="${filtroAte}" style="padding:4px 8px;background:var(--surface);border:1px solid var(--border-md);border-radius:var(--radius);color:var(--text);font-size:12px;margin-left:4px;"></label>
         <button onclick="window._mcFiltrar()" style="padding:6px 14px;background:var(--primary);color:#fff;border:none;border-radius:20px;font-family:var(--font);font-size:11px;font-weight:500;cursor:pointer;">Aplicar filtros</button>
-        ${filtroStatus||filtroDe||filtroAte?`<button onclick="window._mcLimparFiltros()" style="padding:5px 12px;background:transparent;border:1px solid var(--border-md);border-radius:20px;color:var(--text-3);font-size:11px;cursor:pointer;font-family:var(--font);">Limpar</button>`:''}
+        ${filtroStatus||filtroOrigem||filtroDe||filtroAte?`<button onclick="window._mcLimparFiltros()" style="padding:5px 12px;background:transparent;border:1px solid var(--border-md);border-radius:20px;color:var(--text-3);font-size:11px;cursor:pointer;font-family:var(--font);">Limpar</button>`:''}
         <span style="margin-left:auto;font-size:11px;color:var(--text-3);">${filtrados.length} registro${filtrados.length!==1?'s':''}</span>
       </div>
     </div>
@@ -9776,11 +9804,12 @@ async function renderMinhaCobranca(mc){
     window._mcMes=function(m){mesAtivo=m;render();};
     window._mcFiltrar=function(){
       filtroStatus=document.getElementById('mc-filtro-status')?.value||'';
+      filtroOrigem=document.getElementById('mc-filtro-origem')?.value||'';
       filtroDe=document.getElementById('mc-filtro-de')?.value||'';
       filtroAte=document.getElementById('mc-filtro-ate')?.value||'';
       montarTela(); // usa os dados que ja estao carregados, sem rebuscar a planilha
     };
-    window._mcLimparFiltros=function(){filtroStatus='';filtroDe='';filtroAte='';montarTela();};
+    window._mcLimparFiltros=function(){filtroStatus='';filtroOrigem='';filtroDe='';filtroAte='';montarTela();};
     window._mcToggleBlur=function(){
       blurAtivo=!blurAtivo;
       const wrap=document.getElementById('mc-kpis-wrap');

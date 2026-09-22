@@ -6,6 +6,9 @@
 // ser "Página1", "Agosto/26" etc.) com cabeçalhos: EMAIL, CODIGO_TRANSACAO,
 // STATUS, TENTATIVAS, DATA_ATENDIMENTO, ULTIMA_VERIFICACAO, METODO_PAGAMENTO,
 // VALOR_PAGO, DATA_PAGAMENTO, PARCELA_DE_LINHA
+// ORIGEM (opcional) — se a coluna existir, o valor (ex: API, FW1-FW5, Exceção,
+// Zendesk) e devolvido em listarRegistros_() pro portal Chocalho mostrar/filtrar.
+// Se a coluna nao existir na planilha, o campo so vem vazio — nao quebra nada.
 // ═══════════════════════════════════════════════════════════════
 
 /**** CONFIGURAÇÃO ****/
@@ -386,6 +389,7 @@ function listarRegistros_() {
         return {
           email: col(row, 'EMAIL').toString(),
           codigo: col(row, 'CODIGO_TRANSACAO').toString(),
+          origem: col(row, 'ORIGEM').toString(),
           status: col(row, 'STATUS').toString(),
           metodo: col(row, 'METODO_PAGAMENTO').toString(),
           valor: col(row, 'VALOR_PAGO').toString(),
