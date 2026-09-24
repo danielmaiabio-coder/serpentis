@@ -4919,6 +4919,9 @@ function zdRenderConversaEmail(t,comments){
 function zdEhAgenteZendesk(nome){
   const n=(nome||'').trim().toLowerCase();
   if(!n) return false;
+  // Bot de atendimento (ex: "Bot da Hashtag") representa a empresa, nao o
+  // cliente — mas nao aparece na lista de agentes humanos do Zendesk.
+  if(n.includes('bot')) return true;
   const agentes=(zdMeta&&zdMeta.agents)||[];
   return agentes.some(a=>{
     const an=(a.name||'').trim().toLowerCase();
