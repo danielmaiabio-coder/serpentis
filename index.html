@@ -4844,7 +4844,9 @@ async function zdFetch(path,opts){
   if(!res.ok){
     let msg=data.error||'Erro na requisicao';
     if(data.detail) msg+=': '+String(data.detail).slice(0,200);
-    throw new Error(msg);
+    const err=new Error(msg);
+    err.data=data; // deixa o payload cru acessivel pra quem precisar de mais que a mensagem
+    throw err;
   }
   return data;
 }
@@ -5441,7 +5443,12 @@ window.zdSalvarEmailSolicitante=async function(){
     showToast('E-mail salvo!');
     await window.zdAbrirTicket(zdTicketAtual);
   }catch(e){
-    showToast('Erro ao salvar e-mail: '+e.message);
+    const dup=e.data&&e.data.duplicado;
+    if(dup){
+      showToast('Esse e-mail já pertence a outro contato no Zendesk: "'+dup.name+'" (ID '+dup.id+'). Provavelmente é a mesma pessoa com um contato duplicado — mescle os dois contatos direto no Zendesk (não dá pra fazer isso por aqui).');
+    } else {
+      showToast('Erro ao salvar e-mail: '+e.message);
+    }
   }
 };
 

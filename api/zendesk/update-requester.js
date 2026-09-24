@@ -27,7 +27,22 @@ module.exports = async function handler(req, res) {
     });
     if (!zres.ok) {
       const detail = await zres.text();
-      res.status(zres.status).json({ error: 'erro na api do zendesk', detail });
+      // Erro mais comum aqui: o e-mail ja pertence a OUTRO contato no Zendesk —
+      // tipico de contato duplicado (ex: um registro veio do WhatsApp so com
+      // telefone, outro veio por e-mail sem telefone, mesma pessoa). Busca quem
+      // ja e' dono desse e-mail pra dar um erro util em vez de so repassar o JSON cru.
+      let duplicado = null;
+      if (zres.status === 422 && /DuplicateValue/i.test(detail)) {
+        try {
+          const sRes = await zendeskFetch(`/api/v2/users/search.json?query=email:${encodeURIComponent(email)}`);
+          if (sRes.ok) {
+            const sData = await sRes.json();
+            const outro = (sData.users || []).find((u) => String(u.id) !== String(userId));
+            if (outro) duplicado = { id: outro.id, name: outro.name };
+          }
+        } catch (e2) { /* melhor esforco, ignora falha na busca */ }
+      }
+      res.status(zres.status).json({ error: 'erro na api do zendesk', detail, duplicado });
       return;
     }
     const data = await zres.json();
