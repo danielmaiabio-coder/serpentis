@@ -4911,9 +4911,23 @@ function zdRenderConversaEmail(t,comments){
 // Tickets de WhatsApp costumam vir com o historico inteiro dentro de comentarios
 // "chat_transcript" (linhas tipo "(20:45:03) Nome: mensagem"), nao 1 comentario por mensagem.
 // Por isso o parser abaixo e' um melhor esforco baseado no texto, nao um mapeamento direto da API.
+// Confere o nome do falante contra a lista de agentes do Zendesk (zdMeta.agents,
+// carregada em zdCarregarMeta antes do ticket abrir) em vez de contra o nome do
+// solicitante — o requester_name de contatos de WhatsApp costuma vir vazio/generico
+// no Zendesk, o que fazia TODA mensagem cair como "da equipe" (bug: tudo do lado
+// direito). Comparar contra os agentes reais e' uma base muito mais confiavel.
+function zdEhAgenteZendesk(nome){
+  const n=(nome||'').trim().toLowerCase();
+  if(!n) return false;
+  const agentes=(zdMeta&&zdMeta.agents)||[];
+  return agentes.some(a=>{
+    const an=(a.name||'').trim().toLowerCase();
+    return an&&(n===an||n.startsWith(an)||an.startsWith(n));
+  });
+}
+
 function zdParseWhatsApp(t,comments){
   const msgs=[];
-  const reqNome=(t.requester_name||'').trim().toLowerCase();
   comments.forEach(c=>{
     if(c.channel==='chat_transcript'){
       const linhas=(c.body||'').split('\n').map(l=>l.trim());
@@ -4931,7 +4945,7 @@ function zdParseWhatsApp(t,comments){
             const mUrl=linhas[j].match(/^URL:\s*(\S+)/i);
             if(mUrl){ url=mUrl[1]; break; }
           }
-          const deCliente=!!nome&&reqNome!==''&&nome.toLowerCase().startsWith(reqNome);
+          const deCliente=!!nome&&!zdEhAgenteZendesk(nome);
           msgs.push({hora,nome:nome||(deCliente?t.requester_name:'Equipe'),texto:arquivo,anexoUrl:url,deCliente});
           continue;
         }
@@ -4939,7 +4953,7 @@ function zdParseWhatsApp(t,comments){
         if(!m) continue;
         const hora=m[1].slice(0,5), nome=(m[2]||'').trim(), texto=(m[3]||'').trim();
         if(!texto) continue;
-        const deCliente=!!nome&&reqNome!==''&&nome.toLowerCase().startsWith(reqNome);
+        const deCliente=!!nome&&!zdEhAgenteZendesk(nome);
         msgs.push({hora,nome:nome||(deCliente?t.requester_name:'Equipe'),texto,deCliente});
       }
     } else {
