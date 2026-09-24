@@ -31,11 +31,24 @@ module.exports = async function handler(req, res) {
     const cData = cRes.ok ? await cRes.json() : { comments: [] };
 
     let requesterName = null;
+    let requester = null;
     if (tData.ticket && tData.ticket.requester_id) {
       const uRes = await zendeskFetch(`/api/v2/users/${tData.ticket.requester_id}.json`);
       if (uRes.ok) {
         const uData = await uRes.json();
-        requesterName = (uData.user && uData.user.name) || null;
+        const u = uData.user || null;
+        requesterName = (u && u.name) || null;
+        if (u) {
+          requester = {
+            name: u.name || null,
+            email: u.email || null,
+            phone: u.phone || null,
+            photo_url: (u.photo && u.photo.content_url) || null,
+            time_zone: u.time_zone || null,
+            locale: u.locale || null,
+            notes: u.notes || null,
+          };
+        }
       }
     }
 
@@ -48,6 +61,7 @@ module.exports = async function handler(req, res) {
         priority: tData.ticket.priority,
         requester_name: requesterName,
         requester_id: tData.ticket.requester_id,
+        requester: requester,
         brand_id: tData.ticket.brand_id,
         group_id: tData.ticket.group_id,
         assignee_id: tData.ticket.assignee_id,

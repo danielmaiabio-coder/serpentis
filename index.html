@@ -5284,6 +5284,46 @@ window.zdCarregarLista=async function(){
   }
 };
 
+const ZD_IDIOMA_LABEL={'pt-br':'Português (Brasil)','pt':'Português','en-us':'Inglês (EUA)','en':'Inglês','es':'Espanhol','es-419':'Espanhol (América Latina)','es-es':'Espanhol (Espanha)'};
+function zdFormatarIdioma(locale){
+  if(!locale) return '';
+  return ZD_IDIOMA_LABEL[locale.toLowerCase()]||locale;
+}
+function zdFormatarHoraLocal(tz){
+  if(!tz) return '';
+  try{
+    return new Date().toLocaleString('pt-BR',{timeZone:tz,weekday:'short',hour:'2-digit',minute:'2-digit'});
+  }catch(e){ return tz; }
+}
+// Painel com os dados do solicitante (igual ao card lateral do Zendesk nativo):
+// foto, nome, e-mail, telefone, hora local (calculada do fuso), idioma e observações.
+function zdRenderInfoSolicitante(t){
+  const r=t.requester||{};
+  const nome=r.name||t.requester_name||'Solicitante desconhecido';
+  const iniciais=nome.split(' ').filter(Boolean).slice(0,2).map(p=>p[0]).join('').toUpperCase()||'?';
+  const avatar=r.photo_url
+    ? '<img src="'+zdEscapeHtml(r.photo_url)+'" style="width:44px;height:44px;border-radius:50%;object-fit:cover;flex-shrink:0;"/>'
+    : '<div style="width:44px;height:44px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;flex-shrink:0;">'+iniciais+'</div>';
+  const linha=(label,val)=>'<div style="display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-top:1px solid var(--border-md);">'+
+    '<span style="font-size:11px;color:var(--text-3);white-space:nowrap;">'+label+'</span>'+
+    '<span style="font-size:12px;color:var(--text);text-align:right;word-break:break-word;">'+val+'</span>'+
+  '</div>';
+  const horaLocal=zdFormatarHoraLocal(r.time_zone);
+  const idioma=zdFormatarIdioma(r.locale);
+  return '<div class="panel" style="margin-bottom:1rem;">'+
+    '<label class="inp-label" style="margin-bottom:10px;display:block;">Informações do solicitante</label>'+
+    '<div style="display:flex;align-items:center;gap:12px;margin-bottom:4px;">'+
+      avatar+
+      '<div style="font-size:15px;font-weight:600;color:var(--text);">'+zdEscapeHtml(nome)+'</div>'+
+    '</div>'+
+    linha('E-mail', r.email?zdEscapeHtml(r.email):'—')+
+    linha('Telefone', r.phone?zdEscapeHtml(r.phone):'—')+
+    linha('Hora local', horaLocal?zdEscapeHtml(horaLocal):'—')+
+    linha('Idioma', idioma?zdEscapeHtml(idioma):'—')+
+    linha('Observações', r.notes?zdEscapeHtml(r.notes).replace(/\n/g,'<br>'):'<span style="color:var(--text-3);">Nenhuma observação</span>')+
+  '</div>';
+}
+
 window.zdAbrirTicket=async function(id){
   const wrap=document.getElementById('zd-conteudo');
   if(!wrap) return;
@@ -5312,6 +5352,7 @@ window.zdAbrirTicket=async function(id){
           '<button onclick="zdAtualizarStatus()" style="padding:6px 14px;background:transparent;border:1px solid var(--primary);color:var(--primary);border-radius:var(--radius);font-family:var(--font);font-size:12px;font-weight:500;cursor:pointer;">Salvar status</button>'+
         '</div>'+
       '</div>'+
+      zdRenderInfoSolicitante(t)+
       '<div class="panel" style="margin-bottom:1rem;">'+
         '<label class="inp-label" style="margin-bottom:10px;display:block;">Atribuição</label>'+
         '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">'+
