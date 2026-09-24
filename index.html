@@ -4994,8 +4994,17 @@ function zdRenderConversaWhatsApp(t,comments){
   return toolbar+'<div style="display:flex;flex-direction:column;gap:6px;padding:16px;'+bgStyle+'border-radius:12px;margin-bottom:1rem;">'+bolhas+'</div>';
 }
 
+// Tickets de WhatsApp (ou chat via bot) as vezes vem com via.channel diferente
+// de 'whatsapp' (ex: 'api', 'chat') mesmo sendo whatsapp de verdade — o sinal
+// confiavel e' ter comentario(s) do tipo chat_transcript, que e' o formato que
+// precisa do parser de bolhas (zdParseWhatsApp), independente do que o ticket
+// diz que e'.
+function zdTemChatTranscript(comments){
+  return (comments||[]).some(c=>c.channel==='chat_transcript');
+}
+
 function zdRenderConversa(t,comments){
-  if(t.channel==='whatsapp') return zdRenderConversaWhatsApp(t,comments);
+  if(t.channel==='whatsapp'||zdTemChatTranscript(comments)) return zdRenderConversaWhatsApp(t,comments);
   if(t.channel==='email') return zdRenderConversaEmail(t,comments);
   return zdRenderConversaGenerica(comments);
 }
@@ -5024,7 +5033,7 @@ window.zdRemoverCapa=async function(){
 // Transcript em texto puro (so trocas publicas com o cliente) pra usar como
 // contexto do Gemini ou como exemplo salvo no Basilisco.
 function zdFormatarTranscript(t,comments){
-  if(t.channel==='whatsapp'){
+  if(t.channel==='whatsapp'||zdTemChatTranscript(comments)){
     return zdParseWhatsApp(t,comments).filter(m=>!m.nota)
       .map(m=>(m.deCliente?'Cliente':'Equipe')+' ['+m.hora+']: '+m.texto).join('\n');
   }
