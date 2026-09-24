@@ -5310,13 +5310,19 @@ function zdRenderInfoSolicitante(t){
   '</div>';
   const horaLocal=zdFormatarHoraLocal(r.time_zone);
   const idioma=zdFormatarIdioma(r.locale);
+  const emailHtml=r.email
+    ? zdEscapeHtml(r.email)
+    : '<div style="display:flex;gap:6px;justify-content:flex-end;">'+
+        '<input id="zd-req-email-novo" type="email" placeholder="email@aluno.com" style="padding:5px 8px;border:1px solid var(--border-md);border-radius:6px;background:var(--bg);color:var(--text);font-family:var(--font);font-size:12px;width:150px;"/>'+
+        '<button onclick="zdSalvarEmailSolicitante()" style="padding:5px 10px;background:var(--primary);color:#fff;border:none;border-radius:6px;font-family:var(--font);font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;">Salvar</button>'+
+      '</div>';
   return '<div class="panel" style="margin-bottom:1rem;">'+
     '<label class="inp-label" style="margin-bottom:10px;display:block;">Informações do solicitante</label>'+
     '<div style="display:flex;align-items:center;gap:12px;margin-bottom:4px;">'+
       avatar+
       '<div style="font-size:15px;font-weight:600;color:var(--text);">'+zdEscapeHtml(nome)+'</div>'+
     '</div>'+
-    linha('E-mail', r.email?zdEscapeHtml(r.email):'—')+
+    linha('E-mail', emailHtml)+
     linha('Telefone', r.phone?zdEscapeHtml(r.phone):'—')+
     linha('Hora local', horaLocal?zdEscapeHtml(horaLocal):'—')+
     linha('Idioma', idioma?zdEscapeHtml(idioma):'—')+
@@ -5420,6 +5426,22 @@ window.zdAtualizarStatus=async function(){
     await window.zdAbrirTicket(zdTicketAtual);
   }catch(e){
     showToast('Erro ao atualizar status: '+e.message);
+  }
+};
+
+window.zdSalvarEmailSolicitante=async function(){
+  const input=document.getElementById('zd-req-email-novo');
+  const email=(input?input.value:'').trim();
+  if(!email){showToast('Digite um e-mail.');return;}
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){showToast('E-mail inválido.');return;}
+  const requesterId=zdTicketObjAtual&&zdTicketObjAtual.requester_id;
+  if(!requesterId){showToast('Solicitante não encontrado.');return;}
+  try{
+    await zdFetch('/api/zendesk/update-requester',{method:'POST',body:JSON.stringify({userId:requesterId,email})});
+    showToast('E-mail salvo!');
+    await window.zdAbrirTicket(zdTicketAtual);
+  }catch(e){
+    showToast('Erro ao salvar e-mail: '+e.message);
   }
 };
 
