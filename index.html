@@ -417,6 +417,9 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
   body.nav-sidebar .nb-right{flex-direction:column;align-items:stretch;justify-self:auto;margin-top:auto;padding-top:1rem;border-top:1px solid var(--border-md);gap:8px;}
   body.nav-sidebar .nb-right .nb-bordered{width:100%;justify-content:center;flex-wrap:wrap;}
   body.nav-sidebar .nb-separator{display:none;}
+  /* .nb-right fica no rodape da coluna, dentro do mesmo scroll do menu — um
+     dropdown abrindo pra baixo (padrao) ficaria cortado. Abre pra cima aqui. */
+  body.nav-sidebar .nb-user-dropdown{top:auto;bottom:100%;padding-top:0;padding-bottom:8px;right:0;left:auto;}
   body.nav-sidebar #led-termometro{width:100%;text-align:center;}
   body.nav-sidebar #updateBanner{grid-column:2;grid-row:1;}
   body.nav-sidebar #lembreteBanner{grid-column:2;grid-row:2;}
