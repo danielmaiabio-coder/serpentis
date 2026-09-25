@@ -402,7 +402,9 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
 /* ── MENU LATERAL (alternativa 100% CSS ao mesmo #navItems/buildNav — nao
    duplica item nenhum de menu, so reflui o mesmo DOM de outro jeito) ── */
 @media (min-width:900px){
-  body.nav-sidebar #appShell{display:grid;grid-template-columns:250px 1fr;grid-template-rows:auto auto auto 1fr;height:100vh;}
+  /* !important necessario: #appShell troca pra display:flex via estilo INLINE
+     no JS (show('appShell','flex')), que sempre vence uma regra de classe normal. */
+  body.nav-sidebar #appShell{display:grid !important;grid-template-columns:250px 1fr;grid-template-rows:auto auto auto 1fr;height:100vh;}
   body.nav-sidebar .navbar{grid-column:1;grid-row:1 / -1;display:flex;flex-direction:column;align-items:stretch;width:250px;height:100vh;padding:1rem 0.75rem;gap:0;overflow-y:auto;row-gap:0;}
   body.nav-sidebar .nb-brand{justify-content:center;margin:0 0 1.25rem;padding-bottom:1rem;border-bottom:1px solid var(--border-md);}
   body.nav-sidebar .nb-nav{flex-direction:column;align-items:stretch;flex-wrap:nowrap;gap:4px;justify-content:flex-start;}
