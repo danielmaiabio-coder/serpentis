@@ -10291,10 +10291,10 @@ async function renderMinhaCobranca(mc){
   }
 
   function kpiCard(label,value,cor,sub){
-    return `<div style="flex:1;min-width:180px;background:var(--surface);border-radius:14px;padding:18px 20px;border:1px solid var(--border-md);position:relative;overflow:hidden;">
-      <div style="position:absolute;top:0;left:0;width:4px;height:100%;background:${cor};border-radius:14px 0 0 14px;"></div>
-      <div style="font-size:11px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">${label}</div>
-      <div style="font-size:28px;font-weight:700;color:var(--text);line-height:1;">${value}</div>
+    return `<div class="sp-card" style="flex:1;min-width:180px;padding:18px 20px;position:relative;overflow:hidden;">
+      <div style="position:absolute;top:0;left:18px;right:18px;height:2px;border-radius:2px;background:${cor};box-shadow:0 0 14px ${cor};"></div>
+      <div style="font-family:var(--font-mono);font-size:10.5px;font-weight:500;color:var(--text-3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px;">${label}</div>
+      <div style="font-size:28px;font-weight:650;letter-spacing:-.035em;color:var(--text);line-height:1;">${value}</div>
       ${sub?`<div style="font-size:11px;color:var(--text-3);margin-top:6px;">${sub}</div>`:''}
     </div>`;
   }
@@ -10353,7 +10353,7 @@ async function renderMinhaCobranca(mc){
         <div id="mc-tabela-body-wrap" style="display:${tabelaMinimizada?'none':'block'};">
         <table style="width:100%;border-collapse:collapse;font-size:12px;">
           <thead>
-            <tr style="background:var(--primary);color:#fff;">
+            <tr style="background:var(--surface-2);color:var(--text-3);font-family:var(--font-mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;">
               <th style="padding:10px 12px;text-align:left;border-radius:8px 0 0 0;">Email</th>
               <th style="padding:10px 12px;text-align:left;">Código</th>
               <th style="padding:10px 12px;text-align:center;">Origem</th>
@@ -10366,13 +10366,13 @@ async function renderMinhaCobranca(mc){
             </tr>
           </thead>
           <tbody>
-            ${filtrados.map((r,i)=>`<tr style="background:${i%2===0?'transparent':'rgba(0,0,0,0.02)'};" onmouseover="this.style.background='rgba(26,92,42,0.06)'" onmouseout="this.style.background='${i%2===0?'transparent':'rgba(0,0,0,0.02)'}'">
+            ${filtrados.map((r,i)=>`<tr style="border-bottom:1px solid var(--border);background:${i%2===0?'transparent':'rgba(127,127,127,0.04)'};" onmouseover="this.style.background='rgba(16,185,129,0.08)'" onmouseout="this.style.background='${i%2===0?'transparent':'rgba(127,127,127,0.04)'}'">
               <td style="padding:9px 12px;color:var(--text);">${r.email||'—'}</td>
               <td style="padding:9px 12px;font-family:var(--font-mono);font-size:11px;color:var(--text-2);">${r.codigo||'—'}</td>
               <td style="padding:9px 12px;text-align:center;">${origemBadge(r.origem)}</td>
               <td style="padding:9px 12px;text-align:center;">${statusBadge(r.status)}</td>
               <td style="padding:9px 12px;color:var(--text-2);">${r.metodo||'—'}</td>
-              <td style="padding:9px 12px;text-align:right;font-weight:600;color:${r.status==='APPROVED'?'#22c55e':'var(--text)'};">${r.valor?'R$ '+parseFloat(String(r.valor).replace(',','.')).toLocaleString('pt-BR',{minimumFractionDigits:2}):'—'}</td>
+              <td style="padding:9px 12px;text-align:right;font-weight:600;color:${r.status==='APPROVED'?'var(--green)':'var(--text)'};">${r.valor?'R$ '+parseFloat(String(r.valor).replace(',','.')).toLocaleString('pt-BR',{minimumFractionDigits:2}):'—'}</td>
               <td style="padding:9px 12px;text-align:center;color:var(--text-2);">${r.dataPag||'—'}</td>
               <td style="padding:9px 12px;text-align:center;color:var(--text-2);">${r.tentativas||'—'}</td>
               <td style="padding:9px 12px;text-align:center;color:var(--text-2);">${r.dataAtend||'—'}</td>
@@ -10383,12 +10383,13 @@ async function renderMinhaCobranca(mc){
       </div>`;
 
     mc.innerHTML=`
-    <div style="width:100%;background:linear-gradient(135deg,var(--primary) 0%,var(--primary-mid) 100%);border-radius:14px;padding:1.5rem 1.75rem;margin-bottom:1.5rem;box-shadow:0 4px 24px rgba(26,92,42,0.2);position:relative;overflow:hidden;">
-      <div style="position:absolute;right:-20px;top:-20px;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,0.06);"></div>
-      <div style="position:absolute;right:40px;top:30px;width:60px;height:60px;border-radius:50%;background:rgba(255,255,255,0.06);"></div>
-      <div style="font-size:11px;font-weight:600;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">💳 Conta</div>
-      <div style="font-size:24px;font-weight:700;color:#fff;margin-bottom:2px;">Minha Cobrança</div>
-      <div style="font-size:13px;color:rgba(255,255,255,0.7);">${userProfile.nome||'Operador'} — ${MC_MESES[mesAtivo]} ${new Date().getFullYear()}</div>
+    <div class="sp-card" style="margin-bottom:1.5rem;padding:1.5rem 1.75rem;display:flex;align-items:center;gap:16px;flex-wrap:wrap;background:radial-gradient(120% 160% at 100% 0,rgba(16,185,129,0.16),transparent 55%) padding-box,linear-gradient(var(--surface),var(--surface)) padding-box,radial-gradient(360px circle at var(--sx,-999px) var(--sy,-999px),var(--spot),var(--border) 45%) border-box;">
+      <div style="flex:1;min-width:0;">
+        <div class="page-eyebrow">CONTA · 💳</div>
+        <div class="page-title" style="margin-bottom:2px;">Minha Cobrança</div>
+        <div class="page-sub" style="margin:0;">${userProfile.nome||'Operador'} — ${MC_MESES[mesAtivo]} ${new Date().getFullYear()}</div>
+      </div>
+      <span style="font-family:var(--font-mono);font-size:12px;padding:7px 12px;border-radius:999px;background:var(--surface-2);border:1px solid var(--border);color:var(--text-2);">${MC_MESES[mesAtivo].substring(0,3).toUpperCase()} · ${new Date().getFullYear()}</span>
     </div>
 
     ${getPerms().isCoord?`<div class="panel" style="margin-bottom:1.5rem;">
@@ -10436,7 +10437,7 @@ async function renderMinhaCobranca(mc){
     <!-- Seletor de mês -->
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:1.25rem;flex-wrap:wrap;">
       <span style="font-size:12px;color:var(--text-2);font-weight:500;">Mês:</span>
-      ${MC_MESES.map((m,i)=>`<button onclick="window._mcMes(${i})" style="padding:5px 14px;border-radius:20px;border:1.5px solid ${i===mesAtivo?'var(--primary)':'var(--border-md)'};background:${i===mesAtivo?'var(--primary)':'transparent'};color:${i===mesAtivo?'#fff':'var(--text-2)'};font-family:var(--font);font-size:12px;cursor:pointer;font-weight:${i===mesAtivo?'600':'400'};">${m.substring(0,3)}</button>`).join('')}
+      ${MC_MESES.map((m,i)=>`<button onclick="window._mcMes(${i})" style="padding:5px 14px;border-radius:20px;border:1px solid ${i===mesAtivo?'var(--inv-bg)':'var(--border-md)'};background:${i===mesAtivo?'var(--inv-bg)':'transparent'};color:${i===mesAtivo?'var(--inv-text)':'var(--text-2)'};font-family:var(--font);font-size:12px;cursor:pointer;font-weight:${i===mesAtivo?'600':'400'};">${m.substring(0,3)}</button>`).join('')}
       <button id="mc-blur-btn" onclick="window._mcToggleBlur()" style="padding:5px 12px;background:${blurAtivo?'var(--primary)':'transparent'};border:1px solid ${blurAtivo?'var(--primary)':'var(--border-md)'};border-radius:20px;color:${blurAtivo?'#fff':'var(--text-3)'};font-family:var(--font);font-size:11px;cursor:pointer;">${blurAtivo?'🙈 Dados ocultos':'👁️ Ocultar dados'}</button>
       <button onclick="window._mcConfigurar()" style="margin-left:auto;padding:5px 12px;background:transparent;border:1px solid var(--border-md);border-radius:20px;color:var(--text-3);font-family:var(--font);font-size:11px;cursor:pointer;">⚙️ Reconfigurar URL</button>
     </div>
