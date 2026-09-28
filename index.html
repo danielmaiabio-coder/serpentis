@@ -1054,6 +1054,7 @@ body.dark-mode .sp-wk i.sp-on{background:rgba(59,130,246,0.32);color:#DBEAFE;}
   .sp-flip .sp-c{font-size:24px;margin-top:10px;}
 }
 @media (max-width:520px){
+  .sp-tilt{min-height:460px;}
   .sp-flip{gap:3px;}
   .sp-flip .sp-d{width:32px;height:46px;font-size:24px;border-radius:9px;}
   .sp-flip .sp-c{font-size:18px;margin-top:8px;}
@@ -8506,7 +8507,7 @@ function spHomeHtml(D){
       '</div>'+
       (D.isViewer?'':
       '<div '+riseCls('sp-card sp-cd')+'>'+
-        '<div class="sp-lab"><span class="sp-live"></span>Próximo disparo<button onclick="document.getElementById(\'sp-disp-card\').scrollIntoView({behavior:\'smooth\',block:\'center\'})">Todos →</button></div>'+
+        '<div class="sp-lab"><span class="sp-live"></span><span id="sp-cd-lab">Próximo disparo</span><button onclick="document.getElementById(\'sp-disp-card\').scrollIntoView({behavior:\'smooth\',block:\'center\'})">Todos →</button></div>'+
         '<div id="sp-cd-body"></div>'+
         '<div class="sp-row"><button class="sp-btn sp-grow" id="sp-aviso-btn" onclick="spToggleAviso()">'+spIc('bell',15)+'<span>Avisar 5 min antes</span></button></div>'+
         '<div class="sp-prog"><i id="sp-prog"></i></div>'+
@@ -8590,38 +8591,58 @@ function spHomeHtml(D){
 
 // Parte viva da home: contagem regressiva (relogio de numeros que viram),
 // tilt 3D da capa e estado do botao de aviso. Para sozinha quando a home sai da tela.
-function spHomeStart(disparos){
+function spHomeStart(disparos,reunioes){
   if(window._spHomeTimer) clearInterval(window._spHomeTimer);
   let last='';
+  // Alvo da contagem: o proximo disparo; sem disparo a frente, a proxima reuniao.
+  const alvo=()=>{
+    const e=spEstadoDisparos(disparos);
+    if(e.next){
+      const nx=e.next,dia=nx.dt.toDateString()===new Date().toDateString()?'':' ('+spDiaRel(nx.dt)+')';
+      return {modo:'disp',lab:'Próximo disparo',left:e.left,frac:e.frac,h:spHoraFmt(nx.dt)+dia,p:nx.plat,
+        s:e.totalHoje?(e.feitosHoje+' de '+e.totalHoje+' disparos feitos hoje'):'Nenhum disparo hoje',extra:''};
+    }
+    const now=new Date();
+    const r=(reunioes||[]).filter(x=>x.dt&&x.dt>now).sort((a,b)=>a.dt-b.dt)[0];
+    if(!r) return null;
+    const left=(r.dt-now)/1000,janela=7*86400;
+    return {modo:'reu',lab:'Próxima reunião',left,frac:Math.min(1,Math.max(0,1-left/janela)),
+      h:r.titulo,p:spDiaRel(r.dt)+' · '+spHoraFmt(r.dt),s:'Nenhum disparo à frente',
+      extra:'<div style="display:flex;gap:8px;margin-top:12px;">'+
+        (r.meet?'<a class="sp-join" href="'+spEsc(r.meet)+'" target="_blank" rel="noopener"><i></i>Entrar no Meet</a>':'')+
+        '<a class="sp-ico" href="'+spEsc(spGcalUrl(r.titulo,r.dt,r.meet))+'" target="_blank" rel="noopener" title="Adicionar ao Google Agenda">'+spIc('calplus',15)+'</a></div>'};
+  };
   const tick=()=>{
     const body=document.getElementById('sp-cd-body');
     if(!body){clearInterval(window._spHomeTimer);window._spHomeTimer=null;return;}
-    const e=spEstadoDisparos(disparos);
+    const a=alvo();
     const prog=document.getElementById('sp-prog');
-    if(!e.next){
-      if(last!=='none'){body.innerHTML='<div class="sp-none"><b>Nenhum disparo à frente</b>Quando houver um novo horário, a contagem aparece aqui.</div>';last='none';}
+    const lab=document.getElementById('sp-cd-lab');
+    if(!a){
+      if(lab) lab.textContent='Próximo disparo';
+      if(last!=='none'){body.innerHTML='<div class="sp-none"><b>Nada agendado à frente</b>Quando houver um novo disparo ou reunião, a contagem aparece aqui.</div>';last='none';}
       if(prog) prog.style.width='0%';
       return;
     }
-    const L=e.left,dias=Math.floor(L/86400),H=Math.floor(L%86400/3600),M=Math.floor(L%3600/60),S=Math.floor(L%60);
+    if(lab) lab.textContent=a.lab;
+    const L=a.left,dias=Math.floor(L/86400),H=Math.floor(L%86400/3600),M=Math.floor(L%3600/60),S=Math.floor(L%60);
     const u=dias>0?[[dias,'dias'],[H,'horas'],[M,'min']]:[[H,'horas'],[M,'min'],[S,'seg']];
     const str=u.map(x=>spPad(Math.min(99,x[0]))).join('');
-    const key=u.map(x=>x[1]).join();
+    const key=a.modo+':'+u.map(x=>x[1]).join();
     if(!last||last==='none'||last.split('|')[0]!==key){
       body.innerHTML='<div class="sp-flip" id="sp-flip">'+u.map((x,i)=>
         '<div class="sp-u"><div><div class="sp-d" data-k="'+(i*2)+'"><span>0</span></div><div class="sp-d" data-k="'+(i*2+1)+'"><span>0</span></div></div><small>'+x[1]+'</small></div>'+(i<2?'<span class="sp-c">:</span>':'')
       ).join('')+'</div>'+
-      '<div class="sp-nx"><b id="sp-nx-h"></b> · <span id="sp-nx-p"></span><small id="sp-nx-s"></small></div>';
+      '<div class="sp-nx"><b id="sp-nx-h"></b> · <span id="sp-nx-p"></span><small id="sp-nx-s"></small></div>'+a.extra;
       last=key+'|';
     }
     const prev=last.split('|')[1]||'';
     document.querySelectorAll('#sp-flip .sp-d').forEach(d=>{const k=+d.dataset.k;if(str[k]!==prev[k])d.innerHTML='<span>'+str[k]+'</span>';});
     last=key+'|'+str;
-    const nx=e.next,dia=nx.dt.toDateString()===new Date().toDateString()?'':' ('+spDiaRel(nx.dt)+')';
-    const hEl=document.getElementById('sp-nx-h');if(hEl)hEl.textContent=spHoraFmt(nx.dt)+dia;
-    const pEl=document.getElementById('sp-nx-p');if(pEl)pEl.textContent=nx.plat;
-    const sEl=document.getElementById('sp-nx-s');if(sEl)sEl.textContent=e.totalHoje?(e.feitosHoje+' de '+e.totalHoje+' disparos feitos hoje'):'Nenhum disparo hoje';
-    if(prog) prog.style.width=(e.frac*100).toFixed(2)+'%';
+    const hEl=document.getElementById('sp-nx-h');if(hEl)hEl.textContent=a.h;
+    const pEl=document.getElementById('sp-nx-p');if(pEl)pEl.textContent=a.p;
+    const sEl=document.getElementById('sp-nx-s');if(sEl)sEl.textContent=a.s;
+    if(prog) prog.style.width=(a.frac*100).toFixed(2)+'%';
   };
   tick();
   window._spHomeTimer=setInterval(tick,1000);
@@ -8760,20 +8781,21 @@ async function renderPerfil(mc){
     });
   }
 
+  const reunioes=[
+    {titulo:'Reunião Semanal',cor:'#22C55E',horario:semanal.horario||'',data:semanal.data||'',meet:semanal.meet||'',editFn:'editarReuniao'},
+    {titulo:'Reunião Mensal',cor:'#EF4444',horario:mensal.horario||'',data:mensal.data||'',meet:mensal.meet||'',editFn:'editarReuniaoMensal'},
+    {titulo:'Reuniões Adicionais',cor:'#A855F7',horario:adicional.horario||'',data:adicional.data||'',meet:adicional.meet||'',editFn:'editarReuniaoAdicional'}
+  ];
   mc.innerHTML=spHomeHtml({
     nome:perfil.nome||userProfile.nome||'',
     cargo:isCoord?'Coordenador':isViewer?'Visualizador':'Operador',
     foto:perfil.foto||'',capa:perfil.capa||'',
     isCoord,isViewer,escalado,escaladoDias,
-    reunioes:[
-      {titulo:'Reunião Semanal',cor:'#22C55E',horario:semanal.horario||'',data:semanal.data||'',meet:semanal.meet||'',editFn:'editarReuniao'},
-      {titulo:'Reunião Mensal',cor:'#EF4444',horario:mensal.horario||'',data:mensal.data||'',meet:mensal.meet||'',editFn:'editarReuniaoMensal'},
-      {titulo:'Reuniões Adicionais',cor:'#A855F7',horario:adicional.horario||'',data:adicional.data||'',meet:adicional.meet||'',editFn:'editarReuniaoAdicional'}
-    ],
+    reunioes,
     disparos:spNormDisparos(window._spDisparos),
     dispEditHtml:isCoord?renderDisparosCard(dispUnificado,true):''
   });
-  spHomeStart(spNormDisparos(window._spDisparos));
+  spHomeStart(spNormDisparos(window._spDisparos),reunioes); // spHomeHtml ja preencheu reunioes[i].dt
 
   window._bgTemas = TEMAS_BG;
   window._bgSelecionado = bgAtual;
