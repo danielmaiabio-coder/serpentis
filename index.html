@@ -902,6 +902,28 @@ body.dark-mode .dm-sidebar{background:var(--surface-2);}
 body.dark-mode .dm-main-header{background:var(--surface);}
 body.dark-mode .dm-input-row textarea{background:var(--surface-2);color:var(--text);}
 
+/* ── Etapa 4: ajustes de estilos inline antigos ── */
+:root{--blue-light:#E0F2FE;}
+body.dark-mode{--blue-light:rgba(14,165,233,0.14);}
+/* Relatorio de Disparos: tabela estilo Excel mantem as cores; no escuro o texto precisa ser escuro nas celulas claras */
+body.dark-mode td[style*="background:#BDD7EE"],body.dark-mode td[style*="background:#DDEBF7"],
+body.dark-mode td[style*="background:#92D050"],body.dark-mode td[style*="background:#00B0F0"],
+body.dark-mode tr[style*="background:#9DC3E6"] td{color:#0B0F0D !important;}
+/* Paineis brancos translucidos antigos (Caderno etc.) */
+body.dark-mode [style*="background:rgba(255,255,255,0.88)"],body.dark-mode [style*="background:rgba(255,255,255,0.9);"]{background:color-mix(in srgb,var(--surface) 92%,transparent) !important;color:var(--text);}
+/* Claro: tons "neon" usados como texto sobre fundo branco ficam ilegiveis -> versao mais escura do mesmo tom
+   (fora de paineis escuros de proposito, como o vidro da Agenda) */
+body:not(.dark-mode) #mainContent [style*="color:#22c55e"]:not([style*="background:rgba(10,30,15"] *){color:#15803d !important;}
+body:not(.dark-mode) #mainContent [style*="color:#f59e0b"]:not([style*="background:rgba(10,30,15"] *){color:#b45309 !important;}
+body:not(.dark-mode) #mainContent [style*="color:#facc15"]:not([style*="background:rgba(10,30,15"] *){color:#a16207 !important;}
+body:not(.dark-mode) #mainContent [style*="color:#fb923c"]:not([style*="background:rgba(10,30,15"] *){color:#c2410c !important;}
+body:not(.dark-mode) #mainContent [style*="color:#38bdf8"]:not([style*="background:rgba(10,30,15"] *){color:#0369a1 !important;}
+/* Caderno: titulo e "pagina em branco" pensados so pro claro */
+body.dark-mode [style*="color:#2d2d2d"]{color:var(--text) !important;}
+body.dark-mode [style*="background:rgba(255,255,255,0.7)"]{background:var(--surface-2) !important;color:var(--text-3) !important;}
+/* Feed: fundo atras das fotos acompanha o tema */
+.feed-card-img-wrap,.upload-preview{background:var(--surface-2);}
+
 /* ══ HOME (Página Inicial) ══════════════════════════════════════════════ */
 @property --sp-ang{syntax:'<angle>';inherits:false;initial-value:0deg;}
 @keyframes sp-spin{to{--sp-ang:360deg;}}
@@ -4927,7 +4949,7 @@ async function renderLinks(mc){
     items.map(item=>'<div class="link-card" data-titulo="'+(item.titulo||'').toLowerCase()+'" data-desc="'+(item.tipo||'').toLowerCase()+'">'+
       '<div><div class="link-card-title">'+item.titulo+'</div>'+
       '<div style="margin-top:4px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">'+
-        '<span style="font-size:10px;font-weight:500;padding:2px 8px;border-radius:20px;background:'+(item.tipo==='Recorrente'?'var(--green-light)':'var(--blue-light)')+';color:'+(item.tipo==='Recorrente'?'#085041':'var(--primary)')+';">'+(item.tipo||'Recorrente')+'</span>'+
+        '<span style="font-size:10px;font-weight:500;padding:2px 8px;border-radius:20px;background:'+(item.tipo==='Recorrente'?'var(--green-light)':'var(--blue-light)')+';color:'+(item.tipo==='Recorrente'?'var(--primary-mid)':'var(--accent-2)')+';">'+(item.tipo||'Recorrente')+'</span>'+
         (item.codigo?'<span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;background:rgba(139,69,19,0.1);color:#8B4513;cursor:pointer;" data-cod="'+item.codigo+'" onclick="navigator.clipboard.writeText(this.dataset.cod).then(()=>showToast(\'Código copiado!\'))" title="Clique para copiar">🏷 '+item.codigo+'</span>':'')+
       '</div>'+
       '</div>'+
@@ -10279,11 +10301,11 @@ async function renderMinhaCobranca(mc){
 
   function statusBadge(status){
     const map={
-      'APPROVED':['#22c55e','#dcfce7'],
-      'Atrasado':['#ef4444','#fee2e2'],
-      'Pendente':['#f59e0b','#fef3c7'],
+      'APPROVED':['#15803d','#dcfce7'],
+      'Atrasado':['#b91c1c','#fee2e2'],
+      'Pendente':['#b45309','#fef3c7'],
     };
-    const [cor,bg]=map[status]||['#64748b','#f1f5f9'];
+    const [cor,bg]=map[status]||['#475569','#f1f5f9'];
     return `<span style="display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;background:${bg};color:${cor};">${status||'—'}</span>`;
   }
 
