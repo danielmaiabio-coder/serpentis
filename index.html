@@ -4765,8 +4765,7 @@ async function renderFeedback(mc,op){
   const isCoord=userProfile.role==='coord';
   const snap=await getDocs(query(collection(db,'feedbacks',op.uid,'registros'),where('periodo','==',fbPeriodo)));
   const items=[];snap.forEach(d=>items.push({id:d.id,...d.data()}));items.sort((a,b)=>(b.ts||0)-(a.ts||0));
-  mc.innerHTML=snakeHtml()+'<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;"><div class="page-eyebrow">* '+(isCoord?op.nome+' · ':'')+'Feedbacks</div><div class="page-title">Registro de Feedbacks</div></div>'+
-    '<div class="page-title">Registro de Feedbacks</div><div class="page-sub">Visivel apenas entre coordenador e este operador</div>'+
+  mc.innerHTML=snakeHtml()+'<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;"><div class="page-eyebrow">* '+(isCoord?op.nome+' · ':'')+'Feedbacks</div><div class="page-title">Registro de Feedbacks</div><div class="page-sub" style="margin:0;">Visivel apenas entre coordenador e este operador</div></div>'+
     '<div class="fb-tabs"><button class="fb-tab '+(fbPeriodo==='mensal'?'active':'')+'" onclick="setFbPeriodo(\'mensal\',\''+op.uid+'\')">Mensal</button>'+
     '<button class="fb-tab '+(fbPeriodo==='trimestral'?'active':'')+'" onclick="setFbPeriodo(\'trimestral\',\''+op.uid+'\')">Trimestral</button>'+
     '<button class="fb-tab '+(fbPeriodo==='semestral'?'active':'')+'" onclick="setFbPeriodo(\'semestral\',\''+op.uid+'\')">Semestral</button>'+
