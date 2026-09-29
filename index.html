@@ -802,6 +802,32 @@ body.dark-mode .nb-icon-btn img,body.dark-mode .nb-dd-item img{filter:brightness
   body.nav-sidebar .nb-brand{border-bottom:1px solid var(--border);}
   body.nav-sidebar .nb-dropdown-inner{background:transparent;backdrop-filter:none;border:none;box-shadow:none;padding:2px 0 6px 10px;}
   body.nav-sidebar .nb-right{border-top:1px solid var(--border);}
+
+  /* Menu lateral EXPANSIVEL: em descanso so' os icones (72px); com o mouse (ou foco
+     via teclado) abre pra 260px POR CIMA do conteudo — a coluna do grid continua 72px,
+     entao a pagina nao pula. O conteudo interno tem largura fixa (236px) pra nao
+     reorganizar durante a animacao; em descanso ele so' fica cortado. */
+  body.nav-sidebar #appShell{grid-template-columns:72px 1fr;}
+  body.nav-sidebar .navbar{width:72px;overflow-x:hidden;z-index:700;transition:width .26s cubic-bezier(.2,.8,.2,1),box-shadow .26s;
+    background:color-mix(in srgb,var(--surface) 90%,transparent);backdrop-filter:blur(22px) saturate(1.4);-webkit-backdrop-filter:blur(22px) saturate(1.4);}
+  body.nav-sidebar .navbar:hover,body.nav-sidebar .navbar:focus-within{width:260px;box-shadow:24px 0 60px -24px rgba(0,0,0,0.5);}
+  body.nav-sidebar .navbar>*{width:236px;min-width:236px;flex-shrink:0;}
+  body.nav-sidebar .nb-brand{justify-content:flex-start;gap:12px;padding-left:9px;}
+  body.nav-sidebar .nb-chocalho{order:-1;}
+  body.nav-sidebar .nb-btn,body.nav-sidebar .nb-btn-single{padding:8px 12px;white-space:nowrap;}
+  body.nav-sidebar .nb-right .nb-bordered{justify-content:flex-start;padding-left:6px !important;}
+  body.nav-sidebar .nb-right>button{align-self:flex-start;margin-left:6px;}
+  /* Em descanso: esconde o que nao e' icone (submenus, termometro, textos que ficariam cortados) */
+  body.nav-sidebar .navbar:not(:hover):not(:focus-within) .nb-dropdown{display:none !important;}
+  body.nav-sidebar .navbar .nb-brand-name,body.nav-sidebar .navbar #led-termometro,body.nav-sidebar .navbar .nb-user-info,body.nav-sidebar .navbar .nb-user-chevron{transition:opacity .2s;}
+  body.nav-sidebar .navbar:not(:hover):not(:focus-within) .nb-brand-name,
+  body.nav-sidebar .navbar:not(:hover):not(:focus-within) #led-termometro,
+  body.nav-sidebar .navbar:not(:hover):not(:focus-within) .nb-user-info,
+  body.nav-sidebar .navbar:not(:hover):not(:focus-within) .nb-user-chevron{opacity:0;}
+  /* rotulos sao texto solto dentro do botao: em descanso, uma mascara corta tudo depois do icone */
+  body.nav-sidebar .navbar:not(:hover):not(:focus-within) .nb-btn,
+  body.nav-sidebar .navbar:not(:hover):not(:focus-within) .nb-btn-single{-webkit-mask-image:linear-gradient(90deg,#000 44px,transparent 46px);mask-image:linear-gradient(90deg,#000 44px,transparent 46px);}
+  body.nav-sidebar .navbar:not(:hover):not(:focus-within) .nb-right .nb-bordered{-webkit-mask-image:linear-gradient(90deg,#000 40px,transparent 44px);mask-image:linear-gradient(90deg,#000 40px,transparent 44px);}
 }
 
 /* ── Banners do topo ── */
@@ -991,7 +1017,7 @@ body.dark-mode [style*="background:rgba(255,255,255,0.7)"]{background:var(--surf
 .sp-btn:hover{border-color:var(--border-md);background:var(--surface-3);}
 .sp-btn.sp-on{background:var(--inv-bg);color:var(--inv-text);border-color:var(--inv-bg);}
 .sp-btn.sp-grow{flex:1;}
-.sp-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;margin-top:18px;}
+.sp-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:18px;margin-top:18px;}
 .sp-hero>*,.sp-grid>*{min-width:0;}
 .sp-full{grid-column:1/-1;}
 .sp-mt{display:flex;align-items:center;gap:12px;padding:13px 14px;border-radius:14px;margin-top:10px;background:var(--surface-2);border:1px solid transparent;position:relative;}
