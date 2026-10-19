@@ -1681,6 +1681,10 @@ window.forcarAtualizacao=async function(){
 })();
 
 window.doLogout=async function(){
+  if(dashFrame){
+    if(dashFrame.contentWindow) dashFrame.contentWindow.postMessage({type:'logout'},DASH_ORIGEM);
+    dashFrame.remove();dashFrame=null;
+  }
   await signOut(auth);currentUser=null;userProfile=null;viewingOp=null;
   history.replaceState(null,'',location.pathname+location.search);
   if(window._lembreteInterval) clearInterval(window._lembreteInterval);
@@ -1931,7 +1935,7 @@ function buildNav(){
     return '<div class="nb-item"'+hoverAttrs+'><button class="nb-btn" id="nbg-'+id+'" data-gid="'+id+'" onclick="nbToggle(this.dataset.gid)">'+icone+label+' '+chev+'</button><div class="nb-dropdown" id="nbd-'+id+'"><div class="nb-dropdown-inner">'+items+'</div></div></div>';
   }
   let html='';
-  let painelItems=ddItem('resultado','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780802683/result_e5qm9r.png"/>Resultado')+ddItem('historico','<span class="nb-icon">📖</span>Historico')+ddItem('notas','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780802759/chat_x8kvyk.png"/>Analise de Chat')+ddItem('dashboard','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780802810/dash_bztgjy.png"/>Dashboard')+(isCoord?ddItem('resultado_unificado','<span class="nb-icon">🏆</span>Resultado Unificado'):'');
+  let painelItems=ddItem('resultado','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780802683/result_e5qm9r.png"/>Resultado')+ddItem('historico','<span class="nb-icon">📖</span>Historico')+ddItem('notas','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780802759/chat_x8kvyk.png"/>Analise de Chat')+ddItem('dashboard','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780802810/dash_bztgjy.png"/>Dashboard')+ddItem('dashboard_operadores','<span class="nb-icon">📈</span>Dashboard Cobrança')+(isCoord?ddItem('resultado_unificado','<span class="nb-icon">🏆</span>Resultado Unificado'):'');
   html+=group('painel','Painel Brille',painelItems);
   if(isCoord){
     let equipeItems=ddItem('equipe','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780874328/time_uxtxl2.png"/>Minha Equipe')+ddItem('ex_equipe','<span class="nb-icon">👋</span>Ex da Equipe')+ddItem('lancar','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780883836/results_eysruv.png"/>Lancar Resultados')+ddItem('escritorio','<span class="nb-icon">🗂️</span>Escritorio')+ddItem('relatorio_disparos','<span class="nb-icon">📊</span>Relatorio de Disparos');
@@ -1985,6 +1989,7 @@ const QUICK_SEARCH_PAGES=[
   {page:'feed',label:'Feed / Social',icon:'📰'},
   {page:'basilisco',label:'Basilisco (Xadrez)',icon:'♟️'},
   {page:'zendesk',label:'Zendesk',icon:'🎫'},
+  {page:'dashboard_operadores',label:'Dashboard de Cobranca',icon:'📈'},
   {page:'agenda',label:'Agenda',icon:'📅'},
   {page:'caderno',label:'Caderno',icon:'📓'},
   {page:'feriastime',label:'Ferias do Time',icon:'🏖️'},
@@ -2112,7 +2117,7 @@ document.addEventListener('keydown',function(e){
 });
 
 // ── URLs por pagina (fase 1: telas principais da navbar; fase 2: sub-telas por operador) ──
-const HASH_PAGES=['equipe','escritorio','lancar','copys','links','escala','calc','calcquit','calcreneg','relatorio_disparos','infos','agenda','codigosoferta','formsplanilhas','hashtube','feriastime','minha_cobranca','lembretes','editarperfil','termometro','basilisco','perfis','caderno','perfil','feed','resultado_unificado','ex_equipe','zendesk','quiz'];
+const HASH_PAGES=['equipe','escritorio','lancar','copys','links','escala','calc','calcquit','calcreneg','relatorio_disparos','infos','agenda','codigosoferta','formsplanilhas','hashtube','feriastime','minha_cobranca','lembretes','editarperfil','termometro','basilisco','perfis','caderno','perfil','feed','resultado_unificado','ex_equipe','zendesk','quiz','dashboard_operadores'];
 const HASH_OP_PAGES=['resultado','historico','notas','dashboard','feedback'];
 function parseHash(){
   const parts=(location.hash||'').replace(/^#\/?/,'').split('/').filter(Boolean);
@@ -2157,6 +2162,8 @@ window.navigate=async function(page,historyMode){
   mc.style.backgroundImage='none';
   mc.style.background='';
   mc.innerHTML='<div class="empty">Carregando...</div>';
+  if(page!=='dashboard_operadores'&&window._dashFrameLimpar) window._dashFrameLimpar();
+  if(page==='dashboard_operadores'){await renderDashboardOperadores(mc);return;}
   if(page==='equipe'){await renderEquipe(mc);return;}
   if(page==='escritorio'){await renderEscritorio(mc);return;}
   if(page==='lancar'){
@@ -9798,6 +9805,42 @@ async function renderRelatDisparos(mc){
   render();
 }
 
+
+// ══════════════════════════════════════════
+// DASHBOARD DE COBRANCA (iframe com login automatico)
+// ══════════════════════════════════════════
+const DASH_ORIGEM='https://dashboard-cobranca-next-seven.vercel.app';
+let dashFrame=null;
+
+window._dashFrameLimpar=function(){
+  if(dashFrame){dashFrame.remove();dashFrame=null;}
+};
+
+async function renderDashboardOperadores(mc){
+  window._dashFrameLimpar();
+  mc.style.padding='0';
+  mc.style.overflow='hidden';
+  mc.innerHTML='';
+  dashFrame=document.createElement('iframe');
+  dashFrame.src=DASH_ORIGEM+'/dashboard.html';
+  dashFrame.title='Dashboard de Cobranca';
+  const topo=mc.getBoundingClientRect().top;
+  dashFrame.style.cssText='border:0;width:100%;display:block;height:'+Math.max(400,window.innerHeight-topo)+'px';
+  mc.appendChild(dashFrame);
+}
+
+// O dashboard avisa quando esta pronto (e de novo a cada recarga); so entao o token e enviado.
+window.addEventListener('message',async function(e){
+  if(e.origin!==DASH_ORIGEM) return;
+  if(!dashFrame||e.source!==dashFrame.contentWindow) return;
+  if(!e.data||e.data.type!=='dashboard-ready') return;
+  try{
+    const {token}=await zdFetch('/api/dashboard/token');
+    if(dashFrame&&dashFrame.contentWindow) dashFrame.contentWindow.postMessage({type:'auth',token},DASH_ORIGEM);
+  }catch(err){
+    console.error('Nao foi possivel obter o token do dashboard',err);
+  }
+});
 
 async function renderAgenda(mc){
   const {isCoord} = getPerms();
