@@ -1,0 +1,125 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /usuarios/{uid} { allow read, write: if request.auth != null; }
+    match /usuarios/{uid}/lembretes/{lembId} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+    match /usuarios/{uid}/minhas_senhas/{itemId} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+    match /usuarios/{uid}/face_id/{docId} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+    match /pontos/{uid}/registros/{data} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == uid;
+    }
+    match /notificacoes_coord/{docId} {
+      allow read, write: if request.auth != null;
+    }
+    match /hashtube/{docId} {
+      allow read: if request.auth != null;
+      allow write: if get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.role == 'coord';
+    }
+    match /temperaturas/{data}/respostas/{uid} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == uid;
+    }
+    match /analise_chat/{uid} {
+      allow read: if request.auth != null;
+      allow write: if get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.role == 'coord';
+    }
+    match /analise_chat_historico/{uid}/relatorios/{relId} {
+      allow read: if request.auth != null;
+      allow write: if get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.role == 'coord';
+    }
+    match /distribuicao_metrica/{uid} {
+      allow read: if request.auth != null;
+      allow write: if get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.role == 'coord';
+    }
+    match /quem_faz_o_que/{uid} {
+      allow read: if request.auth != null;
+      allow write: if get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.role == 'coord';
+    }
+    match /quemFazOQue/{data} {
+      allow read: if request.auth != null;
+      allow write: if get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.role == 'coord';
+    }
+    match /ex_operadores/{docId} {
+      allow read: if request.auth != null;
+      allow write: if get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.role == 'coord'
+        || ('ex_equipe' in (get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.subrole is list
+          ? get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.subrole
+          : [get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.subrole]));
+    }
+    match /minha_cobranca_config/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid
+        || get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.role == 'coord';
+    }
+    match /minha_cobranca_dados/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid
+        || get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.role == 'coord';
+    }
+    match /semanas/{uid} { allow read, write: if request.auth != null; }
+    match /historico/{uid}/{document=**} { allow read, write: if request.auth != null; }
+    match /notas/{uid} { allow read, write: if request.auth != null; }
+    match /dashboards/{uid} { allow read, write: if request.auth != null; }
+    match /feedbacks/{uid}/{document=**} {
+      allow read: if request.auth.uid == uid || get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.role == 'coord';
+      allow write: if get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.role == 'coord';
+    }
+    match /copys/{docId} { allow read, write: if request.auth != null; }
+    match /links/{docId} { allow read, write: if request.auth != null; }
+    match /config/{docId} {
+      allow read: if request.auth != null;
+      allow write: if get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.role == 'coord'
+        || (docId == 'basilisco' && ('iamanager' in (get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.subrole is list
+          ? get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.subrole
+          : [get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.subrole])));
+    }
+    match /chat_acido/{docId} { allow read, write: if request.auth != null; }
+    match /feed_posts/{postId} {
+      allow read, write: if request.auth != null;
+      match /comentarios/{commId} { allow read, write: if request.auth != null; }
+    }
+    match /escritorio/{uid}/{document=**} {
+      allow read, write: if get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.role == 'coord';
+    }
+    match /xadrez_games/{docId} { allow read, write: if request.auth != null; }
+    match /xadrez_invites/{docId} { allow read, write: if request.auth != null; }
+    match /mural/{uid}/{document=**} { allow read, write: if request.auth != null; }
+    match /caderno/{uid}/{document=**} { allow read, write: if request.auth.uid == uid; }
+    match /roteamento_pontos/{uid}/{document=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth.uid == uid;
+    }
+    match /dm_msgs/{docId} { allow read, write: if request.auth != null; }
+    match /relatorio_disparos/{docId} {
+      allow read, write: if get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.role == 'coord'
+        || ('disparos' in (get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.subrole is list
+          ? get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.subrole
+          : [get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.subrole]));
+    }
+    match /agenda_pessoal/{docId} {
+      allow read, write: if request.auth != null && request.auth.uid == resource.data.uid;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.uid;
+    }
+    match /quiz_perguntas/{perguntaId} {
+      allow read, write: if request.auth != null && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.role == 'coord';
+    }
+    match /quiz_semanas/{semanaId} {
+      allow read: if request.auth != null && (
+        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.role == 'coord'
+        || request.auth.uid in resource.data.participantes
+      );
+      allow write: if request.auth != null && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.role == 'coord';
+      match /respostas/{uid} {
+        allow read, write: if request.auth != null && (
+          request.auth.uid == uid
+          || get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.role == 'coord'
+        );
+      }
+    }
+  }
+}

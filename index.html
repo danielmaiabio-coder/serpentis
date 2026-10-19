@@ -1793,7 +1793,8 @@ function getPerms(){
   const canExEquipe = isCoord || hasSub('ex_equipe');
   const canMinhaCobranca = isCoord || hasSub('cobranca_propria');
   const canZendesk = isCoord || hasSub('zendesk');
-  return {isCoord, canManageIA, canLancar, canRenegoc, canBanco, canHistEdit, canVisaoEquipe, canExEquipe, canMinhaCobranca, canZendesk};
+  const canDisparos = isCoord || hasSub('disparos');
+  return {isCoord, canManageIA, canLancar, canRenegoc, canBanco, canHistEdit, canVisaoEquipe, canExEquipe, canMinhaCobranca, canZendesk, canDisparos};
 }
 
 // Retorna a data atual no formato YYYY-MM-DD usando o horario LOCAL do navegador
@@ -1911,7 +1912,7 @@ function updateSidebarUser(){
 }
 
 function buildNav(){
-  const {isCoord, canLancar, canVisaoEquipe, canExEquipe, canMinhaCobranca, canZendesk} = getPerms();
+  const {isCoord, canLancar, canVisaoEquipe, canExEquipe, canMinhaCobranca, canZendesk, canDisparos} = getPerms();
   const isViewer = userProfile.role==='viewer';
   const chev='<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>';
   function ddItem(id,label){return '<button class="nb-dd-item" id="nav-'+id+'" data-page="'+id+'" onclick="nbClose();navigate(this.dataset.page)">'+label+'<span class="nav-badge" id="badge-'+id+'" style="display:none;"></span></button>';}
@@ -1947,7 +1948,7 @@ function buildNav(){
     let utilItems=ddItem('copys','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780800196/copy_b0dpnq.png"/>Banco de Copys')+ddItem('links','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780800378/links_wnwufb.jpg"/>Links de Reneg.')+ddItem('escala','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780800513/rotear_wgszyx.png"/>Escala de Roteamento')+(canZendesk?ddItem('zendesk','<span class="nb-icon">🎫</span>Zendesk'):'')+ddItem('calc','🧮 Calculadoras')+ddItem('infos','💡 Informacoes Uteis')+ddItem('codigosoferta','📊 Cod. de Oferta')+ddItem('formsplanilhas','📋 Forms/Planilhas')+ddItem('hashtube','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1782143284/hashtube2_zwqefx.png"/>Hashtube')+'<button class="nb-dd-item" onclick="nbClose();window.forcarAtualizacao()"><span class="nb-icon">🔄</span>Atualizar</button>';
     html+=group('utils','Utilidades',utilItems);
   }
-  let contaItems=ddItem('perfil','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780845592/home_w6kzpw.png"/>Pagina Inicial')+ddItem('agenda','<span class="nb-icon">📅</span>Agenda')+ddItem('caderno','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780802371/historico_zbvzr3.png"/>Caderno')+ddItem('basilisco','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780873587/dark_snake_puyvhs.png"/>Basilisco')+ddItem('feriastime','<span class="nb-icon">🏖️</span>Ferias do Time')+ddItem('lembretes','<span class="nb-icon">⏰</span>Lembretes')+(canMinhaCobranca?ddItem('minha_cobranca','<span class="nb-icon">💳</span>Minha Cobrança'):'')+(!isViewer?ddItem('feedback','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780803681/chatting_xdxyho.png"/>Feedbacks'):'');
+  let contaItems=ddItem('perfil','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780845592/home_w6kzpw.png"/>Pagina Inicial')+ddItem('agenda','<span class="nb-icon">📅</span>Agenda')+ddItem('caderno','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780802371/historico_zbvzr3.png"/>Caderno')+ddItem('basilisco','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780873587/dark_snake_puyvhs.png"/>Basilisco')+ddItem('feriastime','<span class="nb-icon">🏖️</span>Ferias do Time')+ddItem('lembretes','<span class="nb-icon">⏰</span>Lembretes')+(canMinhaCobranca?ddItem('minha_cobranca','<span class="nb-icon">💳</span>Minha Cobrança'):'')+(canDisparos&&!isCoord?ddItem('relatorio_disparos','<span class="nb-icon">📊</span>Relatorio de Disparos'):'')+(!isViewer?ddItem('feedback','<img src="https://res.cloudinary.com/dbd9hpwyb/image/upload/v1780803681/chatting_xdxyho.png"/>Feedbacks'):'');
   html+=group('conta','Conta',contaItems);
   document.getElementById('navItems').innerHTML=html;
 }
@@ -2169,7 +2170,10 @@ window.navigate=async function(page,historyMode){
   if(page==='calc'){renderCalc(mc);return;}
   if(page==='calcquit'){renderCalcQuit(mc);return;}
   if(page==='calcreneg'){renderCalcReneg(mc);return;}
-  if(page==='relatorio_disparos'){await renderRelatDisparos(mc);return;}
+  if(page==='relatorio_disparos'){
+    if(getPerms().canDisparos){await renderRelatDisparos(mc);return;}
+    else{mc.innerHTML=snakeHtml()+'<div class="empty">Sem permissao para esta area.</div>';return;}
+  }
   if(page==='infos'){renderInfosUteis(mc);return;}
   if(page==='agenda'){await renderAgenda(mc);return;}
   if(page==='codigosoferta'){await renderCodigosOferta(mc);return;}
