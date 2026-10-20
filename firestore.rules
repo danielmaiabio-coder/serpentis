@@ -1,7 +1,31 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /usuarios/{uid} { allow read, write: if request.auth != null; }
+    // Perfil do usuario. 'role' e 'subrole' definem permissoes em todo o sistema,
+    // entao so o coordenador altera. O proprio usuario edita apenas campos de perfil.
+    match /usuarios/{uid} {
+      allow read: if request.auth != null;
+      // Cadastro publico: so cria o proprio documento, sempre como operador, sem subrole.
+      allow create: if request.auth != null
+        && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['nome','email','role','criadoEm'])
+        && request.resource.data.role == 'op';
+      allow update: if request.auth != null && (
+        // Coordenador altera qualquer campo (role, subrole, ativo...)
+        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.role == 'coord'
+        // Proprio usuario: somente campos de perfil
+        || (request.auth.uid == uid
+          && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['nome','bgColor','foto','capa','pip_url']))
+        // Quem tem 'ex_equipe' pode apenas marcar 'ativo' (migracao para Ex da Equipe)
+        || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ativo'])
+          && ('ex_equipe' in (get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.subrole is list
+            ? get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.subrole
+            : [get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.subrole])))
+      );
+      allow delete: if request.auth != null
+        && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.role == 'coord';
+    }
     match /usuarios/{uid}/lembretes/{lembId} {
       allow read, write: if request.auth != null && request.auth.uid == uid;
     }
