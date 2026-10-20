@@ -78,6 +78,13 @@ service cloud.firestore {
           ? get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.subrole
           : [get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.subrole])));
     }
+    // Horarios de disparo (card da Pagina Inicial): coord ou subrole 'disparos'
+    match /config/disparos {
+      allow write: if get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.role == 'coord'
+        || ('disparos' in (get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.subrole is list
+          ? get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.subrole
+          : [get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.subrole]));
+    }
     match /chat_acido/{docId} { allow read, write: if request.auth != null; }
     match /feed_posts/{postId} {
       allow read, write: if request.auth != null;

@@ -8606,9 +8606,9 @@ function spHomeHtml(D){
     '<div class="sp-grid">'+
       (D.isViewer?'':
       '<div '+riseCls('sp-card')+'><div class="sp-lab">Reuniões</div>'+reuHtml+'</div>'+
-      '<div '+riseCls('sp-card')+' id="sp-disp-card"><div class="sp-lab">Disparos'+(D.isCoord?'<button onclick="spToggleEditDisp()" id="sp-edit-disp-btn">Editar</button>':'')+'</div>'+
+      '<div '+riseCls('sp-card')+' id="sp-disp-card"><div class="sp-lab">Disparos'+(D.canDisp?'<button onclick="spToggleEditDisp()" id="sp-edit-disp-btn">Editar</button>':'')+'</div>'+
         '<div class="sp-dl">'+dispHtml+'</div>'+
-        (D.isCoord?'<div class="sp-edit" id="sp-edit-disp" style="display:none;">'+D.dispEditHtml+'</div>':'')+
+        (D.canDisp?'<div class="sp-edit" id="sp-edit-disp" style="display:none;">'+D.dispEditHtml+'</div>':'')+
       '</div>')+
       cdHtml+
       linksHtml+
@@ -8819,9 +8819,10 @@ async function renderPerfil(mc){
     cargo:isCoord?'Coordenador':isViewer?'Visualizador':'Operador',
     foto:perfil.foto||'',capa:perfil.capa||'',
     isCoord,isViewer,escalado,escaladoDias,
+    canDisp:isCoord||getPerms().canDisparos,
     reunioes,
     disparos:spNormDisparos(window._spDisparos),
-    dispEditHtml:isCoord?renderDisparosCard(dispUnificado,true):''
+    dispEditHtml:(isCoord||getPerms().canDisparos)?renderDisparosCard(dispUnificado,true):''
   });
   spHomeStart(spNormDisparos(window._spDisparos),reunioes); // spHomeHtml ja preencheu reunioes[i].dt
 
