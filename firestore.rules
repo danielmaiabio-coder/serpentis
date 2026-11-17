@@ -136,6 +136,30 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == resource.data.uid;
       allow create: if request.auth != null && request.auth.uid == request.resource.data.uid;
     }
+    // Ferias do Time: todos leem (precisam ver as datas bloqueadas).
+    // Operador so cria pedido PENDENTE pra si mesmo e pode cancelar o proprio pedido pendente.
+    // Coordenador cria (ja aprovado), aprova/recusa e exclui qualquer um.
+    match /ferias/{feriasId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && (
+        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.role == 'coord'
+        || (request.resource.data.uid == request.auth.uid
+          && request.resource.data.status == 'pendente'
+          && request.resource.data.criadoPor == request.auth.uid
+          && request.resource.data.nome == get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.nome
+          && request.resource.data.inicio is string && request.resource.data.inicio.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+          && request.resource.data.fim is string && request.resource.data.fim.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+          && request.resource.data.fim >= request.resource.data.inicio
+          && (!('obs' in request.resource.data) || (request.resource.data.obs is string && request.resource.data.obs.size() <= 200))
+          && request.resource.data.keys().hasOnly(['uid','nome','inicio','fim','obs','status','criadoEm','criadoPor']))
+      );
+      allow update: if request.auth != null
+        && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.role == 'coord';
+      allow delete: if request.auth != null && (
+        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.role == 'coord'
+        || (resource.data.uid == request.auth.uid && resource.data.status == 'pendente')
+      );
+    }
     match /quiz_perguntas/{perguntaId} {
       allow read, write: if request.auth != null && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.role == 'coord';
     }
