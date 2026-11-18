@@ -11591,6 +11591,85 @@ window.feriasExcluir=async function(id){
   }catch(e){showToast('Erro: '+e.message);}
 };
 
+window.renderFormsplanilhas=function renderFormsplanilhas(mc,activeTab){
+  activeTab=activeTab||'forms';
+  const tabForms=(activeTab==='forms');
+  const tabPlanilha=(activeTab==='planilha');
+  const tabCobranca=(activeTab==='cobranca');
+  function tabBtn(id,label,active){
+    return '<button onclick="renderFormsplanilhas(document.getElementById(\'mainContent\'),\''+id+'\')" style="padding:10px 20px;background:none;border:none;border-bottom:'+(active?'2px solid var(--primary)':'2px solid transparent')+';color:'+(active?'var(--primary)':'var(--text-2)')+';font-family:var(--font);font-size:13px;font-weight:'+(active?'600':'400')+';cursor:pointer;margin-bottom:-2px;">'+label+'</button>';
+  }
+  var bodyHtml='';
+  if(tabForms){
+    bodyHtml='<iframe src="https://docs.google.com/forms/d/e/1FAIpQLSdQgsfjOUOMaL9xbbRsEW-Z1bDma4GVP0tptxb6ryjuodQkmg/viewform?embedded=true" width="100%" height="900" frameborder="0" marginheight="0" marginwidth="0" style="display:block;border:none;border-radius:14px;">Carregando...</iframe>';
+  } else if(tabPlanilha){
+    bodyHtml='<iframe src="https://docs.google.com/spreadsheets/d/1O7ROraHF_3UQkMBs974-ouUZwD9uJSTJzGt8EQGrCEQ/edit?gid=50821618#gid=50821618" width="100%" height="900" frameborder="0" style="display:block;border:none;border-radius:14px;">Carregando...</iframe>';
+  } else if(tabCobranca){
+    var pipUrl=(window.userProfile&&window.userProfile.pip_url)||'';
+    bodyHtml=
+      '<div style="padding:1.5rem;">'+
+        '<div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px;">Sua URL do Apps Script</div>'+
+        '<div style="font-size:12px;color:var(--text-2);margin-bottom:10px;">Cole aqui a URL do Apps Script da sua planilha de cobranca. Sera salva automaticamente.</div>'+
+        '<div style="display:flex;gap:8px;margin-bottom:1.25rem;">'+
+          '<input id="pip-url-input" type="url" value="'+pipUrl+'" placeholder="https://script.google.com/macros/s/.../exec" style="flex:1;padding:9px 11px;border:1px solid var(--border-md);border-radius:var(--radius);background:var(--bg);color:var(--text);font-family:var(--font);font-size:12px;" onkeydown="if(event.key===\'Enter\')pipSalvarUrl()"/>'+
+          '<button onclick="pipSalvarUrl()" style="padding:9px 16px;background:var(--primary);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap;">Salvar URL</button>'+
+        '</div>'+
+        '<div id="pip-url-status" style="font-size:12px;margin-bottom:1rem;min-height:16px;"></div>'+
+        '<div id="pip-btn-area">'+
+        (pipUrl
+          ? '<button onclick="pipCobrancaAbrir()" style="padding:10px 20px;background:var(--primary);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:13px;font-weight:500;cursor:pointer;">Abrir Widget Cobranca Ativa</button>'
+          : '<div style="padding:10px 16px;background:var(--surface);border:1px dashed var(--border-md);border-radius:var(--radius);font-size:12px;color:var(--text-3);">Cole sua URL acima e salve para liberar o widget.</div>'
+        )+
+        '</div>'+
+        '<div style="margin-top:1.5rem;padding:1rem;background:var(--surface);border-radius:var(--radius);border:1px solid var(--border-md);font-size:12px;color:var(--text-3);">'+
+          '<strong style="color:var(--text-2);">Como funciona:</strong><br>'+
+          '1. Cole a URL do Apps Script da SUA planilha e clique em Salvar URL<br>'+
+          '2. Clique em Abrir Widget - aparece uma caixa flutuante arrastavel<br>'+
+          '3. Digite o email do aluno e pressione Enter ou clique em Salvar<br>'+
+          '4. O email vai para a proxima linha vazia da coluna A da sua planilha'+
+        '</div>'+
+      '</div>';
+  }
+  mc.innerHTML=snakeHtml()+
+    '<div style="width:100%;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);position:relative;z-index:1;">'+
+      '<div class="page-eyebrow">UTILIDADES</div>'+
+      '<div class="page-title">Forms / Planilhas</div>'+
+      '<div class="page-sub">Formularios e planilhas do setor</div>'+
+    '</div>'+
+    '<div style="display:flex;gap:0;margin-bottom:1rem;border-bottom:2px solid var(--border);">'+
+      tabBtn('forms','Forms Cancelamentos/Reembolsos',tabForms)+
+      tabBtn('planilha','Mapeamento de Cancelamento',tabPlanilha)+
+      tabBtn('cobranca','Cobranca Ativa',tabCobranca)+
+    '</div>'+
+    '<div class="panel" style="'+(tabForms||tabPlanilha?'padding:0;overflow:hidden;':'')+'border-radius:14px;min-height:'+(tabCobranca?'auto':'80vh')+';">'+
+      bodyHtml+
+    '</div>';
+}
+
+var PIP_APPS_URL='https://script.google.com/macros/s/AKfycbxXK3B7vAvkZXPgpLs1g_9tXr-v-xWQAFq7KkOGI4U8m53Kee_a5mL04KCYAB5bo-e6uA/exec';
+
+window.pipSalvarUrl=async function(){
+  var input=document.getElementById('pip-url-input');
+  var status=document.getElementById('pip-url-status');
+  var url=(input?input.value.trim():'');
+  if(!url||!url.startsWith('https://script.google.com')){
+    if(status){status.style.color='var(--red)';status.textContent='URL invalida. Deve comecar com https://script.google.com';}
+    return;
+  }
+  if(status){status.style.color='var(--text-2)';status.textContent='Salvando...';}
+  try{
+    await setDoc(doc(db,'usuarios',auth.currentUser.uid),{pip_url:url},{merge:true});
+    if(window.userProfile) window.userProfile.pip_url=url;
+    PIP_APPS_URL=url;
+    if(status){status.style.color='#22c55e';status.textContent='URL salva com sucesso!';}
+    var btnArea=document.getElementById('pip-btn-area');
+    if(btnArea){btnArea.innerHTML='<button onclick="pipCobrancaAbrir()" style="padding:10px 20px;background:var(--primary);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:13px;font-weight:500;cursor:pointer;">Abrir Widget Cobranca Ativa</button>';}
+  }catch(e){
+    if(status){status.style.color='var(--red)';status.textContent='Erro ao salvar: '+e.message;}
+  }
+};
+
+
 window.pipCobrancaAbrir=function(){
   var url=(window.userProfile&&window.userProfile.pip_url)||PIP_APPS_URL;
   if(!url){showToast('Configure sua URL do Apps Script primeiro.');return;}
