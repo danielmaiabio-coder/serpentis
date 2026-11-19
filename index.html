@@ -11351,7 +11351,14 @@ function feriasOcupados(lista,ignorarId){
 }
 function feriasConflitos(lista,inicio,fim,ignorarId){
   const a=feriasParse(inicio),b=feriasParse(fim);
-  return feriasOcupados(lista,ignorarId).filter(p=>a<=p.fim&&b>=p.inicio);
+  // Excecao: dezembro de 2026 permite mais de uma pessoa de ferias. Se TODA a sobreposicao
+  // cair dentro de 01-31/dez/2026, nao conta como conflito (fora disso, vale a regra normal).
+  const exIni=new Date(2026,11,1),exFim=new Date(2026,11,31);
+  return feriasOcupados(lista,ignorarId).filter(p=>{
+    if(!(a<=p.fim&&b>=p.inicio)) return false;
+    const oi=a>p.inicio?a:p.inicio,of=b<p.fim?b:p.fim;
+    return !(oi>=exIni&&of<=exFim);
+  });
 }
 
 window.renderFeriasTime=async function renderFeriasTime(mc){
